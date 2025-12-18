@@ -1,0 +1,62 @@
+# Node modules
+**/node_modules/
+
+# Environment variables
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+
+# Next.js build output
+**/.next/
+**/out/
+**/dist/
+
+# Build artifacts
+**/*.tgz
+
+# Prisma files & DB files
+**/prisma/dev.db
+**/prisma/dev.db-journal
+**/*.sqlite
+
+# Logs
+**/logs/
+**/*.log
+**/npm-debug.log*
+
+# Coverage
+**/coverage/
+
+# Redis artifacts
+**/dump.rdb
+
+# Docker
+**/*.pid
+
+# Editor config
+**/.idea/
+**/.vscode/
+
+# Playwright
+**/playwright-report/
+**/test-results/
+**/screenshots/
+
+# Email templates build output
+**/emails/.next/
+
+# S3 or page snapshots (debugging)
+**/snapshots/
+**/*.html
+
+# Miscellaneous
+**/*.local
+**/tmp/
+**/.cache/
+**/*.swp
+
+# OS generated
+**/.DS_Store
+**/Thumbs.db
+
