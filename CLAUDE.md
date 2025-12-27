@@ -72,4 +72,4 @@ Required in `.env`:
 
 ## Implementation Status
 
-Currently at Task 1.1 (repo setup). See `specs/implementation-plan.md` for full roadmap and `specs/task-*.md` for detailed task specs.
+Implementation is in progress. See `specs/implementation-plan.md` for full roadmap and `specs/task-*.md` for progress and detailed task specs.
