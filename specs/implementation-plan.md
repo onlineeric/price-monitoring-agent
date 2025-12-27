@@ -15,7 +15,7 @@
     * Define Schema: `products`, `price_points`, `alert_rules`.
     * Run first migration & verify connection.
 * **Task 1.3: Local Dev Environment**
-    * Create `docker-compose.yml` for local **Redis** (and optional local Postgres if offline).
+    * Create `docker-compose.yml` for local **Redis**
     * Verify both apps can connect to DB and Redis.
 * **Estimate:** 4 - 6 Hours
 
