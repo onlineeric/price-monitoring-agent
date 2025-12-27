@@ -1,12 +1,12 @@
 # Price Monitor AI Agent – Overall Architecture
 
 ## Goal
-A demo-friendly, low-cost, production-style system that:
+A demo-friendly, high-performance system that:
 - Monitors product prices from URLs
-- Stores price history
+- Stores price history via a modern serverless-ready ORM
 - Sends daily digests and instant discount alerts
-- Uses AI only where it adds real value
-- Demonstrates senior-level system design + delivery practices
+- Uses AI for fallback extraction and data parsing
+- Demonstrates senior-level system design (Queues, Workers, Cron, CI/CD)
 
 ---
 
@@ -15,9 +15,11 @@ A demo-friendly, low-cost, production-style system that:
 ### Application
 - **Frontend + API**: Next.js (TypeScript) → **Vercel**
 - **Background Worker**: Node.js (Docker) → **Render**
+- **Authentication**: Public Dashboard (Read) / Basic Auth (Write/Admin)
 
 ### Data & Messaging
 - **Database**: PostgreSQL → **Neon**
+- **ORM**: **Drizzle ORM** (Serverless & Edge ready)
 - **Redis**: **Upstash**
 - **Queue**: **BullMQ** (uses Redis)
 
@@ -35,23 +37,18 @@ A demo-friendly, low-cost, production-style system that:
 
 ### 1) Next.js App (Vercel)
 **Responsibilities**
-- Minimal UI:
-  - Tracked products list
-  - Current price + basic trend
-- API routes:
-  - Add / edit / remove products
-  - Configure alert rules
-  - Trigger manual recheck
+- **UI**: Public dashboard showing tracked products and price trends.
+- **Admin API**: Protected endpoints (Basic Auth) to add/edit products.
+- **Cron Endpoint**: Receives scheduled triggers from **Vercel Cron** to enqueue check jobs.
 
 ---
 
 ### 2) Background Worker (Render)
 **Responsibilities**
-- Periodically checks product prices
-- Runs extraction pipeline
-- Stores price history
-- Evaluates alert rules
-- Sends notification emails
+- Listens to **BullMQ** job queue (Consumer).
+- Executes the extraction pipeline (Playwright/AI).
+- Stores results using **Drizzle ORM**.
+- Evaluates alert rules and triggers email notifications.
 
 ---
 
@@ -63,30 +60,26 @@ A demo-friendly, low-cost, production-style system that:
 
 ---
 
-### 4) Notification System
-**Emails**
-- Daily digest (all tracked products)
-- Instant alert (when rule is triggered)
-
-**Delivery**
-- Resend API + React Email templates
-
----
-
 ## Data Model (High Level)
-- **Product**: URL, name, active flag, check interval
-- **PricePoint**: productId, price, currency, timestamp
-- **AlertRule**: productId, threshold configuration
-- **RunLog** (optional): status + error info
+- **Product**: URL, name, active flag, cron schedule settings.
+- **PricePoint**: productId, price, currency, timestamp.
+- **AlertRule**: productId, threshold configuration.
+- **RunLog**: Status and error tracking for debugging.
 
 ---
 
-## Job Flow (Simplified)
-1. Product added via UI
-2. API enqueues a “check price” job (BullMQ)
-3. Worker processes the job: Fetch → Extract → Store
-4. Alert rules evaluated and emails sent if triggered
-5. Daily digest job runs once per day
+## Job Flow
+
+### A. Manual / Admin Action
+1. User adds product via UI (Basic Auth).
+2. API enqueues a `check-price` job to BullMQ.
+3. Worker picks up the job: Fetch → Extract → Drizzle Save.
+
+### B. Scheduled Check (Cron)
+1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times.
+2. API queries all active products from DB.
+3. API enqueues `check-price` jobs for each product.
+4. Worker processes the queue in background.
 
 ---
 
@@ -104,36 +97,22 @@ A demo-friendly, low-cost, production-style system that:
 ## CI/CD (GitHub Actions)
 
 ### Approach
-On every push/merge to `main`, GitHub Actions will:
-1. Build & test the repo
-2. Deploy **Web App** to Vercel
-3. Build and deploy **Worker** to Render
-
-### Web App Deploy (Vercel)
-- Use Vercel’s official GitHub integration **or** deploy via GitHub Actions.
-- Recommended for simplicity: **Vercel Git integration** (auto-deploy on `main`).
-
-### Worker Deploy (Render)
-- Build a Docker image and deploy to Render.
-- Two valid approaches:
-  - **Render builds from GitHub repo** on `main` (simplest)
-  - **GitHub Actions builds image + triggers Render deploy** (more control)
-
-### Docker Hub (Optional)
-Not required, but you can use it if you want:
-- GitHub Actions builds the worker Docker image
-- Pushes to Docker Hub
-- Render pulls that image to deploy
-
-This is useful if you want:
-- versioned images
-- reproducible builds
-- clear “CI pipeline” story
-
+On every push/merge to `main`:
+1. **Lint & Test**: Run checks on the monorepo.
+2. **Web App**: Vercel automatically deploys the Next.js app.
+3. **Worker**: GitHub Actions builds the Docker image and pushes to Render (or triggers Render deploy hook).---
 ---
 
-## Design Principles
-- Separate web and background workloads
-- Prefer managed services
-- Keep costs minimal and demo performance high
-- Use CI/CD to show production readiness
+## Hosting Stack
+The following components are planned to be hosted on the following platforms:
+| Component | What Runs There | Platform | Entry URL |
+|---------|----------------|----------|-----------|
+| Frontend + API | Next.js App (UI + API routes) | **Vercel** | https://vercel.com |
+| Background Worker | Node.js Worker (BullMQ + Playwright) | **Render** | https://render.com |
+| Job Queue Engine | **BullMQ (Node library)** | Runs inside Worker (Render) | N/A (library, not hosted) |
+| Redis | BullMQ queue storage | **Upstash** | https://upstash.com |
+| Database | PostgreSQL | **Neon** | https://neon.tech |
+| Email Service | Transactional email delivery | **Resend** | https://resend.com |
+| AI API | LLM extraction + explanations | **OpenAI** | https://platform.openai.com |
+| CI/CD | Build & deploy pipelines | **GitHub Actions** | https://github.com/features/actions |
+| Container Registry (optional) | Worker Docker images | **Docker Hub** | https://hub.docker.com |
