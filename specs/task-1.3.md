@@ -4,8 +4,19 @@
 **Goal:** Configure a local Redis instance using Docker to serve as the message broker for BullMQ.
 
 ## Prerequisites
-- Docker & Docker Compose installed and running.
+
+### General
 - Node.js environment ready.
+
+### Docker Installation
+* **Windows Users (Recommended):**
+    * Install **[Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)**.
+    * **Important:** During installation, ensure the option **"Use WSL 2 based engine"** is checked. This provides better performance and integration with VS Code.
+    * Docker Desktop includes `docker-compose` and a GUI for managing containers.
+* **Mac / Linux Users:**
+    * Install Docker Engine and Docker Compose via your package manager.
+
+---
 
 ## 1. Docker Compose Configuration
 
@@ -34,7 +45,7 @@ volumes:
 
 ## 2. Start the Service
 
-Open your terminal in the project root and run:
+Open your terminal (PowerShell, WSL, or Bash) in the project root and run:
 
 ```bash
 docker-compose up -d
@@ -42,6 +53,7 @@ docker-compose up -d
 ```
 
 * `-d` runs the container in detached mode (background).
+* **Windows Tip:** If using Docker Desktop, you can also view the running container status in the Docker Dashboard GUI.
 
 ## 3. Environment Variables
 
@@ -113,3 +125,13 @@ rm test-redis.ts
 pnpm remove ioredis -w
 
 ```
+
+
+
+---
+
+## Architecture Note: Local vs Production
+
+* **Local Development:** We use a local Redis container via Docker for cost efficiency, speed, and offline capability.
+* **Production:** We will NOT host a Redis container manually. Instead, we will switch to **Upstash (Serverless Redis)**.
+* When deploying, simply update the `REDIS_URL` environment variable to point to the Upstash endpoint. No code changes are required.
