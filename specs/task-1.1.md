@@ -84,6 +84,31 @@ cd ../..
 
 ```
 
+**Post-Init Configuration:**
+
+1. Update `apps/worker/package.json` to use ES Modules:
+```json
+{
+  "name": "@price-monitor/worker",
+  "type": "module",
+  ...
+}
+```
+
+2. Update `apps/worker/tsconfig.json` for Node.js ESM:
+```json
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "target": "esnext",
+    "types": ["node"],
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    ...
+  }
+}
+```
+
 ### Step 5: Shared Database Package (`packages/db`)
 
 Initialize the shared library for database logic.
@@ -94,7 +119,16 @@ pnpm init
 
 ```
 
-* **Note:** The `package.json` name in this folder was updated to `@repo/db` to facilitate importing it into other apps.
+**Post-Init Configuration:**
+
+Update `packages/db/package.json` to use ES Modules:
+```json
+{
+  "name": "@price-monitor/db",
+  "type": "module",
+  ...
+}
+```
 
 ---
 
@@ -107,4 +141,4 @@ pnpm -r list
 
 ```
 
-**Expected Output:** Should list `web`, `worker`, and `@repo/db`.
+**Expected Output:** Should list `@price-monitor/web`, `@price-monitor/worker`, and `@price-monitor/db`.

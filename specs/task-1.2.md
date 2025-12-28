@@ -65,6 +65,7 @@ Set up the shared database package (`packages/db`) using **Drizzle ORM** and **N
         * Type definitions (`Product`, `NewProduct`, `PriceRecord`, `AlertRule`, `RunLog`) inferred from schema.
 
 ### 4. Package Config: `packages/db/package.json`
+* **Module Type:** Add `"type": "module"` to enable ES Modules.
 * **Scripts Update:**
     * `"generate"`: `"drizzle-kit generate"`
     * `"push"`: `"drizzle-kit push"`
