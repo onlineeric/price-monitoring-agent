@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  # Redis Service
+  # Acts as the message broker for BullMQ (Job Queue)
+  redis:
+    image: redis:alpine
+    container_name: price-monitor-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    restart: always
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
