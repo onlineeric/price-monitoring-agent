@@ -70,6 +70,20 @@ pnpm --filter @price-monitor/db studio    # Open Drizzle Studio
 Required in `.env`:
 - `DATABASE_URL` - Neon PostgreSQL connection string
 
+## Development Workflow
+
+This project follows **Spec-Driven Development**. Task specifications are in the `specs/` folder (e.g., `specs/task-2.1.md`).
+
+### Git Commit Conventions
+
+Commit messages use task tags that match spec documents:
+
+- **Single task**: `[task-2.1] complete task 2.1`
+- **Multiple tasks**: `[task-1.1][task-1.2] update both specs`
+- **No task**: `[misc] minor cleanup`
+
+Tag format: `[task-X.Y]` corresponds to `specs/task-X.Y.md`.
+
 ## Implementation Status
 
-Implementation is in progress. See `specs/implementation-plan.md` for full roadmap and `specs/task-*.md` for progress and detailed task specs.
+Implementation is in progress. See `specs/implementation-plan.md` for full roadmap and `specs/task-*.md` for detailed task specs.
