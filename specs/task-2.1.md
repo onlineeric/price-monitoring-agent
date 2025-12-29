@@ -29,15 +29,22 @@ pnpm add -D dotenv
 
 ```
 
-## 2. Environment Configuration (Manual Step)
+## 2. Environment and script Configuration (Manual Step)
 
-Update the `.env` file in root folder to include Redis connection details.
+1. Update the `.env` file in root folder to include Redis connection details. Add the following to the .env file in root folder:
+    ```env
+    # Connection string for the local Redis Docker container
+    REDIS_URL="redis://localhost:6379"
+    ```
 
-add the following to the .env file in root folder:
-```env
-# Connection string for the local Redis Docker container
-REDIS_URL="redis://localhost:6379"
-```
+2.  Update the Worker Script `apps/worker/package.json`:
+    ```json
+    "scripts": {
+      "dev": "tsx watch src/index.ts",
+      "test": "echo \"Error: no test specified\" && exit 1"
+    }
+    ```
+
 
 ---
 
