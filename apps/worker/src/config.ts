@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import IORedis from "ioredis";
+import { Redis } from "ioredis";
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +13,7 @@ dotenv.config({ path: envPath });
 
 // Redis connection instance (reusable across the worker)
 // maxRetriesPerRequest: null is required by BullMQ
-export const connection = new IORedis(process.env.REDIS_URL!, {
+export const connection = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 

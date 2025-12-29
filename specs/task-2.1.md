@@ -50,7 +50,7 @@ Ensure strict TypeScript typing and use ESM syntax.
 * **Goal:** Load env vars and create the Redis connection instance.
 * **Requirements:**
     * Import `dotenv`, `path` from 'path', `fileURLToPath` from 'url'.
-    * Import `IORedis` from 'ioredis'.
+    * Import `{ Redis }` from 'ioredis'.
     * **Path Resolution (ESM Native):**
         * Define `__filename = fileURLToPath(import.meta.url)`.
         * Define `__dirname = path.dirname(__filename)`.
@@ -58,7 +58,7 @@ Ensure strict TypeScript typing and use ESM syntax.
     * **Env Loading:**
         * Call `dotenv.config({ path: ... })`.
     * **Connection Logic:**
-        * Instantiate `const connection = new IORedis(process.env.REDIS_URL!, { maxRetriesPerRequest: null })`.
+        * Instantiate `const connection = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null })`.
         * *Note:* The `maxRetriesPerRequest: null` is strictly required by BullMQ.
     * **Exports:**
         * `connection` (The reusable Redis instance).

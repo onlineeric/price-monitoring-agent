@@ -103,7 +103,7 @@ cd ../..
     "target": "esnext",
     "types": ["node"],
     "strict": true,
-    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
     ...
   }
 }
