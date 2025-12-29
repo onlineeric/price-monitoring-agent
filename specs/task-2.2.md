@@ -12,25 +12,15 @@
 
 ---
 
-## Step 1: Configuration & Scripts (Manual Step)
+## Step 1: Install Dependencies (Manual Step)
 
-**User Action:**
-1.  **Install Dependencies:**
-    ```bash
-    cd apps/web
-    pnpm add bullmq ioredis
-    pnpm add -D dotenv
-    ```
-
-2.  **Fix Worker Script (Missing from Task 2.1):**
-    The worker needs a dev script to run continuously.
-    Update `apps/worker/package.json`:
-    ```json
-    "scripts": {
-      "dev": "tsx watch src/index.ts",
-      "test": "echo \"Error: no test specified\" && exit 1"
-    }
-    ```
+**User Action:**  
+**Install Dependencies:**  
+```bash
+cd apps/web
+pnpm add bullmq ioredis
+pnpm add -D dotenv
+```
 
 ---
 
