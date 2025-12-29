@@ -84,12 +84,22 @@ Generate the following 3 files to configure the Web App as a Job Producer. Use `
     pnpm dev
     ```
 
-3.  **Trigger Job:**
+3.  **Trigger Job:**  
+    In Linux or macOS using bash:
     ```bash
     curl -X POST http://localhost:3000/api/debug/trigger \
     -H "Content-Type: application/json" \
     -d '{"productId": "test-fix-v2"}'
+    ```   
+    In Windows PowerShell if curl.exe installed:
+    ```powershell
+    curl.exe -X POST http://localhost:3000/api/debug/trigger -H "Content-Type: application/json" -d '{\"productId\": \"test-fix-v2\"}'
     ```
+    or In Windows PowerShell using Invoke-WebRequest:
+    ```powershell
+    Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" -Method POST -ContentType "application/json" -Body '{"productId": "test-fix-v2"}'
+    ```
+
 
 4.  **Expectation:**
     * **Web:** Returns `{"success":true, ...}`.
