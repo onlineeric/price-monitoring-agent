@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(pnpm push)",
-      "Bash(pnpm --filter @price-monitor/db push:*)"
+      "Bash(pnpm --filter @price-monitor/db push:*)",
+      "Bash(cat:*)"
     ]
   }
 }
