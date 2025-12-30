@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pnpm push)",
       "Bash(pnpm --filter @price-monitor/db push:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Skill(tc)"
     ]
   }
 }

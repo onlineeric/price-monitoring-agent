@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import type { ScraperResult, ScraperConfig } from "../types/scraper.js";
+import { parsePrice, resolveImageUrl } from "../utils/priceParser.js";
 
 const DEFAULT_CONFIG: Required<ScraperConfig> = {
   timeout: 10000,
@@ -43,75 +44,6 @@ const IMAGE_SELECTORS = [
   ".product_gallery img",
 ];
 
-// Currency symbols to ISO codes mapping
-const CURRENCY_MAP: Record<string, string> = {
-  $: "USD",
-  "€": "EUR",
-  "£": "GBP",
-  "¥": "JPY",
-  "₹": "INR",
-  "₽": "RUB",
-  "₩": "KRW",
-  "฿": "THB",
-  A$: "AUD",
-  C$: "CAD",
-};
-
-/**
- * Parse price text into cents and currency
- */
-function parsePrice(
-  priceText: string
-): { price: number; currency: string } | null {
-  if (!priceText) return null;
-
-  // Clean the text
-  const cleaned = priceText.trim();
-
-  // Detect currency
-  let currency = "USD"; // default
-  for (const [symbol, code] of Object.entries(CURRENCY_MAP)) {
-    if (cleaned.includes(symbol)) {
-      currency = code;
-      break;
-    }
-  }
-
-  // Also check for currency codes like "USD", "EUR" etc.
-  const codeMatch = cleaned.match(/\b(USD|EUR|GBP|JPY|INR|AUD|CAD)\b/i);
-  if (codeMatch) {
-    currency = codeMatch[1].toUpperCase();
-  }
-
-  // Extract numeric value
-  // Handle formats: $19.99, 19,99 €, £1,234.56, $1.234,56 (European)
-  const numericMatch = cleaned.match(/[\d.,]+/);
-  if (!numericMatch) return null;
-
-  let numStr = numericMatch[0];
-
-  // Determine decimal separator
-  // If there's both comma and period, the last one is decimal separator
-  const lastComma = numStr.lastIndexOf(",");
-  const lastPeriod = numStr.lastIndexOf(".");
-
-  if (lastComma > lastPeriod) {
-    // European format: 1.234,56 -> 1234.56
-    numStr = numStr.replace(/\./g, "").replace(",", ".");
-  } else {
-    // US format: 1,234.56 -> 1234.56
-    numStr = numStr.replace(/,/g, "");
-  }
-
-  const value = parseFloat(numStr);
-  if (isNaN(value)) return null;
-
-  // Convert to cents
-  const priceInCents = Math.round(value * 100);
-
-  return { price: priceInCents, currency };
-}
-
 /**
  * Extract product data from parsed HTML
  */
@@ -148,26 +80,14 @@ function extractProductData($: cheerio.CheerioAPI, baseUrl: string) {
     const element = $(selector).first();
     if (element.length) {
       // Try various image attributes
-      imageUrl =
+      const rawUrl =
         element.attr("src") ||
         element.attr("data-src") ||
         element.attr("data-old-hires") ||
         null;
 
-      if (imageUrl) {
-        // Convert relative URLs to absolute
-        if (imageUrl.startsWith("//")) {
-          imageUrl = "https:" + imageUrl;
-        } else if (imageUrl.startsWith("/")) {
-          const url = new URL(baseUrl);
-          imageUrl = url.origin + imageUrl;
-        } else if (!imageUrl.startsWith("http")) {
-          // Handle relative paths like "../images/pic.jpg"
-          const url = new URL(baseUrl);
-          imageUrl = new URL(imageUrl, url.href).href;
-        }
-        break;
-      }
+      imageUrl = resolveImageUrl(rawUrl, baseUrl);
+      if (imageUrl) break;
     }
   }
 

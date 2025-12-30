@@ -324,7 +324,15 @@ Many modern sites require JavaScript. Test with a site that the HTML fetcher fai
 Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"productId": "playwright-test-001", "url": "https://www.example.com/some-product"}'
+  -Body '{"productId": "playwright-test-001", "url": "https://www.chemistwarehouse.co.nz/buy/106004/isowhey-plant-based-meal-replacement-shake-vanilla-550g"}'
+```
+Tier 1 and 2 also failed example:
+```powershell
+# Test with a known JS-rendered page
+Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"productId": "playwright-test-001", "url": "https://www.rockshop.co.nz/line-6-helix-next-generation-amp-modelling-multi-fx-floor-version-99-060-0101"}'
 ```
 
 **Note:** Finding a good test URL can be tricky. Options:
