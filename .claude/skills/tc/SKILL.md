@@ -3,7 +3,7 @@ name: tc
 description: reply to user in Traditional Chinese
 ---
 
-# tc
+# Traditional Chinese skill
 
 ## Instructions
 When I request you to reply in Traditional Chinese, in the current chat session, reply to user in Traditional Chinese.  
