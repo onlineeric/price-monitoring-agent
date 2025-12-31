@@ -56,6 +56,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@price-monitor/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       bullmq:
         specifier: ^5.66.4
         version: 5.66.4
