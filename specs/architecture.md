@@ -25,7 +25,8 @@ A demo-friendly, high-performance system that:
 
 ### Extraction & AI
 - **Web extraction**: HTTP fetch + **Playwright** (fallback)
-- **AI**: OpenAI API (fallback extraction + explanations)
+- **AI SDK**: **Vercel AI SDK** (provider-agnostic abstraction)
+- **AI Providers**: OpenAI, Google Gemini, Anthropic Claude (configurable via env)
 
 ### Email
 - **Email service**: **Resend**
@@ -53,10 +54,12 @@ A demo-friendly, high-performance system that:
 ---
 
 ### 3) Price Extraction Pipeline
-**Strategy**
-1. Parse structured data / HTML
-2. Use Playwright for JS-rendered pages
-3. Use OpenAI only when extraction is uncertain
+**Strategy** (3-Tier Fallback)
+1. **Tier 1 - Fast Path**: HTTP fetch + Cheerio (static HTML parsing)
+2. **Tier 2 - Robust Path**: Playwright headless browser (JS-rendered pages)
+3. **Tier 3 - Smart Path**: Vercel AI SDK with configurable provider (OpenAI/Gemini/Claude)
+
+**Provider Selection**: Set via `AI_PROVIDER` environment variable (openai | google | anthropic)
 
 ---
 
@@ -113,6 +116,7 @@ The following components are planned to be hosted on the following platforms:
 | Redis | BullMQ queue storage | **Upstash** | https://upstash.com |
 | Database | PostgreSQL | **Neon** | https://neon.tech |
 | Email Service | Transactional email delivery | **Resend** | https://resend.com |
-| AI API | LLM extraction + explanations | **OpenAI** | https://platform.openai.com |
+| AI SDK | Provider-agnostic LLM abstraction | **Vercel AI SDK** | https://sdk.vercel.ai |
+| AI Providers | LLM extraction (configurable) | **OpenAI / Google / Anthropic** | Multiple |
 | CI/CD | Build & deploy pipelines | **GitHub Actions** | https://github.com/features/actions |
 | Container Registry (optional) | Worker Docker images | **Docker Hub** | https://hub.docker.com |

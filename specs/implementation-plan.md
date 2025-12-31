@@ -47,13 +47,15 @@
 * **Estimate:** 10 - 14 Hours
 
 ## Phase 4: AI Intelligence (Business Logic B - Smart Parse)
-**Goal:** Integrate OpenAI for when selectors fail or data is messy.
-* **Task 4.1: OpenAI Integration**
-    * Setup OpenAI SDK.
-    * Create `AiExtractionService`.
-* **Task 4.2: Prompt Engineering**
-    * Design the system prompt: "Extract price and availability from this HTML snippet...".
-    * Implement "Fallback Strategy": If `HeadlessBrowserService` fails to find price, send HTML snapshot to AI.
+**Goal:** Integrate AI extraction using Vercel AI SDK with multi-provider support.
+* **Task 4.1: Vercel AI SDK Integration**
+    * Install **Vercel AI SDK** and provider packages (@ai-sdk/openai, @ai-sdk/google, @ai-sdk/anthropic).
+    * Create provider-agnostic `AiExtractionService` with configurable provider via env var.
+    * Implement structured output with Zod schema validation.
+* **Task 4.2: Alert Evaluation & Email Notifications**
+    * Setup **Resend** and **React Email** for notifications.
+    * Implement alert rule evaluation after price extraction.
+    * Send email when `current_price <= target_price`.
 * **Estimate:** 6 - 8 Hours
 
 ## Phase 5: Dashboard & Management (Frontend)

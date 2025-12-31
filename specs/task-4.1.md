@@ -1,8 +1,8 @@
-# Technical Spec: Phase 4.1 - OpenAI Integration
+# Technical Spec: Phase 4.1 - Vercel AI SDK Integration
 
 **Phase:** 4.1
-**Goal:** Integrate OpenAI as the third-tier "Smart Path" for extracting product data when HTML and Playwright methods fail.
-**Context:** Some websites have complex structures, anti-bot measures, or unusual layouts that defeat our CSS selector-based extraction. By sending HTML snippets to OpenAI, we can leverage AI to intelligently parse and extract price data.
+**Goal:** Integrate AI extraction using Vercel AI SDK with multi-provider support (OpenAI, Google, Anthropic).
+**Context:** When HTML and Playwright extractors fail, we use AI to intelligently parse product data. Vercel AI SDK provides a unified, provider-agnostic interface that allows switching between LLM providers via environment configuration.
 
 ---
 
@@ -10,11 +10,24 @@
 
 * **Task 3.3:** Database integration complete (can save extracted prices).
 * **Task 3.2:** Playwright fallback working.
-* **OpenAI Account:** API key available from [platform.openai.com](https://platform.openai.com).
+* **API Keys:** At least one provider API key:
+  - OpenAI: [platform.openai.com](https://platform.openai.com)
+  - Google: [aistudio.google.com](https://aistudio.google.com)
+  - Anthropic: [console.anthropic.com](https://console.anthropic.com)
 
 ---
 
 ## Architecture Context
+
+### Why Vercel AI SDK?
+
+| Consideration | Decision |
+|---------------|----------|
+| Provider lock-in | ❌ Avoided - can switch providers via env var |
+| Code complexity | ✅ Minimal - unified API across providers |
+| Structured output | ✅ Built-in JSON schema with Zod |
+| Industry adoption | ✅ 20M+ monthly downloads, Fortune 500 usage |
+| Stack alignment | ✅ Same team as Next.js |
 
 ### Extraction Pipeline (Complete)
 
@@ -31,34 +44,55 @@
 │  └─ Speed: ~2-5s | Cost: Free (compute only)                │
 ├─────────────────────────────────────────────────────────────┤
 │  Tier 3: AI Extraction (Smart Path) ← THIS TASK             │
-│  └─ OpenAI GPT-4o-mini                                      │
+│  └─ Vercel AI SDK (provider-agnostic)                       │
+│  └─ Providers: OpenAI | Google | Anthropic                  │
 │  └─ Speed: ~1-3s | Cost: ~$0.001-0.01 per request           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### When AI Extraction is Used
+### Provider Selection Flow
 
-AI extraction is triggered when:
-1. HTML fetcher fails to find title/price
-2. Playwright fetcher also fails to find title/price
-3. The page loaded successfully but data couldn't be extracted with selectors
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Environment Variable                       │
+│                   AI_PROVIDER=openai                         │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+         ┌────────────────▼────────────────┐
+         │     Vercel AI SDK (unified)     │
+         │     - generateObject()          │
+         │     - Zod schema validation     │
+         └────────────────┬────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+  @ai-sdk/openai    @ai-sdk/google    @ai-sdk/anthropic
+        │                 │                 │
+        ▼                 ▼                 ▼
+   gpt-4o-mini      gemini-1.5-flash   claude-3-haiku
+```
 
 ---
 
-## Step 1: Get OpenAI API Key (Manual Step)
+## Step 1: Get API Keys (Manual Step)
 
 **User Action:**
 
-1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Create a new API key
-3. Add to root `.env` file:
+Get at least one API key. For testing, OpenAI's `gpt-4o-mini` is recommended (cheapest).
+
+Add to root `.env` file:
 
 ```env
-# OpenAI API Key
+# AI Provider Selection (openai | google | anthropic)
+AI_PROVIDER="openai"
+
+# Provider API Keys (add the ones you want to use)
 OPENAI_API_KEY="sk-..."
+GOOGLE_GENERATIVE_AI_API_KEY="..."
+ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-**Note:** Keep this key secret. Never commit to git.
+**Note:** You only need the API key for the provider you're using.
 
 ---
 
@@ -69,8 +103,11 @@ OPENAI_API_KEY="sk-..."
 ```bash
 cd apps/worker
 
-# Install OpenAI SDK
-pnpm add openai
+# Vercel AI SDK core
+pnpm add ai zod
+
+# Provider packages (install all for flexibility)
+pnpm add @ai-sdk/openai @ai-sdk/google @ai-sdk/anthropic
 ```
 
 ---
@@ -79,59 +116,57 @@ pnpm add openai
 
 **Instruction for AI:**
 
-Generate the following files to add AI-powered extraction.
+Generate the following files to add AI-powered extraction with Vercel AI SDK.
 
 ### File 3.1: `apps/worker/src/services/aiExtractor.ts`
 
-**Goal:** Implement the AI extraction service using OpenAI.
+**Goal:** Implement provider-agnostic AI extraction using Vercel AI SDK.
 
 **Requirements:**
 
 * **Imports:**
   ```typescript
-  import OpenAI from 'openai';
+  import { generateObject } from 'ai';
+  import { openai } from '@ai-sdk/openai';
+  import { google } from '@ai-sdk/google';
+  import { anthropic } from '@ai-sdk/anthropic';
+  import { z } from 'zod';
   import type { ScraperResult } from '../types/scraper.js';
-  import { parsePrice } from '../utils/priceParser.js';
   ```
 
-* **OpenAI Client:**
+* **Product Schema (Zod):**
   ```typescript
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  const ProductDataSchema = z.object({
+    title: z.string().nullable().describe('The product name/title'),
+    price: z.number().nullable().describe('The current price as a decimal number (e.g., 19.99)'),
+    currency: z.string().nullable().describe('The currency code (USD, EUR, GBP, NZD, AUD, etc.)'),
   });
   ```
 
-* **System Prompt:**
+* **Provider Selection:**
   ```typescript
-  const SYSTEM_PROMPT = `You are a product data extraction assistant. Your task is to extract product information from HTML content.
+  type AIProvider = 'openai' | 'google' | 'anthropic';
 
-  Extract the following fields:
-  - title: The product name/title
-  - price: The current price (as a number, e.g., 19.99)
-  - currency: The currency code (USD, EUR, GBP, NZD, AUD, etc.)
+  function getModel(provider: AIProvider) {
+    switch (provider) {
+      case 'google':
+        return google('gemini-1.5-flash');
+      case 'anthropic':
+        return anthropic('claude-3-haiku-20240307');
+      case 'openai':
+      default:
+        return openai('gpt-4o-mini');
+    }
+  }
 
-  Rules:
-  - If there are multiple prices, extract the main/current price (not the original/crossed-out price)
-  - Return prices as decimal numbers without currency symbols
-  - If you cannot find a field, return null for that field
-  - Be concise and accurate
-
-  Respond ONLY with valid JSON in this exact format:
-  {"title": "Product Name", "price": 19.99, "currency": "USD"}`;
+  function getProvider(): AIProvider {
+    const provider = process.env.AI_PROVIDER?.toLowerCase();
+    if (provider === 'google' || provider === 'anthropic') {
+      return provider;
+    }
+    return 'openai'; // default
+  }
   ```
-
-* **Main Function:**
-  ```typescript
-  export async function aiExtract(html: string, url: string): Promise<ScraperResult>
-  ```
-
-* **Logic:**
-  1. Truncate HTML to ~15,000 characters (to fit token limits and reduce cost).
-  2. Focus on relevant parts: try to extract `<main>`, `<article>`, or product-related divs.
-  3. Call OpenAI API with `gpt-4o-mini` model (fast and cheap).
-  4. Parse JSON response.
-  5. Convert price to cents using `parsePrice()` or direct multiplication.
-  6. Return `ScraperResult` with `method: 'ai'`.
 
 * **HTML Truncation Helper:**
   ```typescript
@@ -139,11 +174,11 @@ Generate the following files to add AI-powered extraction.
     // Try to find main content areas first
     const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
     const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-    const productMatch = html.match(/<div[^>]*(?:product|item)[^>]*>([\s\S]*?)<\/div>/i);
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
-    let content = mainMatch?.[1] || articleMatch?.[1] || productMatch?.[1] || html;
+    let content = mainMatch?.[1] || articleMatch?.[1] || bodyMatch?.[1] || html;
 
-    // Remove scripts, styles, and comments
+    // Remove scripts, styles, and comments to reduce noise
     content = content
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
@@ -152,37 +187,97 @@ Generate the following files to add AI-powered extraction.
       .trim();
 
     if (content.length > maxLength) {
-      content = content.substring(0, maxLength) + '...';
+      content = content.substring(0, maxLength) + '... [truncated]';
     }
 
     return content;
   }
   ```
 
-* **Error Handling:**
-  - Handle API errors (rate limits, invalid key, etc.)
-  - Handle JSON parse errors from AI response
-  - Return `{ success: false, error: message, method: 'ai' }` on failure
-
-* **Response Parsing:**
+* **Main Function:**
   ```typescript
-  interface AiResponse {
-    title: string | null;
-    price: number | null;
-    currency: string | null;
-  }
+  export async function aiExtract(url: string): Promise<ScraperResult>
+  ```
 
-  // Parse AI response, handling potential JSON in markdown code blocks
-  function parseAiResponse(content: string): AiResponse | null {
+* **Implementation Logic:**
+  1. Fetch HTML from URL (reuse fetch logic or use simple fetch).
+  2. Truncate HTML to fit token limits.
+  3. Call `generateObject()` with Zod schema.
+  4. Convert price to cents (multiply by 100).
+  5. Return `ScraperResult` with `method: 'ai'`.
+
+* **Full Implementation:**
+  ```typescript
+  export async function aiExtract(url: string): Promise<ScraperResult> {
+    const provider = getProvider();
+    console.log(`[AI Extractor] Using provider: ${provider}`);
+
     try {
-      // Remove markdown code blocks if present
-      let cleaned = content.trim();
-      if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      // Fetch HTML
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Failed to fetch URL: ${response.status}`,
+          method: 'ai',
+        };
       }
-      return JSON.parse(cleaned);
-    } catch {
-      return null;
+
+      const html = await response.text();
+      const truncatedHtml = truncateHtml(html);
+
+      console.log(`[AI Extractor] Sending ${truncatedHtml.length} chars to ${provider}...`);
+
+      // Call AI with structured output
+      const { object } = await generateObject({
+        model: getModel(provider),
+        schema: ProductDataSchema,
+        prompt: `Extract product information from this HTML. Find the product title, current price (as a number without currency symbol), and currency code.
+
+If there are multiple prices, extract the main/current selling price (not the original or crossed-out price).
+
+HTML content:
+${truncatedHtml}`,
+      });
+
+      console.log(`[AI Extractor] Response:`, object);
+
+      // Validate we got useful data
+      if (!object.title && object.price === null) {
+        return {
+          success: false,
+          error: 'AI could not extract product data',
+          method: 'ai',
+        };
+      }
+
+      // Convert price to cents
+      const priceInCents = object.price !== null ? Math.round(object.price * 100) : null;
+
+      return {
+        success: true,
+        data: {
+          title: object.title,
+          price: priceInCents,
+          currency: object.currency,
+          imageUrl: null, // AI extraction doesn't get images for now
+        },
+        method: 'ai',
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[AI Extractor] Error:`, errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+        method: 'ai',
+      };
     }
   }
   ```
@@ -199,10 +294,6 @@ Generate the following files to add AI-powered extraction.
   ```
 
 * **Updated Scraper Function:**
-  - After Playwright fails, fetch HTML again (if needed) and call AI extractor.
-  - Pass the HTML content to AI for analysis.
-
-* **Updated Logic:**
   ```typescript
   export async function scrapeProduct(url: string): Promise<ScraperResult> {
     // Tier 1: Try HTML fetcher first (fast path)
@@ -215,7 +306,7 @@ Generate the following files to add AI-powered extraction.
     }
 
     // Tier 2: Fall back to Playwright (robust path)
-    console.log(`[Scraper] HTML failed, trying Playwright for: ${url}`);
+    console.log(`[Scraper] HTML failed (${htmlResult.error}), trying Playwright for: ${url}`);
     const playwrightResult = await playwrightFetch(url);
 
     if (playwrightResult.success) {
@@ -224,7 +315,7 @@ Generate the following files to add AI-powered extraction.
     }
 
     // Tier 3: Fall back to AI extraction (smart path)
-    console.log(`[Scraper] Playwright failed, trying AI extraction for: ${url}`);
+    console.log(`[Scraper] Playwright failed (${playwrightResult.error}), trying AI extraction for: ${url}`);
     const aiResult = await aiExtract(url);
 
     if (aiResult.success) {
@@ -238,66 +329,76 @@ Generate the following files to add AI-powered extraction.
   }
   ```
 
-### File 3.3: Update `apps/worker/src/types/scraper.ts`
+---
 
-**Goal:** Add 'ai' to the method type.
+## Step 4: Verification (Manual Step)
 
-**Requirements:**
+### 4.1: Start Services
 
-Already included in the type - verify it exists:
-```typescript
-method: 'html' | 'playwright' | 'ai';
+```bash
+# Terminal 1: Redis
+docker-compose up -d
+
+# Terminal 2: Worker
+cd apps/worker && pnpm dev
+
+# Terminal 3: Web
+cd apps/web && pnpm dev
 ```
 
----
+### 4.2: Test with a Difficult URL
 
-## Step 4: Environment Variable Loading (AI Generation Step)
-
-**Instruction for AI:**
-
-Ensure the worker loads `OPENAI_API_KEY` from the root `.env` file.
-
-### File 4.1: Update `apps/worker/src/config.ts` (if needed)
-
-**Verify** that the config loads `.env` from the root and exports are available.
-
-The OpenAI SDK automatically reads `OPENAI_API_KEY` from `process.env`, but ensure dotenv is loaded before the aiExtractor is imported.
-
----
-
-## Step 5: Verification (Manual Step)
-
-### 5.1: Test with a Known Difficult URL
-
-Use a URL that the HTML/Playwright extractors struggle with:
+Use a URL that failed HTML and Playwright extraction:
 
 **PowerShell:**
 
 ```powershell
-# Use a URL from task-3.2 that failed both tiers
 Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" `
   -Method POST `
   -ContentType "application/json" `
-  -Body '{"productId": "test-ai", "url": "https://www.rockshop.co.nz/line-6-helix-next-generation-amp-modelling-multi-fx-floor-version-99-060-0101"}'
+  -Body '{"productId": "ai-test", "url": "https://www.rockshop.co.nz/line-6-helix-next-generation-amp-modelling-multi-fx-floor-version-99-060-0101"}'
 ```
 
-### 5.2: Expected Worker Output
+### 4.3: Expected Worker Output
 
 ```text
-[<job-id>] Processing price check for product: test-ai
+[<job-id>] Processing price check for product: ai-test
 [<job-id>] Scraping URL: https://www.rockshop.co.nz/...
 [Scraper] Trying HTML fetcher for: https://...
 [Scraper] HTML failed, trying Playwright for: https://...
 [Scraper] Playwright failed, trying AI extraction for: https://...
-[AI Extractor] Sending HTML to OpenAI...
-[AI Extractor] Response: { title: 'Line 6 Helix...', price: 3499, currency: 'NZD' }
+[AI Extractor] Using provider: openai
+[AI Extractor] Sending 15000 chars to openai...
+[AI Extractor] Response: { title: 'Line 6 Helix...', price: 3499.00, currency: 'NZD' }
 [Scraper] AI extraction succeeded
 [<job-id>] Scrape successful: { title: '...', price: 349900, currency: 'NZD', method: 'ai' }
+[<job-id>] Price saved to database
 ```
 
-### 5.3: Verify Cost
+### 4.4: Test Provider Switching
 
-Check your OpenAI dashboard for usage. A single extraction with `gpt-4o-mini` should cost less than $0.01.
+Change the provider in `.env`:
+
+```env
+AI_PROVIDER="google"
+```
+
+Restart worker and test again. The logs should show:
+```text
+[AI Extractor] Using provider: google
+```
+
+---
+
+## Step 5: Cost Comparison (Reference)
+
+| Provider | Model | Input Cost | Output Cost | Typical Request |
+|----------|-------|-----------|-------------|-----------------|
+| OpenAI | gpt-4o-mini | $0.15/1M | $0.60/1M | ~$0.002 |
+| Google | gemini-1.5-flash | $0.075/1M | $0.30/1M | ~$0.001 |
+| Anthropic | claude-3-haiku | $0.25/1M | $1.25/1M | ~$0.003 |
+
+**Recommendation:** Start with `gpt-4o-mini` or `gemini-1.5-flash` for best cost/performance.
 
 ---
 
@@ -312,7 +413,7 @@ apps/worker/src/
 ├── utils/
 │   └── priceParser.ts
 ├── services/
-│   ├── aiExtractor.ts      # NEW: AI-powered extraction
+│   ├── aiExtractor.ts      # NEW: Vercel AI SDK extraction
 │   ├── database.ts
 │   ├── htmlFetcher.ts
 │   ├── playwrightFetcher.ts
@@ -325,42 +426,45 @@ apps/worker/src/
 
 ---
 
-## Cost Considerations
-
-| Model | Input Cost | Output Cost | Typical Request |
-|-------|-----------|-------------|-----------------|
-| gpt-4o-mini | $0.15/1M tokens | $0.60/1M tokens | ~$0.001-0.005 |
-| gpt-4o | $2.50/1M tokens | $10/1M tokens | ~$0.01-0.05 |
-
-**Recommendation:** Use `gpt-4o-mini` for extraction. It's fast, cheap, and accurate enough for structured data extraction.
-
----
-
 ## Troubleshooting
 
-### Issue: "Invalid API Key"
+### Issue: "Invalid API Key" or "Unauthorized"
 
-**Cause:** `OPENAI_API_KEY` not set or incorrect.
+**Cause:** API key not set or incorrect for selected provider.
 
-**Solution:** Verify `.env` has the correct key and worker loads it.
+**Solution:** Verify `.env` has correct key for the provider specified in `AI_PROVIDER`.
+
+### Issue: "Model not found"
+
+**Cause:** Using wrong model name for provider.
+
+**Solution:** Check model names in provider's documentation.
+
+### Issue: Schema validation error
+
+**Cause:** AI returned data that doesn't match Zod schema.
+
+**Solution:** The `generateObject()` function handles this automatically with retries. If persistent, check the prompt.
 
 ### Issue: "Rate limit exceeded"
 
-**Cause:** Too many requests to OpenAI API.
+**Cause:** Too many requests to provider API.
 
-**Solution:** Add retry logic with exponential backoff, or use a rate limiter.
+**Solution:** Add delay between requests or upgrade API plan.
 
-### Issue: AI returns invalid JSON
+---
 
-**Cause:** Model sometimes wraps response in markdown code blocks.
+## Environment Variables Summary
 
-**Solution:** The `parseAiResponse()` helper strips markdown formatting.
+```env
+# Required: Provider selection
+AI_PROVIDER="openai"  # Options: openai | google | anthropic
 
-### Issue: Extracted price is wrong
-
-**Cause:** AI misinterpreted the HTML or found wrong price.
-
-**Solution:** Improve the system prompt or increase HTML context. Consider validating price is reasonable.
+# Required: API key for selected provider
+OPENAI_API_KEY="sk-..."           # If AI_PROVIDER=openai
+GOOGLE_GENERATIVE_AI_API_KEY="..."  # If AI_PROVIDER=google
+ANTHROPIC_API_KEY="sk-ant-..."    # If AI_PROVIDER=anthropic
+```
 
 ---
 
@@ -368,10 +472,11 @@ apps/worker/src/
 
 Task 4.1 is complete when:
 
-- [ ] `OPENAI_API_KEY` added to `.env`
-- [ ] `openai` package installed in worker
-- [ ] `aiExtractor.ts` created with AI extraction logic
-- [ ] `scraper.ts` updated with 3-tier fallback
+- [ ] Vercel AI SDK and provider packages installed
+- [ ] At least one provider API key configured in `.env`
+- [ ] `aiExtractor.ts` created with provider-agnostic logic
+- [ ] `scraper.ts` updated with 3-tier fallback (HTML → Playwright → AI)
 - [ ] AI extraction triggered when HTML and Playwright fail
 - [ ] Successful extraction from a previously failing URL
-- [ ] Price saved to database with `method: 'ai'` logged
+- [ ] Provider can be switched via `AI_PROVIDER` env var
+- [ ] Price saved to database with `method: 'ai'`

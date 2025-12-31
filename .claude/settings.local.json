@@ -4,7 +4,8 @@
       "Bash(pnpm push)",
       "Bash(pnpm --filter @price-monitor/db push:*)",
       "Bash(cat:*)",
-      "Skill(tc)"
+      "Skill(tc)",
+      "WebSearch"
     ]
   }
 }
