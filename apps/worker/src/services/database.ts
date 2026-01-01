@@ -6,15 +6,7 @@ import {
   eq,
   type Product,
 } from "@price-monitor/db";
-
-/**
- * Validate UUID format
- */
-function isValidUuid(id: string): boolean {
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
+import { validate as isValidUuid } from "uuid";
 
 /**
  * Parameters for saving a price record
@@ -56,16 +48,17 @@ export async function updateProductTimestamp(productId: string): Promise<void> {
 }
 
 /**
+ * Format error message for logging
+ */
+function formatErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+/**
  * Log a run status to the run_logs table
- * Note: This will fail silently if productId doesn't exist (FK constraint)
+ * No FK constraint - can log for any productId (including test IDs)
  */
 export async function logRun(params: LogRunParams): Promise<void> {
-  // Skip if invalid UUID (can't insert due to FK constraint anyway)
-  if (!isValidUuid(params.productId)) {
-    console.log(`[DB] Skipping run log - invalid UUID: ${params.productId}`);
-    return;
-  }
-
   try {
     await db.insert(runLogs).values({
       productId: params.productId,
@@ -74,7 +67,7 @@ export async function logRun(params: LogRunParams): Promise<void> {
     });
   } catch (error) {
     // Log but don't throw - run logging is non-critical
-    console.log(`[DB] Could not log run: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.log(`[DB] Could not log run: ${formatErrorMessage(error)}`);
   }
 }
 
@@ -102,5 +95,50 @@ export async function getProductById(
   } catch (error) {
     console.error(`[DB] Error fetching product:`, error);
     return null;
+  }
+}
+
+/**
+ * Get or create product by URL
+ * Returns existing product if URL exists, creates new one if not
+ * New products are created with active=false (must be manually activated for cron)
+ */
+export async function getOrCreateProductByUrl(
+  url: string,
+  extractedName: string
+): Promise<Product> {
+  try {
+    // Try to find existing product by URL
+    const existing = await db
+      .select()
+      .from(products)
+      .where(eq(products.url, url))
+      .limit(1);
+
+    if (existing[0]) {
+      console.log(`[DB] Found existing product for URL: ${url}`);
+      return existing[0];
+    }
+
+    // Create new product
+    console.log(`[DB] Creating new product for URL: ${url}`);
+    const result = await db
+      .insert(products)
+      .values({
+        url,
+        name: extractedName,
+        active: false, // Don't include in cron until manually activated
+      })
+      .returning();
+
+    const newProduct = result[0];
+    if (!newProduct) {
+      throw new Error("Failed to create product: no data returned from insert");
+    }
+
+    return newProduct;
+  } catch (error) {
+    console.error(`[DB] Error in getOrCreateProductByUrl:`, error);
+    throw error;
   }
 }

@@ -5,24 +5,32 @@ import { priceQueue } from "@/lib/queue";
  * Request body interface for triggering a price check job
  */
 interface TriggerBody {
-  productId?: string;
-  url?: string; // URL to scrape for testing
+  url: string; // Product URL to scrape
 }
 
+/**
+ * Debug endpoint to trigger a price check job
+ * Only requires URL - worker will lookup/create product record automatically
+ */
 export async function POST(request: Request) {
-  const body: TriggerBody = await request.json().catch(() => ({}));
-  const productId = body.productId ?? "manual-test";
-  const url = body.url; // Optional - if not provided, worker skips scraping
+  const body: TriggerBody = await request.json().catch(() => ({} as TriggerBody));
+
+  if (!body.url) {
+    return NextResponse.json(
+      { success: false, error: "URL is required" },
+      { status: 400 }
+    );
+  }
 
   const job = await priceQueue.add("check-price", {
-    productId,
-    url,
+    url: body.url,
     triggeredAt: new Date(),
   });
 
   return NextResponse.json({
     success: true,
     jobId: job.id,
-    message: "Job enqueued",
+    url: body.url,
+    message: "Job enqueued - worker will lookup/create product automatically",
   });
 }

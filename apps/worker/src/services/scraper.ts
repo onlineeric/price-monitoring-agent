@@ -3,14 +3,38 @@ import { playwrightFetch } from "./playwrightFetcher.js";
 import type { ScraperResult } from "../types/scraper.js";
 
 /**
- * Main scraper function that orchestrates the extraction pipeline.
+ * Check if debug mode is enabled for forcing AI extraction
+ */
+function isForceAIEnabled(): boolean {
+  return process.env.FORCE_AI_EXTRACTION === "true";
+}
+
+/**
+ * Main scraper function that orchestrates the extraction pipeline
  *
  * Implements a tiered fallback strategy:
  * - Tier 1: HTML fetch + Cheerio (fast path)
  * - Tier 2: Playwright headless browser (robust path)
- * - Tier 3: AI extraction (smart path) [Task 4.1]
+ *   - Tries selector-based extraction first
+ *   - Falls back to AI extraction with rendered HTML if selectors fail
+ *
+ * Debug mode: Set FORCE_AI_EXTRACTION=true to skip Tier 1 and force AI extraction
  */
 export async function scrapeProduct(url: string): Promise<ScraperResult> {
+  // Debug mode: Skip HTML fetcher and go directly to Playwright + AI
+  if (isForceAIEnabled()) {
+    console.log(`[Scraper] 🧪 FORCE_AI_EXTRACTION enabled - skipping HTML fetcher`);
+    console.log(`[Scraper] Going directly to Playwright + AI for: ${url}`);
+
+    const result = await playwrightFetch(url);
+    console.log(
+      `[Scraper] Extraction ${result.success ? "succeeded" : "failed"} via: ${result.method}`
+    );
+    return result;
+  }
+
+  // Normal flow: Tier 1 -> Tier 2
+
   // Tier 1: Try HTML fetcher first (fast path)
   console.log(`[Scraper] Trying HTML fetcher for: ${url}`);
   const htmlResult = await fetchAndParse(url);
@@ -20,24 +44,16 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
     return htmlResult;
   }
 
-  // Tier 2: Fall back to Playwright (robust path)
-  console.log(
-    `[Scraper] HTML failed (${htmlResult.error}), trying Playwright for: ${url}`
-  );
+  // Tier 2: Fall back to Playwright (robust + smart path)
+  console.log(`[Scraper] HTML failed (${htmlResult.error}), trying Playwright for: ${url}`);
   const playwrightResult = await playwrightFetch(url);
 
   if (playwrightResult.success) {
-    console.log(`[Scraper] Playwright succeeded`);
-    return playwrightResult;
+    console.log(`[Scraper] Extraction succeeded via: ${playwrightResult.method}`);
+  } else {
+    console.log(`[Scraper] All extraction methods failed for: ${url}`);
   }
 
-  // TODO: Add AI fallback (Task 4.1)
-  // console.log(`[Scraper] Playwright failed, trying AI extraction for: ${url}`);
-  // const aiResult = await aiExtract(url, html);
-  // if (aiResult.success) return aiResult;
-
-  // Return last error if all tiers fail
-  console.log(`[Scraper] All methods failed for: ${url}`);
   return playwrightResult;
 }
 

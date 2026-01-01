@@ -45,9 +45,7 @@ export const alertRules = pgTable('alert_rules', {
 // Run logs table
 export const runLogs = pgTable('run_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull(), // No FK constraint - can log for any ID
   status: text('status').notNull(), // 'SUCCESS' | 'FAILED'
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -75,6 +73,7 @@ export const alertRulesRelations = relations(alertRules, ({ one }) => ({
 }));
 
 export const runLogsRelations = relations(runLogs, ({ one }) => ({
+  // Note: Product may not exist (no FK constraint), relation is optional
   product: one(products, {
     fields: [runLogs.productId],
     references: [products.id],
