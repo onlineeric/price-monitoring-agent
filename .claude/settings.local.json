@@ -5,7 +5,10 @@
       "Bash(pnpm --filter @price-monitor/db push:*)",
       "Bash(cat:*)",
       "Skill(tc)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Skill(code-review)"
     ]
   }
 }
