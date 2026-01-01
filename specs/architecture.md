@@ -71,8 +71,8 @@ A demo-friendly, high-performance system that:
 ---
 
 ## Data Model (High Level)
-- **Product**: URL, name, active flag, cron schedule settings.
-- **PricePoint**: productId, price, currency, timestamp.
+- **Product**: URL (unique), name, active flag, cron schedule settings.
+- **PriceRecord**: productId, price, currency, timestamp.
 - **AlertRule**: productId, threshold configuration.
 - **RunLog**: Status and error tracking for debugging.
 
@@ -80,16 +80,21 @@ A demo-friendly, high-performance system that:
 
 ## Job Flow
 
-### A. Manual / Admin Action
-1. User adds product via UI (Basic Auth).
-2. API enqueues a `check-price` job to BullMQ.
-3. Worker picks up the job: Fetch → Extract → Drizzle Save.
+### A. Manual / Debug Trigger
+1. User/Developer sends URL to debug endpoint: `POST /api/debug/trigger`
+2. API enqueues a `check-price` job to BullMQ
+3. Worker picks up the job: Scrape → Extract → Save to database
 
-### B. Scheduled Check (Cron)
-1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times.
-2. API queries all active products from DB.
-3. API enqueues `check-price` jobs for each product.
-4. Worker processes the queue in background.
+### B. Admin Action (UI)
+1. User adds product via UI (Basic Auth)
+2. API creates product record
+3. API enqueues `check-price` job for immediate check
+
+### C. Scheduled Check (Cron)
+1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times
+2. API queries all active products from DB
+3. API enqueues `check-price` jobs for each product
+4. Worker processes the queue in background
 
 ---
 

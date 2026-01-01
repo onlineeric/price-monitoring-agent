@@ -55,9 +55,7 @@
     * Create provider-agnostic `aiExtract()` function that accepts HTML as parameter.
     * Integrate AI into Playwright: when selectors fail, pass fully-rendered HTML to AI.
     * Implement structured output with Zod schema validation.
-    * Model names are read from env vars and passed directly to API (no hardcoded defaults or validation).
     * **Architecture:** AI is NOT a separate tier - it's called from within Playwright when needed.
-    * **Stealth Mode:** Bypasses ~70-80% of anti-bot protection (Cloudflare, DataDome, etc.).
 * **Task 4.2: Alert Evaluation & Email Notifications**
     * Setup **Resend** and **React Email** for notifications.
     * Implement alert rule evaluation after price extraction.
