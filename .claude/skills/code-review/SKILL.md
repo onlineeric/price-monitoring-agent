@@ -1,3 +1,8 @@
+---
+name: code-review
+description: perform code review, if GitHub PR number provided, post findings to GitHub
+---
+
 # AI Code Review – Issue-Only Reviewer
 
 ## Role
