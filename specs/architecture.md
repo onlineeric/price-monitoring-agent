@@ -71,30 +71,36 @@ A demo-friendly, high-performance system that:
 ---
 
 ## Data Model (High Level)
-- **Product**: URL (unique), name, active flag, cron schedule settings.
+- **Product**: URL (unique), name, active flag, last success/failure timestamps.
 - **PriceRecord**: productId, price, currency, timestamp.
-- **AlertRule**: productId, threshold configuration.
+- **Settings**: Key-value store for global configuration (email schedule, etc.).
 - **RunLog**: Status and error tracking for debugging.
 
 ---
 
 ## Job Flow
 
-### A. Manual / Debug Trigger
+### A. Manual / Debug Trigger (Single Product)
 1. User/Developer sends URL to debug endpoint: `POST /api/debug/trigger`
 2. API enqueues a `check-price` job to BullMQ
 3. Worker picks up the job: Scrape → Extract → Save to database
 
-### B. Admin Action (UI)
-1. User adds product via UI (Basic Auth)
-2. API creates product record
-3. API enqueues `check-price` job for immediate check
+### B. Manual Digest Trigger (All Products + Email)
+1. User clicks "Check All & Send Email" button (Basic Auth required)
+2. API enqueues a `send-digest` job to BullMQ
+3. Worker creates parent-child job flow:
+   - Parent job: orchestrates the flow
+   - Child jobs: one `check-price` job per active product
+4. Worker waits for all child jobs to complete
+5. Worker calculates price trends (7/30/90/180 day averages)
+6. Worker sends digest email with all products and trends
 
-### C. Scheduled Check (Cron)
-1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times
-2. API queries all active products from DB
-3. API enqueues `check-price` jobs for each product
-4. Worker processes the queue in background
+### C. Scheduled Digest (Automated)
+1. **Vercel Cron** sends GET request to `/api/cron/check-all` every 30 minutes
+2. API checks email schedule settings (daily/weekly, time)
+3. API calculates if current time matches schedule
+4. If YES: Trigger same digest flow as (B), update last sent timestamp
+5. If NO: Skip and wait for next cron run
 
 ---
 
