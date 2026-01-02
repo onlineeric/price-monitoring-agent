@@ -38,7 +38,11 @@
 
 ---
 
-## Step 1: Database Schema Changes
+## Step 1: Database Schema Changes (AI Generation Step)
+
+**Instruction for AI:**
+
+Update the database schema to remove alert functionality and add success/failure tracking.
 
 ### 1.1: Update `packages/db/src/schema.ts`
 
@@ -84,9 +88,7 @@ export { products, priceRecords, runLogs } from './schema.js';
 
 ---
 
-## Step 2: Generate and Apply Migration
-
-### 2.1: Generate Migration (Manual Step)
+## Step 2: Generate Migration (Manual Step)
 
 **User Action:**
 
@@ -97,7 +99,9 @@ pnpm generate
 
 This creates a new migration file in `drizzle/` folder.
 
-### 2.2: Review Migration (Manual Step)
+---
+
+## Step 3: Review Migration (Manual Step)
 
 **User Action:**
 
@@ -107,7 +111,9 @@ Open the generated migration file and verify it includes:
 - `ALTER TABLE products ADD COLUMN last_success_at timestamp;`
 - `ALTER TABLE products ADD COLUMN last_failed_at timestamp;`
 
-### 2.3: Apply Migration (Manual Step)
+---
+
+## Step 4: Apply Migration (Manual Step)
 
 **User Action:**
 
@@ -119,9 +125,13 @@ pnpm push
 
 ---
 
-## Step 3: Update Existing Code
+## Step 5: Update Existing Code (AI Generation Step)
 
-### 3.1: Update `apps/worker/src/services/database.ts`
+**Instruction for AI:**
+
+Update the worker code to remove alert functionality and add success/failure tracking.
+
+### 5.1: Update `apps/worker/src/services/database.ts`
 
 **Remove alert-related functions:**
 
@@ -157,7 +167,7 @@ export async function updateProductFailure(productId: string): Promise<void> {
 }
 ```
 
-### 3.2: Update `apps/worker/src/jobs/priceCheck.ts`
+### 5.2: Update `apps/worker/src/jobs/priceCheck.ts`
 
 **Update error handling to use `updateProductFailure()`:**
 
@@ -182,9 +192,11 @@ catch (error) {
 
 ---
 
-## Step 4: Verification (Manual Step)
+## Step 6: Verification (Manual Step)
 
-### 4.1: Verify Schema Changes
+**User Action:**
+
+### 6.1: Verify Schema Changes
 
 ```bash
 cd packages/db
@@ -196,7 +208,7 @@ Check that:
 - [x] `products` table has `last_success_at` and `last_failed_at` columns
 - [x] `products` table does NOT have `schedule` column
 
-### 4.2: Test Success Tracking
+### 6.2: Test Success Tracking
 
 Trigger a price check job and verify:
 - Successful scrape updates `products.last_success_at`
