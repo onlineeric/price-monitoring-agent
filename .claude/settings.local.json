@@ -8,7 +8,8 @@
       "WebSearch",
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",
-      "Skill(code-review)"
+      "Skill(code-review)",
+      "Bash(gh pr review:*)"
     ]
   }
 }

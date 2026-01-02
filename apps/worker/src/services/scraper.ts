@@ -51,7 +51,8 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
   if (playwrightResult.success) {
     console.log(`[Scraper] Extraction succeeded via: ${playwrightResult.method}`);
   } else {
-    console.log(`[Scraper] All extraction methods failed for: ${url}`);
+    console.error(`[Scraper] All extraction methods failed for: ${url}`);
+    console.error(`[Scraper] Final error: ${playwrightResult.error}`);
   }
 
   return playwrightResult;

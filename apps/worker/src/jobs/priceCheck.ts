@@ -12,7 +12,7 @@ import {
  * Job data interface for price check jobs
  */
 interface PriceCheckJobData {
-  url: string; // URL is now required (natural key)
+  url?: string; // Optional - for backward compatibility with productId-only jobs
   productId?: string; // Optional - for backward compatibility with cron jobs
   triggeredAt?: Date;
 }
@@ -61,6 +61,7 @@ async function resolveTargetUrl(
 /**
  * Save scraped price data to database
  * Automatically creates product record if it doesn't exist
+ * Returns productId for error logging, or null if failed before product creation
  */
 async function savePriceData(
   url: string,
@@ -68,21 +69,28 @@ async function savePriceData(
   price: number,
   currency: string,
   jobId: string
-): Promise<void> {
-  const productName = title || "Unknown Product";
-  const product = await getOrCreateProductByUrl(url, productName);
+): Promise<string | null> {
+  try {
+    const productName = title || "Unknown Product";
+    const product = await getOrCreateProductByUrl(url, productName);
 
-  console.log(`[${jobId}] Using product ID: ${product.id}`);
+    console.log(`[${jobId}] Using product ID: ${product.id}`);
 
-  await savePriceRecord({
-    productId: product.id,
-    price,
-    currency,
-  });
+    await savePriceRecord({
+      productId: product.id,
+      price,
+      currency,
+    });
 
-  await updateProductTimestamp(product.id);
-  await logRun({ productId: product.id, status: "SUCCESS" });
-  console.log(`[${jobId}] Price saved to database`);
+    await updateProductTimestamp(product.id);
+    await logRun({ productId: product.id, status: "SUCCESS" });
+    console.log(`[${jobId}] Price saved to database`);
+
+    return product.id;
+  } catch (error) {
+    console.error(`[${jobId}] Database error:`, error);
+    throw error; // Re-throw to be handled by caller
+  }
 }
 
 /**
@@ -111,6 +119,16 @@ export default async function priceCheckJob(
 
   if (!result.success) {
     console.error(`[${jobId}] Scrape failed:`, result.error);
+
+    // Log failure to database if we have productId (legacy flow)
+    if (productId) {
+      await logRun({
+        productId,
+        status: "FAILED",
+        errorMessage: result.error
+      });
+    }
+
     return result;
   }
 
@@ -132,8 +150,18 @@ export default async function priceCheckJob(
         jobId
       );
     } catch (dbError) {
-      console.error(`[${jobId}] Database error:`, dbError);
-      console.log(`[${jobId}] Failed to save: ${formatErrorMessage(dbError)}`);
+      const errorMessage = formatErrorMessage(dbError);
+      console.error(`[${jobId}] Failed to save: ${errorMessage}`);
+
+      // Try to log failure to run_logs
+      // We might have a productId from legacy flow, or we might have created one in savePriceData before it failed
+      if (productId) {
+        await logRun({
+          productId,
+          status: "FAILED",
+          errorMessage: `Database error: ${errorMessage}`
+        });
+      }
     }
   } else {
     console.log(`[${jobId}] No price data to save`);

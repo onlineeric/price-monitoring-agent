@@ -102,26 +102,16 @@ export async function getProductById(
  * Get or create product by URL
  * Returns existing product if URL exists, creates new one if not
  * New products are created with active=false (must be manually activated for cron)
+ * Uses ON CONFLICT to prevent race conditions
  */
 export async function getOrCreateProductByUrl(
   url: string,
   extractedName: string
 ): Promise<Product> {
   try {
-    // Try to find existing product by URL
-    const existing = await db
-      .select()
-      .from(products)
-      .where(eq(products.url, url))
-      .limit(1);
-
-    if (existing[0]) {
-      console.log(`[DB] Found existing product for URL: ${url}`);
-      return existing[0];
-    }
-
-    // Create new product
-    console.log(`[DB] Creating new product for URL: ${url}`);
+    // Atomic insert-or-update using ON CONFLICT
+    // If URL exists: updates updatedAt and returns existing product
+    // If URL doesn't exist: inserts new product
     const result = await db
       .insert(products)
       .values({
@@ -129,14 +119,19 @@ export async function getOrCreateProductByUrl(
         name: extractedName,
         active: false, // Don't include in cron until manually activated
       })
+      .onConflictDoUpdate({
+        target: products.url,
+        set: { updatedAt: new Date() },
+      })
       .returning();
 
-    const newProduct = result[0];
-    if (!newProduct) {
+    const product = result[0];
+    if (!product) {
       throw new Error("Failed to create product: no data returned from insert");
     }
 
-    return newProduct;
+    console.log(`[DB] Product ready for URL: ${url} (ID: ${product.id})`);
+    return product;
   } catch (error) {
     console.error(`[DB] Error in getOrCreateProductByUrl:`, error);
     throw error;

@@ -158,41 +158,42 @@ async function waitForDOMStability(
 /**
  * Extract product data from page using CSS selectors
  * Runs in browser context via page.evaluate()
+ * Uses inline logic (no helper functions) to avoid esbuild __name helper injection
  */
 async function extractDataWithSelectors(page: Page): Promise<ExtractedData> {
   return await page.evaluate((sels) => {
-    // Helper to find first matching element from selector list
-    function findFirstMatch(selectors: string[]): Element | null {
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (el) return el;
-      }
-      return null;
-    }
-
-    // Extract title
+    // Extract title - inline logic without helper functions
     let titleText: string | null = null;
-    const titleEl = findFirstMatch(sels.title);
-    if (titleEl?.textContent) {
-      titleText = titleEl.textContent.trim();
+    for (const sel of sels.title) {
+      const el = document.querySelector(sel);
+      if (el?.textContent) {
+        titleText = el.textContent.trim();
+        if (titleText) break;
+      }
     }
 
-    // Extract price
+    // Extract price - inline logic without helper functions
     let priceText: string | null = null;
-    const priceEl = findFirstMatch(sels.price);
-    if (priceEl?.textContent) {
-      priceText = priceEl.textContent.trim();
+    for (const sel of sels.price) {
+      const el = document.querySelector(sel);
+      if (el?.textContent) {
+        priceText = el.textContent.trim();
+        if (priceText) break;
+      }
     }
 
-    // Extract image
+    // Extract image - inline logic without helper functions
     let imageUrl: string | null = null;
-    const imageEl = findFirstMatch(sels.image) as HTMLImageElement | null;
-    if (imageEl) {
-      imageUrl =
-        imageEl.src ||
-        imageEl.getAttribute("data-src") ||
-        imageEl.getAttribute("data-old-hires") ||
-        null;
+    for (const sel of sels.image) {
+      const el = document.querySelector(sel) as HTMLImageElement | null;
+      if (el) {
+        imageUrl =
+          el.src ||
+          el.getAttribute("data-src") ||
+          el.getAttribute("data-old-hires") ||
+          null;
+        if (imageUrl) break;
+      }
     }
 
     return { title: titleText, priceText, imageUrl };
@@ -255,7 +256,9 @@ export async function playwrightFetch(
     }
 
     // Extract data using selectors
+    console.log(`[Playwright] Attempting selector-based extraction...`);
     const rawData = await extractDataWithSelectors(page);
+    console.log(`[Playwright] Selector results - title: ${rawData.title ? 'found' : 'null'}, priceText: ${rawData.priceText ? 'found' : 'null'}`);
 
     // Parse price from extracted text
     let price: number | null = null;
@@ -265,6 +268,9 @@ export async function playwrightFetch(
       if (parsed) {
         price = parsed.price;
         currency = parsed.currency;
+        console.log(`[Playwright] Price parsed: ${price} ${currency}`);
+      } else {
+        console.log(`[Playwright] Failed to parse price from: "${rawData.priceText}"`);
       }
     }
 
