@@ -59,7 +59,23 @@ In these cases, provide findings in the conversation and only post to GitHub upo
 If a finding relates to **specific code location** (file + line number):
 - **Post as inline review comment** directly at the problematic line
 - Each issue appears in the Files Changed tab at the exact location
-- Use `gh pr review` with inline comment parameters
+
+**Command format:**
+```bash
+gh pr review <PR_NUMBER> --comment \
+  --body "**Title**
+**Severity:** Critical
+
+**Problem:** Description...
+
+**Evidence:** Code snippet or scenario
+
+**Fix hint:** Brief suggestion" \
+  --file "path/to/file.ts" \
+  --line 42
+```
+
+**Important:** Always use `--file` and `--line` parameters for location-specific findings.
 
 ### Multiple-Location Issues (Same Issue in Multiple Places)
 If the **same issue** appears in **multiple locations**:
@@ -72,7 +88,21 @@ If the **same issue** appears in **multiple locations**:
 
 ### General Findings
 If a finding is **NOT related to specific code location**:
-- Post as regular PR comment using `gh pr comment`
+- Post as regular PR comment (not inline)
+
+**Command format:**
+```bash
+gh pr comment <PR_NUMBER> --body "**Title**
+**Severity:** High
+
+**Problem:** Description...
+
+**Evidence:** General observation or pattern
+
+**Fix hint:** Brief suggestion"
+```
+
+**Use this for:** Architecture issues, missing documentation, systemic patterns, or issues that don't map to a specific line.
 
 ### Rules
 - **One comment per unique finding** (if same issue in multiple places, consolidate into one)
