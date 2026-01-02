@@ -22,7 +22,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                    Price Check Job                           │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Scrape URL (Tier 1 → 2 → 3)                             │
+│  1. Scrape URL (Tier 1 → Tier 2 [Steps 1-3])               │
 │  2. Save PriceRecord to DB                                  │
 │  3. Check AlertRules for this product        ← NEW          │
 │  4. If current_price <= target_price → Send Email ← NEW     │
