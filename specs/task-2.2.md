@@ -61,9 +61,11 @@ Generate the following 3 files to configure the Web App as a Job Producer. Use `
 * **Requirements:**
     * **Import:** `import { priceQueue } from "@/lib/queue";` (Using Alias).
     * **Logic:**
-        * Parse request body for `productId` (default `'manual-test'`).
-        * Call `await priceQueue.add('check-price', { ... })`.
-        * Return JSON: `{ success: true, jobId, message: 'Job enqueued' }`.
+        * Parse request body for `url` (required).
+        * Validate URL is provided, return error if missing.
+        * Call `await priceQueue.add('check-price', { url, triggeredAt: new Date() })`.
+        * Return JSON: `{ success: true, jobId, url, message: 'Job enqueued - worker will lookup/create product automatically' }`.
+    * **Note:** The debug endpoint only accepts `url`. Products are automatically looked up or created by the worker using the URL as the natural key.
 
 ---
 
@@ -84,20 +86,20 @@ Generate the following 3 files to configure the Web App as a Job Producer. Use `
     pnpm dev
     ```
 
-3.  **Trigger Job:**  
+3.  **Trigger Job:**
     In Linux or macOS using bash:
     ```bash
     curl -X POST http://localhost:3000/api/debug/trigger \
     -H "Content-Type: application/json" \
-    -d '{"productId": "test-fix-v2"}'
-    ```   
+    -d '{"url": "https://example.com/product/test"}'
+    ```
     In Windows PowerShell if curl.exe installed:
     ```powershell
-    curl.exe -X POST http://localhost:3000/api/debug/trigger -H "Content-Type: application/json" -d '{\"productId\": \"test-fix-v2\"}'
+    curl.exe -X POST http://localhost:3000/api/debug/trigger -H "Content-Type: application/json" -d '{\"url\": \"https://example.com/product/test\"}'
     ```
     or In Windows PowerShell using Invoke-WebRequest:
     ```powershell
-    Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" -Method POST -ContentType "application/json" -Body '{"productId": "test-fix-v2"}'
+    Invoke-WebRequest -Uri "http://localhost:3000/api/debug/trigger" -Method POST -ContentType "application/json" -Body '{"url": "https://example.com/product/test"}'
     ```
 
 

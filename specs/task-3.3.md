@@ -149,8 +149,18 @@ Generate/update the following files to add database write functionality.
     savePriceRecord,
     updateProductTimestamp,
     logRun,
-    getProductById
+    getProductById,
+    getOrCreateProductByUrl
   } from '../services/database.js';
+  ```
+
+* **Job Data Interface:**
+  ```typescript
+  interface PriceCheckJobData {
+    url: string; // URL is now required (natural key)
+    productId?: string; // Optional - for backward compatibility with cron jobs
+    triggeredAt?: Date;
+  }
   ```
 
 * **Updated Logic:**
@@ -159,22 +169,23 @@ Generate/update the following files to add database write functionality.
   export default async function priceCheckJob(
     job: Job<PriceCheckJobData>
   ): Promise<PriceCheckResult> {
-    const { productId, url } = job.data;
-    console.log(`[${job.id}] Processing price check for product: ${productId}`);
+    const { url, productId } = job.data;
+    console.log(`[${job.id}] Processing price check for URL: ${url}`);
 
-    // If no URL provided, try to get it from the database
+    // Backward compatibility: If productId provided but no URL, try to get URL from database
     let targetUrl = url;
-    if (!targetUrl) {
+    if (!targetUrl && productId) {
+      console.log(`[${job.id}] No URL provided, looking up by productId (legacy mode)`);
       const product = await getProductById(productId);
       if (product) {
         targetUrl = product.url;
+        console.log(`[${job.id}] Found URL in database: ${targetUrl}`);
       }
     }
 
-    // Still no URL? Skip.
+    // No URL? Skip and log failure.
     if (!targetUrl) {
       console.log(`[${job.id}] No URL provided or found, skipping`);
-      await logRun({ productId, status: 'FAILED', errorMessage: 'No URL available' });
       return { status: 'skipped', reason: 'no_url' };
     }
 
@@ -188,29 +199,31 @@ Generate/update the following files to add database write functionality.
       // Save to database if we have price data
       if (result.data.price !== null && result.data.currency !== null) {
         try {
+          // Get or create product by URL using extracted name
+          const productName = result.data.title || "Unknown Product";
+          const product = await getOrCreateProductByUrl(targetUrl, productName);
+
+          console.log(`[${job.id}] Using product ID: ${product.id}`);
+
+          // Save price record
           await savePriceRecord({
-            productId,
+            productId: product.id,
             price: result.data.price,
             currency: result.data.currency,
           });
-          await updateProductTimestamp(productId);
-          await logRun({ productId, status: 'SUCCESS' });
+          await updateProductTimestamp(product.id);
+          await logRun({ productId: product.id, status: 'SUCCESS' });
           console.log(`[${job.id}] Price saved to database`);
         } catch (dbError) {
           console.error(`[${job.id}] Database error:`, dbError);
-          await logRun({
-            productId,
-            status: 'FAILED',
-            errorMessage: dbError instanceof Error ? dbError.message : 'Database error'
-          });
+          const errorMessage = dbError instanceof Error ? dbError.message : "Database error";
+          console.log(`[${job.id}] Failed to save: ${errorMessage}`);
         }
       } else {
         console.log(`[${job.id}] No price data to save`);
-        await logRun({ productId, status: 'FAILED', errorMessage: 'No price extracted' });
       }
     } else {
       console.error(`[${job.id}] Scrape failed:`, result.error);
-      await logRun({ productId, status: 'FAILED', errorMessage: result.error });
     }
 
     return result;
@@ -218,11 +231,13 @@ Generate/update the following files to add database write functionality.
   ```
 
 * **Key Changes:**
-  1. Look up product URL from database if not provided in job data.
-  2. Save `PriceRecord` on successful scrape with price.
-  3. Update `Product.updatedAt` timestamp.
-  4. Log run status (SUCCESS/FAILED) to `run_logs`.
-  5. Handle database errors gracefully.
+  1. URL is now the primary identifier (natural key).
+  2. Worker automatically looks up or creates product by URL before saving price.
+  3. New products created with `active=false` (must be manually activated for cron).
+  4. Backward compatibility: Can still lookup by productId if URL not provided (for cron jobs).
+  5. Save `PriceRecord` with auto-created/found product ID.
+  6. Update `Product.updatedAt` timestamp.
+  7. Log run status (SUCCESS/FAILED) to `run_logs`.
 
 ---
 

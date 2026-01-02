@@ -5,14 +5,15 @@ import {
   updateProductTimestamp,
   logRun,
   getProductById,
+  getOrCreateProductByUrl,
 } from "../services/database.js";
 
 /**
  * Job data interface for price check jobs
  */
 interface PriceCheckJobData {
-  productId: string;
-  url?: string; // Optional - if not provided, fetched from database
+  url?: string; // Optional - for backward compatibility with productId-only jobs
+  productId?: string; // Optional - for backward compatibility with cron jobs
   triggeredAt?: Date;
 }
 
@@ -24,95 +25,146 @@ type PriceCheckResult =
   | { status: "skipped"; reason: string };
 
 /**
- * Job processor for price check jobs.
- * Scrapes the product URL and saves price data to the database.
+ * Format error message for logging
+ */
+function formatErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+/**
+ * Resolve target URL from job data
+ * Supports both URL-first (new) and productId (legacy) approaches
+ */
+async function resolveTargetUrl(
+  url: string | undefined,
+  productId: string | undefined,
+  jobId: string
+): Promise<string | null> {
+  // Modern approach: URL is directly provided
+  if (url) {
+    return url;
+  }
+
+  // Legacy approach: Lookup URL by productId
+  if (productId) {
+    console.log(`[${jobId}] No URL provided, looking up by productId (legacy mode)`);
+    const product = await getProductById(productId);
+    if (product) {
+      console.log(`[${jobId}] Found URL in database: ${product.url}`);
+      return product.url;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Save scraped price data to database
+ * Automatically creates product record if it doesn't exist
+ * Returns productId for error logging, or null if failed before product creation
+ */
+async function savePriceData(
+  url: string,
+  title: string | null,
+  price: number,
+  currency: string,
+  jobId: string
+): Promise<string | null> {
+  try {
+    const productName = title || "Unknown Product";
+    const product = await getOrCreateProductByUrl(url, productName);
+
+    console.log(`[${jobId}] Using product ID: ${product.id}`);
+
+    await savePriceRecord({
+      productId: product.id,
+      price,
+      currency,
+    });
+
+    await updateProductTimestamp(product.id);
+    await logRun({ productId: product.id, status: "SUCCESS" });
+    console.log(`[${jobId}] Price saved to database`);
+
+    return product.id;
+  } catch (error) {
+    console.error(`[${jobId}] Database error:`, error);
+    throw error; // Re-throw to be handled by caller
+  }
+}
+
+/**
+ * Job processor for price check jobs
+ * Scrapes product URL and saves price data to database
+ * Products are automatically looked up by URL or created if they don't exist
  */
 export default async function priceCheckJob(
   job: Job<PriceCheckJobData>
 ): Promise<PriceCheckResult> {
-  const { productId, url } = job.data;
-  console.log(`[${job.id}] Processing price check for product: ${productId}`);
+  const { url, productId } = job.data;
+  const jobId = String(job.id);
 
-  // If no URL provided, try to get it from the database
-  let targetUrl = url;
-  if (!targetUrl) {
-    const product = await getProductById(productId);
-    if (product) {
-      targetUrl = product.url;
-      console.log(`[${job.id}] Found URL in database: ${targetUrl}`);
-    }
-  }
+  console.log(`[${jobId}] Processing price check for URL: ${url || "(lookup required)"}`);
 
-  // Still no URL? Skip and log failure.
+  // Resolve target URL (supports both modern URL-first and legacy productId approaches)
+  const targetUrl = await resolveTargetUrl(url, productId, jobId);
   if (!targetUrl) {
-    console.log(`[${job.id}] No URL provided or found, skipping`);
-    try {
-      await logRun({
-        productId,
-        status: "FAILED",
-        errorMessage: "No URL available",
-      });
-    } catch {
-      // Product might not exist in DB, ignore logging error
-      console.log(`[${job.id}] Could not log run (product may not exist)`);
-    }
+    console.log(`[${jobId}] No URL provided or found, skipping`);
     return { status: "skipped", reason: "no_url" };
   }
 
   // Run scraper
-  console.log(`[${job.id}] Scraping URL: ${targetUrl}`);
+  console.log(`[${jobId}] Scraping URL: ${targetUrl}`);
   const result = await scrapeProduct(targetUrl);
 
-  if (result.success && result.data) {
-    console.log(`[${job.id}] Scrape successful:`, result.data);
+  if (!result.success) {
+    console.error(`[${jobId}] Scrape failed:`, result.error);
 
-    // Save to database if we have price data
-    if (result.data.price !== null && result.data.currency !== null) {
-      try {
-        await savePriceRecord({
-          productId,
-          price: result.data.price,
-          currency: result.data.currency,
-        });
-        await updateProductTimestamp(productId);
-        await logRun({ productId, status: "SUCCESS" });
-        console.log(`[${job.id}] Price saved to database`);
-      } catch (dbError) {
-        console.error(`[${job.id}] Database error:`, dbError);
-        try {
-          await logRun({
-            productId,
-            status: "FAILED",
-            errorMessage:
-              dbError instanceof Error ? dbError.message : "Database error",
-          });
-        } catch {
-          // Ignore logging error
-        }
-      }
-    } else {
-      console.log(`[${job.id}] No price data to save`);
-      try {
-        await logRun({
-          productId,
-          status: "FAILED",
-          errorMessage: "No price extracted",
-        });
-      } catch {
-        // Ignore logging error
-      }
-    }
-  } else {
-    console.error(`[${job.id}] Scrape failed:`, result.error);
-    try {
+    // Log failure to database if we have productId (legacy flow)
+    if (productId) {
       await logRun({
         productId,
         status: "FAILED",
-        errorMessage: result.error,
+        errorMessage: result.error
       });
-    } catch {
-      // Ignore logging error
     }
+
+    return result;
+  }
+
+  if (!result.data) {
+    console.log(`[${jobId}] No data extracted`);
+    return result;
+  }
+
+  console.log(`[${jobId}] Scrape successful:`, result.data);
+
+  // Save price data if available
+  if (result.data.price !== null && result.data.currency !== null) {
+    try {
+      await savePriceData(
+        targetUrl,
+        result.data.title,
+        result.data.price,
+        result.data.currency,
+        jobId
+      );
+    } catch (dbError) {
+      const errorMessage = formatErrorMessage(dbError);
+      console.error(`[${jobId}] Failed to save: ${errorMessage}`);
+
+      // Try to log failure to run_logs
+      // We might have a productId from legacy flow, or we might have created one in savePriceData before it failed
+      if (productId) {
+        await logRun({
+          productId,
+          status: "FAILED",
+          errorMessage: `Database error: ${errorMessage}`
+        });
+      }
+    }
+  } else {
+    console.log(`[${jobId}] No price data to save`);
   }
 
   return result;

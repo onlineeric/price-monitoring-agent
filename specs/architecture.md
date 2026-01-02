@@ -24,7 +24,8 @@ A demo-friendly, high-performance system that:
 - **Queue**: **BullMQ** (uses Redis)
 
 ### Extraction & AI
-- **Web extraction**: HTTP fetch + **Playwright** (fallback)
+- **Web extraction**: HTTP fetch + **Playwright** with stealth mode (playwright-extra)
+- **Bot detection bypass**: puppeteer-extra-plugin-stealth (~70-80% success rate)
 - **AI SDK**: **Vercel AI SDK** (provider-agnostic abstraction)
 - **AI Providers**: OpenAI, Google Gemini, Anthropic Claude (configurable via env)
 
@@ -54,18 +55,24 @@ A demo-friendly, high-performance system that:
 ---
 
 ### 3) Price Extraction Pipeline
-**Strategy** (3-Tier Fallback)
+**Strategy** (2-Tier Fallback with Integrated AI)
 1. **Tier 1 - Fast Path**: HTTP fetch + Cheerio (static HTML parsing)
-2. **Tier 2 - Robust Path**: Playwright headless browser (JS-rendered pages)
-3. **Tier 3 - Smart Path**: Vercel AI SDK with configurable provider (OpenAI/Gemini/Claude)
+2. **Tier 2 - Robust + Smart Path**: Playwright headless browser with stealth mode
+   - **Stealth Mode**: playwright-extra + stealth plugin bypasses ~70-80% of bot detection
+   - First attempt: Selector-based extraction
+   - Fallback: AI extraction using the same rendered HTML
+
+**AI Integration**: When Playwright successfully loads a page but selectors fail to extract data, the fully-rendered HTML (with JavaScript executed) is passed to Vercel AI SDK for intelligent extraction.
+
+**Bot Detection Bypass**: playwright-extra with stealth plugin removes automation signals, allowing access to protected sites (Cloudflare, DataDome, anti-bot systems).
 
 **Provider Selection**: Set via `AI_PROVIDER` environment variable (openai | google | anthropic)
 
 ---
 
 ## Data Model (High Level)
-- **Product**: URL, name, active flag, cron schedule settings.
-- **PricePoint**: productId, price, currency, timestamp.
+- **Product**: URL (unique), name, active flag, cron schedule settings.
+- **PriceRecord**: productId, price, currency, timestamp.
 - **AlertRule**: productId, threshold configuration.
 - **RunLog**: Status and error tracking for debugging.
 
@@ -73,16 +80,21 @@ A demo-friendly, high-performance system that:
 
 ## Job Flow
 
-### A. Manual / Admin Action
-1. User adds product via UI (Basic Auth).
-2. API enqueues a `check-price` job to BullMQ.
-3. Worker picks up the job: Fetch → Extract → Drizzle Save.
+### A. Manual / Debug Trigger
+1. User/Developer sends URL to debug endpoint: `POST /api/debug/trigger`
+2. API enqueues a `check-price` job to BullMQ
+3. Worker picks up the job: Scrape → Extract → Save to database
 
-### B. Scheduled Check (Cron)
-1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times.
-2. API queries all active products from DB.
-3. API enqueues `check-price` jobs for each product.
-4. Worker processes the queue in background.
+### B. Admin Action (UI)
+1. User adds product via UI (Basic Auth)
+2. API creates product record
+3. API enqueues `check-price` job for immediate check
+
+### C. Scheduled Check (Cron)
+1. **Vercel Cron** sends a GET request to `/api/cron/check-all` at scheduled times
+2. API queries all active products from DB
+3. API enqueues `check-price` jobs for each product
+4. Worker processes the queue in background
 
 ---
 

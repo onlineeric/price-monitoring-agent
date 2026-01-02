@@ -1,6 +1,12 @@
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium } from "playwright-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import type { Browser, Page } from "playwright";
 import type { ScraperResult, ScraperConfig } from "../types/scraper.js";
 import { parsePrice, resolveImageUrl } from "../utils/priceParser.js";
+import { aiExtract } from "./aiExtractor.js";
+
+// Apply stealth plugin to avoid bot detection
+chromium.use(StealthPlugin());
 
 // Singleton browser instance
 let browserInstance: Browser | null = null;
@@ -11,7 +17,35 @@ const DEFAULT_CONFIG: Required<ScraperConfig> = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 
-// Selectors passed to page.evaluate() - defined here to keep code organized
+/**
+ * Configuration for DOM stability detection
+ */
+interface DOMStabilityConfig {
+  maxWaitMs: number;
+  quietWindowMs: number;
+  checkIntervalMs: number;
+  htmlDeltaThreshold: number;
+  fallbackWaitMs: number;
+}
+
+const DOM_STABILITY_CONFIG: DOMStabilityConfig = {
+  maxWaitMs: 8000,
+  quietWindowMs: 500,
+  checkIntervalMs: 200,
+  htmlDeltaThreshold: 200,
+  fallbackWaitMs: 2000,
+};
+
+/**
+ * Raw data extracted from page selectors
+ */
+interface ExtractedData {
+  title: string | null;
+  priceText: string | null;
+  imageUrl: string | null;
+}
+
+// Selectors for extracting product data
 const SELECTORS = {
   title: [
     'h1[data-testid="product-title"]',
@@ -47,10 +81,11 @@ const SELECTORS = {
 
 /**
  * Get or create the singleton browser instance
+ * Uses playwright-extra with stealth plugin to bypass bot detection
  */
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance) {
-    console.log("[Playwright] Launching browser...");
+    console.log("[Playwright] Launching browser with stealth mode...");
     browserInstance = await chromium.launch({
       headless: true,
       args: [
@@ -76,6 +111,110 @@ export async function closeBrowser(): Promise<void> {
 }
 
 /**
+ * Wait for DOM to stabilize by monitoring HTML size changes
+ * Returns when DOM size changes are below threshold for the quiet window duration
+ */
+async function waitForDOMStability(
+  page: Page,
+  config: DOMStabilityConfig = DOM_STABILITY_CONFIG
+): Promise<void> {
+  console.log(`[Playwright] Waiting for DOM stability...`);
+
+  const startTime = Date.now();
+  let lastHtmlSize = 0;
+  let stableStartTime: number | null = null;
+
+  while (Date.now() - startTime < config.maxWaitMs) {
+    const currentHtmlSize = (await page.content()).length;
+    const htmlDelta = Math.abs(currentHtmlSize - lastHtmlSize);
+
+    if (htmlDelta <= config.htmlDeltaThreshold) {
+      // DOM appears stable
+      if (stableStartTime === null) {
+        stableStartTime = Date.now();
+      } else if (Date.now() - stableStartTime >= config.quietWindowMs) {
+        // Stability persisted for quiet window
+        console.log(
+          `[Playwright] DOM stable after ${Date.now() - startTime}ms (size: ${currentHtmlSize} chars)`
+        );
+        return;
+      }
+    } else {
+      // DOM still changing, reset stability timer
+      stableStartTime = null;
+    }
+
+    lastHtmlSize = currentHtmlSize;
+    await page.waitForTimeout(config.checkIntervalMs);
+  }
+
+  // Fallback if stability never reached
+  console.log(
+    `[Playwright] DOM did not stabilize, applying fallback wait of ${config.fallbackWaitMs}ms`
+  );
+  await page.waitForTimeout(config.fallbackWaitMs);
+}
+
+/**
+ * Extract product data from page using CSS selectors
+ * Runs in browser context via page.evaluate()
+ * Uses inline logic (no helper functions) to avoid esbuild __name helper injection
+ */
+async function extractDataWithSelectors(page: Page): Promise<ExtractedData> {
+  return await page.evaluate((sels) => {
+    // Extract title - inline logic without helper functions
+    let titleText: string | null = null;
+    for (const sel of sels.title) {
+      const el = document.querySelector(sel);
+      if (el?.textContent) {
+        titleText = el.textContent.trim();
+        if (titleText) break;
+      }
+    }
+
+    // Extract price - inline logic without helper functions
+    let priceText: string | null = null;
+    for (const sel of sels.price) {
+      const el = document.querySelector(sel);
+      if (el?.textContent) {
+        priceText = el.textContent.trim();
+        if (priceText) break;
+      }
+    }
+
+    // Extract image - inline logic without helper functions
+    let imageUrl: string | null = null;
+    for (const sel of sels.image) {
+      const el = document.querySelector(sel) as HTMLImageElement | null;
+      if (el) {
+        imageUrl =
+          el.src ||
+          el.getAttribute("data-src") ||
+          el.getAttribute("data-old-hires") ||
+          null;
+        if (imageUrl) break;
+      }
+    }
+
+    return { title: titleText, priceText, imageUrl };
+  }, SELECTORS);
+}
+
+/**
+ * Check if debug mode is enabled for forcing AI extraction
+ */
+function isForceAIEnabled(): boolean {
+  return process.env.FORCE_AI_EXTRACTION === "true";
+}
+
+/**
+ * Check if selector extraction was successful
+ */
+function hasValidData(title: string | null, price: number | null): boolean {
+  return title !== null || price !== null;
+}
+
+/**
  * Fetch and extract product data using Playwright headless browser
  */
 export async function playwrightFetch(
@@ -87,67 +226,41 @@ export async function playwrightFetch(
 
   try {
     const browser = await getBrowser();
-
-    // Create new page
     page = await browser.newPage();
 
-    // Set user agent
-    await page.setExtraHTTPHeaders({
-      "User-Agent": mergedConfig.userAgent,
-    });
-
-    // Set viewport
+    // Configure page
+    await page.setExtraHTTPHeaders({ "User-Agent": mergedConfig.userAgent });
     await page.setViewportSize({ width: 1280, height: 720 });
 
     // Navigate to URL
     console.log(`[Playwright] Navigating to: ${url}`);
     await page.goto(url, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: mergedConfig.timeout,
     });
 
-    // Wait a bit more for dynamic content
-    await page.waitForTimeout(1500);
+    // Wait for DOM to stabilize
+    await waitForDOMStability(page);
 
-    // Extract data from page using page.evaluate with selectors passed as argument
-    // This avoids TypeScript transpilation issues with __name helper
-    const rawData = await page.evaluate((sels) => {
-      // Find first matching element from a list of selectors
-      let titleText: string | null = null;
-      for (const sel of sels.title) {
-        const el = document.querySelector(sel);
-        if (el && el.textContent) {
-          titleText = el.textContent.trim();
-          if (titleText) break;
-        }
-      }
+    // Get fully-rendered HTML
+    const renderedHtml = await page.content();
+    console.log(`[Playwright] Final HTML size: ${renderedHtml.length} chars`);
 
-      let priceText: string | null = null;
-      for (const sel of sels.price) {
-        const el = document.querySelector(sel);
-        if (el && el.textContent) {
-          priceText = el.textContent.trim();
-          if (priceText) break;
-        }
-      }
+    // Check if force AI mode is enabled
+    const forceAI = isForceAIEnabled();
+    if (forceAI) {
+      console.log(`[Playwright] 🧪 FORCE_AI_EXTRACTION enabled - skipping selectors, using AI`);
+      await page.close();
+      page = null;
+      return await aiExtract(url, renderedHtml);
+    }
 
-      let imageUrl: string | null = null;
-      for (const sel of sels.image) {
-        const el = document.querySelector(sel) as HTMLImageElement | null;
-        if (el) {
-          imageUrl =
-            el.src ||
-            el.getAttribute("data-src") ||
-            el.getAttribute("data-old-hires") ||
-            null;
-          if (imageUrl) break;
-        }
-      }
+    // Extract data using selectors
+    console.log(`[Playwright] Attempting selector-based extraction...`);
+    const rawData = await extractDataWithSelectors(page);
+    console.log(`[Playwright] Selector results - title: ${rawData.title ? 'found' : 'null'}, priceText: ${rawData.priceText ? 'found' : 'null'}`);
 
-      return { title: titleText, priceText, imageUrl };
-    }, SELECTORS);
-
-    // Parse price
+    // Parse price from extracted text
     let price: number | null = null;
     let currency: string | null = null;
     if (rawData.priceText) {
@@ -155,21 +268,22 @@ export async function playwrightFetch(
       if (parsed) {
         price = parsed.price;
         currency = parsed.currency;
+        console.log(`[Playwright] Price parsed: ${price} ${currency}`);
+      } else {
+        console.log(`[Playwright] Failed to parse price from: "${rawData.priceText}"`);
       }
     }
 
-    // Resolve image URL
-    const imageUrl = resolveImageUrl(rawData.imageUrl, url);
-
-    // Check if we got meaningful data
-    if (!rawData.title && !price) {
-      return {
-        success: false,
-        error: "Could not extract product data - no title or price found",
-        method: "playwright",
-      };
+    // Check if selectors successfully extracted data
+    if (!hasValidData(rawData.title, price)) {
+      console.log(`[Playwright] Selectors failed to extract data, trying AI with rendered HTML...`);
+      await page.close();
+      page = null;
+      return await aiExtract(url, renderedHtml);
     }
 
+    // Selector extraction succeeded
+    const imageUrl = resolveImageUrl(rawData.imageUrl, url);
     return {
       success: true,
       data: {
@@ -181,8 +295,7 @@ export async function playwrightFetch(
       method: "playwright",
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     // Handle specific error types
     if (errorMessage.includes("Timeout") || errorMessage.includes("timeout")) {
@@ -199,7 +312,6 @@ export async function playwrightFetch(
       method: "playwright",
     };
   } finally {
-    // Always close the page (not the browser)
     if (page) {
       await page.close();
     }

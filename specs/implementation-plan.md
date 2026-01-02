@@ -40,6 +40,7 @@
 * **Task 3.2: Playwright Integration**
     * Install Playwright in `apps/worker`.
     * Implement `HeadlessBrowserService` for dynamic sites.
+    * Add stealth mode (`playwright-extra` + stealth plugin) to bypass bot detection.
     * Handle Docker compatibility (ensure it runs in container).
 * **Task 3.3: Basic Extraction Logic**
     * Write logic to extract `Title`, `Price`, `Currency` from a target site (e.g., Amazon/eBay).
@@ -47,11 +48,14 @@
 * **Estimate:** 10 - 14 Hours
 
 ## Phase 4: AI Intelligence (Business Logic B - Smart Parse)
-**Goal:** Integrate AI extraction using Vercel AI SDK with multi-provider support.
+**Goal:** Integrate AI extraction into Playwright tier for intelligent fallback when selectors fail.
 * **Task 4.1: Vercel AI SDK Integration**
     * Install **Vercel AI SDK** and provider packages (@ai-sdk/openai, @ai-sdk/google, @ai-sdk/anthropic).
-    * Create provider-agnostic `AiExtractionService` with configurable provider via env var.
+    * Install **playwright-extra** with stealth plugin to bypass bot detection on protected sites.
+    * Create provider-agnostic `aiExtract()` function that accepts HTML as parameter.
+    * Integrate AI into Playwright: when selectors fail, pass fully-rendered HTML to AI.
     * Implement structured output with Zod schema validation.
+    * **Architecture:** AI is NOT a separate tier - it's called from within Playwright when needed.
 * **Task 4.2: Alert Evaluation & Email Notifications**
     * Setup **Resend** and **React Email** for notifications.
     * Implement alert rule evaluation after price extraction.
