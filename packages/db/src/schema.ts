@@ -41,6 +41,14 @@ export const runLogs = pgTable('run_logs', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Settings table - general purpose key-value store
+export const settings = pgTable('settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(), // JSON string
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Relations
 export const productsRelations = relations(products, ({ many }) => ({
   priceRecords: many(priceRecords),
