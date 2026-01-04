@@ -17,7 +17,8 @@
       "Bash(gh pr create:*)",
       "Bash(gh repo view:*)",
       "Bash(gh api:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(gh pr list:*)"
     ]
   }
 }

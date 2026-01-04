@@ -1,5 +1,3 @@
-import { config } from 'dotenv';
-config({ path: '../../../.env' }); // Load from monorepo root (relative to apps/worker)
 import { getEmailSchedule, setEmailSchedule } from '../src/services/settingsService.js';
 
 async function test() {
