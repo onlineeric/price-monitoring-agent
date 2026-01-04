@@ -62,8 +62,10 @@ cd apps/worker
 
 # Install Resend SDK and React Email
 pnpm add resend @react-email/components react
-pnpm add -D @types/react
+pnpm add -D @types/react react-email
 ```
+
+**Note:** `react-email` is needed for the `npx email dev` preview command in Step 7.3.
 
 ---
 
@@ -97,22 +99,23 @@ export { products, priceRecords, settings, runLogs } from './schema.js';
 
 ---
 
-## Step 4: Generate and Apply Migration (Manual Step)
+## Step 4: Apply Schema Changes to Database (Manual Step)
 
 **User Action:**
 
+This project uses **push-based workflow** (not migration files). Run the following command to apply schema changes directly to your Neon database:
+
 ```bash
 cd packages/db
-
-# Generate migration
-pnpm generate
-
-# Review the migration file to ensure it includes:
-# - CREATE TABLE settings (...)
-
-# Apply migration
 pnpm push
 ```
+
+**What this does:**
+- Drizzle compares your updated `schema.ts` with the actual database
+- Generates CREATE TABLE statement automatically
+- Applies changes: creates `settings` table
+
+**Expected output:** You should see Drizzle show the changes it will apply (CREATE TABLE settings), then prompt you to confirm.
 
 ---
 
@@ -406,10 +409,10 @@ Check that:
 
 ### 7.2: Test Settings Functions
 
-Create a test script in `apps/worker/src/test-settings.ts`:
+Create a test script in `apps/worker/tests/test-settings.ts`:
 
 ```typescript
-import { getEmailSchedule, setEmailSchedule } from './services/settingsService.js';
+import { getEmailSchedule, setEmailSchedule } from '../src/services/settingsService.js';
 
 async function test() {
   // Test read
@@ -433,7 +436,7 @@ test();
 Run with:
 ```bash
 cd apps/worker
-npx tsx src/test-settings.ts
+npx tsx tests/test-settings.ts
 ```
 
 ### 7.3: Preview Email Template
