@@ -15,7 +15,8 @@ export const products = pgTable('products', {
   name: text('name').notNull(),
   imageUrl: text('image_url'),
   active: boolean('active').default(true),
-  schedule: text('schedule').default('0 9 * * *'),
+  lastSuccessAt: timestamp('last_success_at'),
+  lastFailedAt: timestamp('last_failed_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -31,17 +32,6 @@ export const priceRecords = pgTable('price_records', {
   scrapedAt: timestamp('scraped_at').defaultNow(),
 });
 
-// Alert rules table
-export const alertRules = pgTable('alert_rules', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  targetPrice: integer('target_price').notNull(),
-  active: boolean('active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 // Run logs table
 export const runLogs = pgTable('run_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -54,20 +44,12 @@ export const runLogs = pgTable('run_logs', {
 // Relations
 export const productsRelations = relations(products, ({ many }) => ({
   priceRecords: many(priceRecords),
-  alertRules: many(alertRules),
   runLogs: many(runLogs),
 }));
 
 export const priceRecordsRelations = relations(priceRecords, ({ one }) => ({
   product: one(products, {
     fields: [priceRecords.productId],
-    references: [products.id],
-  }),
-}));
-
-export const alertRulesRelations = relations(alertRules, ({ one }) => ({
-  product: one(products, {
-    fields: [alertRules.productId],
     references: [products.id],
   }),
 }));

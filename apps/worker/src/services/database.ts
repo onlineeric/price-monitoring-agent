@@ -38,12 +38,28 @@ export async function savePriceRecord(params: SavePriceParams): Promise<void> {
 }
 
 /**
- * Update the product's updatedAt timestamp
+ * Update the product's updatedAt timestamp and lastSuccessAt
  */
 export async function updateProductTimestamp(productId: string): Promise<void> {
   await db
     .update(products)
-    .set({ updatedAt: new Date() })
+    .set({
+      lastSuccessAt: new Date(),
+      updatedAt: new Date()
+    })
+    .where(eq(products.id, productId));
+}
+
+/**
+ * Update the product's lastFailedAt timestamp
+ */
+export async function updateProductFailure(productId: string): Promise<void> {
+  await db
+    .update(products)
+    .set({
+      lastFailedAt: new Date(),
+      updatedAt: new Date()
+    })
     .where(eq(products.id, productId));
 }
 
