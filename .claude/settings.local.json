@@ -12,7 +12,12 @@
       "Bash(gh pr review:*)",
       "Bash(ls:*)",
       "Bash(git ls-tree:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(rm:*)"
     ]
   }
 }

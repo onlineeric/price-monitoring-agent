@@ -123,11 +123,15 @@ export default async function priceCheckJob(
 
     // Log failure to database if we have productId (legacy flow)
     if (productId) {
-      await updateProductFailure(productId);
+      try {
+        await updateProductFailure(productId);
+      } catch (err) {
+        console.warn(`[${jobId}] Failed to update failure timestamp:`, err);
+      }
       await logRun({
         productId,
         status: "FAILED",
-        errorMessage: result.error
+        errorMessage: result.error || "Scrape failed"
       });
     }
 
@@ -158,7 +162,11 @@ export default async function priceCheckJob(
       // Try to log failure to run_logs
       // We might have a productId from legacy flow, or we might have created one in savePriceData before it failed
       if (productId) {
-        await updateProductFailure(productId);
+        try {
+          await updateProductFailure(productId);
+        } catch (err) {
+          console.warn(`[${jobId}] Failed to update failure timestamp:`, err);
+        }
         await logRun({
           productId,
           status: "FAILED",
