@@ -26,8 +26,5 @@ export type NewProduct = typeof schema.products.$inferInsert;
 export type PriceRecord = typeof schema.priceRecords.$inferSelect;
 export type NewPriceRecord = typeof schema.priceRecords.$inferInsert;
 
-export type AlertRule = typeof schema.alertRules.$inferSelect;
-export type NewAlertRule = typeof schema.alertRules.$inferInsert;
-
 export type RunLog = typeof schema.runLogs.$inferSelect;
 export type NewRunLog = typeof schema.runLogs.$inferInsert;

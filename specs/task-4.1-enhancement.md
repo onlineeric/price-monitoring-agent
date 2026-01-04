@@ -88,50 +88,35 @@ export { products, priceRecords, runLogs } from './schema.js';
 
 ---
 
-## Step 2: Generate Migration (Manual Step)
+## Step 2: Apply Schema Changes to Database (Manual Step)
 
 **User Action:**
+
+This project uses **push-based workflow** (not migration files). Run the following command to apply schema changes directly to your Neon database:
 
 ```bash
 cd packages/db
-pnpm generate
-```
-
-This creates a new migration file in `drizzle/` folder.
-
----
-
-## Step 3: Review Migration (Manual Step)
-
-**User Action:**
-
-Open the generated migration file and verify it includes:
-- `DROP TABLE alert_rules;`
-- `ALTER TABLE products DROP COLUMN schedule;`
-- `ALTER TABLE products ADD COLUMN last_success_at timestamp;`
-- `ALTER TABLE products ADD COLUMN last_failed_at timestamp;`
-
----
-
-## Step 4: Apply Migration (Manual Step)
-
-**User Action:**
-
-```bash
 pnpm push
 ```
 
+**What this does:**
+- Drizzle compares your updated `schema.ts` with the actual database
+- Generates ALTER TABLE statements automatically
+- Applies changes: drops `alert_rules` table, removes `schedule` column, adds `last_success_at` and `last_failed_at` columns
+
 **Warning:** This will delete the `alert_rules` table and all existing alert data. Make sure this is intentional before proceeding.
+
+**Expected output:** You should see Drizzle show the changes it will apply (DROP TABLE, ALTER TABLE statements), then prompt you to confirm.
 
 ---
 
-## Step 5: Update Existing Code (AI Generation Step)
+## Step 3: Update Existing Code (AI Generation Step)
 
 **Instruction for AI:**
 
 Update the worker code to remove alert functionality and add success/failure tracking.
 
-### 5.1: Update `apps/worker/src/services/database.ts`
+### 3.1: Update `apps/worker/src/services/database.ts`
 
 **Remove alert-related functions:**
 
@@ -167,7 +152,7 @@ export async function updateProductFailure(productId: string): Promise<void> {
 }
 ```
 
-### 5.2: Update `apps/worker/src/jobs/priceCheck.ts`
+### 3.2: Update `apps/worker/src/jobs/priceCheck.ts`
 
 **Update error handling to use `updateProductFailure()`:**
 
@@ -192,11 +177,11 @@ catch (error) {
 
 ---
 
-## Step 6: Verification (Manual Step)
+## Step 4: Verification (Manual Step)
 
 **User Action:**
 
-### 6.1: Verify Schema Changes
+### 4.1: Verify Schema Changes
 
 ```bash
 cd packages/db
@@ -208,7 +193,7 @@ Check that:
 - [x] `products` table has `last_success_at` and `last_failed_at` columns
 - [x] `products` table does NOT have `schedule` column
 
-### 6.2: Test Success Tracking
+### 4.2: Test Success Tracking
 
 Trigger a price check job and verify:
 - Successful scrape updates `products.last_success_at`
@@ -220,14 +205,15 @@ Trigger a price check job and verify:
 
 Task 4.1 Enhancement is complete when:
 
-- [ ] `alertRules` table dropped from schema and database
-- [ ] `products.schedule` column removed
-- [ ] `products.last_success_at` column added
-- [ ] `products.last_failed_at` column added
-- [ ] Migration generated and applied successfully
+- [ ] Schema files updated (`schema.ts` and `index.ts`)
+- [ ] `pnpm push` executed successfully
+- [ ] `alertRules` table dropped from database
+- [ ] `products.schedule` column removed from database
+- [ ] `products.last_success_at` column added to database
+- [ ] `products.last_failed_at` column added to database
 - [ ] `database.ts` updated with `updateProductTimestamp()` and `updateProductFailure()`
 - [ ] `priceCheck.ts` uses `updateProductFailure()` on errors
-- [ ] All verification tests pass
+- [ ] Drizzle Studio verification completed
 - [ ] No import errors or TypeScript errors
 
 ---

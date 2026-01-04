@@ -9,7 +9,10 @@
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",
       "Skill(code-review)",
-      "Bash(gh pr review:*)"
+      "Bash(gh pr review:*)",
+      "Bash(ls:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(test:*)"
     ]
   }
 }

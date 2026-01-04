@@ -3,6 +3,7 @@ import { scrapeProduct, type ScraperResult } from "../services/scraper.js";
 import {
   savePriceRecord,
   updateProductTimestamp,
+  updateProductFailure,
   logRun,
   getProductById,
   getOrCreateProductByUrl,
@@ -122,6 +123,7 @@ export default async function priceCheckJob(
 
     // Log failure to database if we have productId (legacy flow)
     if (productId) {
+      await updateProductFailure(productId);
       await logRun({
         productId,
         status: "FAILED",
@@ -156,6 +158,7 @@ export default async function priceCheckJob(
       // Try to log failure to run_logs
       // We might have a productId from legacy flow, or we might have created one in savePriceData before it failed
       if (productId) {
+        await updateProductFailure(productId);
         await logRun({
           productId,
           status: "FAILED",
