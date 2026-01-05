@@ -18,7 +18,8 @@
       "Bash(gh repo view:*)",
       "Bash(gh api:*)",
       "Bash(rm:*)",
-      "Bash(gh pr list:*)"
+      "Bash(gh pr list:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

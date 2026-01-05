@@ -1,7 +1,20 @@
 # Price Monitor Agent – Implementation Roadmap
 
-**Total Estimated Effort:** ~50 - 68 Hours
-**Approach:** Spec-Driven Development (Write Spec → Generate Code → Review & Refine)
+## Document overview
+This document provides an overview of the implementation plan of our Price Monitor AI Agent.
+
+**Cautions:** This is an overview implementation plan document. Do NOT put tecnhical details in this document, only the overall plan. Put technical details in the task specifications.
+
+## Quick Links
+- [Architecture](architecture.md) - overview, high-level architecture
+- [Task Specifications](task-*.md) - detailed task specifications, detailed technical specifications for each task
+
+## Implementation Plan
+- We are using **Spec-Driven Development** (Write Spec → Generate Code → Review & Refine) to implement the project.  
+- Spec documents are the source of truth for the implementation.  
+- For any updates to the implementation plan, update the spec documents first.
+
+**Total Estimated Effort:** ~50 - 68 Hours  
 
 ## Phase 1: Foundation & Infrastructure (The Skeleton)
 **Goal:** Initialize the Monorepo, set up the Database with Drizzle, and get local infrastructure running.
