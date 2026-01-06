@@ -82,23 +82,38 @@ This document provides an overview of the implementation plan of our Price Monit
 * **Estimate:** 8 - 10 Hours
 
 ## Phase 5: Dashboard & Management
-**Goal:** Build public dashboard and admin tools for product and settings management.
-* **Task 5.1: Public Dashboard**
-    * Build `ProductCard` and `PriceChart` components (using Recharts).
-    * Display all products with current prices and price history charts.
-    * Fetch data using Drizzle in Server Components.
-    * Show product stats (high/low/average prices).
-* **Task 5.2: Admin Product Management**
-    * Create Basic Auth middleware for admin operations.
-    * Build admin panel UI for adding products.
-    * Create API endpoints for product CRUD (GET, POST, PATCH, DELETE).
-    * Secure write operations with Basic Auth.
-* **Task 5.3: Settings Management UI**
-    * Create UI for email schedule configuration (daily/weekly, time picker).
-    * Build API endpoint for reading and updating email schedule.
-    * Display current schedule and next send time.
-    * Validate schedule settings before saving.
-* **Estimate:** 10 - 14 Hours
+**Goal:** Build professional dashboard using [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard) template with sidebar navigation, product management, and settings.
+* **Task 5.0: Template Setup & Migration**
+    * Clone dashboard template to `apps/dashboard_template` (reference only).
+    * Replace `apps/web` with template structure.
+    * Adapt to monorepo (rename package to `@price-monitor/web`).
+    * Connect to `@price-monitor/db` package.
+    * Migrate existing API routes (`/api/debug/trigger`).
+    * Configure sidebar navigation for Price Monitor pages.
+    * Verify everything works locally.
+* **Task 5.1: Dashboard Home Page**
+    * Build summary stats cards (total products, price trends, etc.).
+    * Add "Check All & Send Email" button (triggers manual digest).
+    * Use template's card components and responsive layout.
+    * Fetch aggregate data using Drizzle in Server Components.
+* **Task 5.2: Products Management Page**
+    * Create Products page in sidebar navigation.
+    * Build card view with product images, prices, and mini charts.
+    * Build table view with TanStack Table (sortable, filterable).
+    * Add view toggle (card/table switch).
+    * Implement CRUD operations with Shadcn Dialog/Form components.
+    * Add/Edit product forms with React Hook Form + Zod validation.
+    * Delete confirmation with Shadcn AlertDialog.
+    * Toast notifications for success/error feedback.
+    * No authentication required (public access for demo).
+* **Task 5.3: Settings Page**
+    * Create Settings page in sidebar navigation.
+    * Build email schedule configuration UI with Shadcn components.
+    * Use RadioGroup for frequency (daily/weekly).
+    * Use Select component for day/hour selection.
+    * Proper form validation and error handling.
+    * No authentication required (public access for demo).
+* **Estimate:** 14 - 20 Hours
 
 ## Phase 6: Automation & Digest Emails
 **Goal:** Implement manual and scheduled digest email system.

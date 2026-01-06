@@ -24,9 +24,15 @@ A demo-friendly, high-performance system that:
 ## Tech Stack
 
 ### Application
-- **Frontend + API**: Next.js (TypeScript) → **Vercel**
+- **Frontend + API**: Next.js 16 (TypeScript) → **Vercel**
+  - UI Framework: Shadcn UI (Radix primitives)
+  - Styling: Tailwind CSS v4
+  - Forms: React Hook Form + Zod validation
+  - Tables: TanStack Table
+  - State: Zustand
+  - Charts: Recharts
 - **Background Worker**: Node.js (Docker) → **Render**
-- **Authentication**: Public Dashboard (Read) / Basic Auth (Write/Admin)
+- **Authentication**: Public access (no authentication for demo purposes)
 
 ### Data & Messaging
 - **Database**: PostgreSQL → **Neon**
@@ -50,8 +56,13 @@ A demo-friendly, high-performance system that:
 
 ### 1) Next.js App (Vercel)
 **Responsibilities**
-- **UI**: Public dashboard showing tracked products and price trends.
-- **Admin API**: Protected endpoints (Basic Auth) to add/edit products.
+- **UI**: Professional dashboard built on [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard) template
+  - Dashboard home with summary stats and manual trigger
+  - Products management page (add/edit/delete products)
+  - Settings page (email schedule configuration)
+  - Full sidebar navigation with light/dark mode
+  - Shadcn UI components, TanStack Table, React Hook Form + Zod validation
+- **Admin API**: Public access (no authentication required for demo purposes)
 - **Cron Endpoint**: Receives scheduled triggers from **Vercel Cron** to enqueue check jobs.
 
 ---
@@ -97,7 +108,7 @@ A demo-friendly, high-performance system that:
 3. Worker picks up the job: Scrape → Extract → Save to database
 
 ### B. Manual Digest Trigger (All Products + Email)
-1. User clicks "Check All & Send Email" button (Basic Auth required)
+1. User clicks "Check All & Send Email" button on dashboard home page
 2. API enqueues a `send-digest` job to BullMQ
 3. Worker creates parent-child job flow:
    - Parent job: orchestrates the flow

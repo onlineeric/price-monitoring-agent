@@ -1,3 +1,7 @@
+# dashboard template, cloned from https://github.com/arhamkhnz/next-shadcn-admin-dashboard
+# this is not part of the project, it is only used as a reference
+/apps/dashboard_template/
+
 # Node modules
 **/node_modules/
 

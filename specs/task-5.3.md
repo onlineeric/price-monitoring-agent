@@ -1,34 +1,42 @@
-# Technical Spec: Phase 5.3 - Settings Management UI
+# Technical Spec: Phase 5.3 - Settings Page
 
 **Phase:** 5.3
-**Goal:** Create UI for managing email digest schedule settings (daily/weekly, time selection).
-**Context:** Admins need a way to configure when the automated digest email should be sent. This requires a settings UI and API endpoint to read and update the email schedule configuration.
+**Goal:** Create a Settings page for managing email digest schedule configuration using Shadcn UI components.
+**Context:** This page allows users to configure when automated digest emails should be sent (daily/weekly, specific time). No authentication is required - all settings are publicly accessible for demo purposes.
 
 ---
 
 ## Prerequisites
 
-* **Task 5.2:** Admin API and Basic Auth complete.
-* **Task 4.2:** Settings service and email infrastructure complete.
+* **Task 5.0:** Dashboard template setup complete.
+* **Task 5.1:** Dashboard home page complete.
+* **Task 5.2:** Products page complete.
+* **Task 4.2:** Email infrastructure and settings table exist.
 
 ---
 
 ## Architecture Context
 
-### Settings UI Features
+### Settings Page Features
 
 **Email Schedule Configuration:**
-- Frequency selector: Daily or Weekly
-- Day selector: Only shown for weekly (Monday-Sunday)
-- Hour selector: Hour marks only (00:00, 01:00, ... 23:00)
-- Save button (requires Basic Auth)
-- Display current schedule
+- Frequency selection: Daily or Weekly (using RadioGroup component)
+- Day of week selection: Only shown for weekly (using Select component)
+- Hour selection: 24-hour format (using Select component)
+- Visual feedback on save success/error (using Sonner toast)
+- Display current schedule at bottom
+
+**No Authentication:**
+- Settings are publicly accessible
+- No login required
+- Suitable for demo/portfolio purposes
 
 **User Experience:**
-- Simple, clear interface
-- Shows note: "Email will be sent on or after selected time (within 30 minutes)"
-- Validates selections before saving
-- Displays success/error messages
+- Clean, simple form layout using Shadcn components
+- Proper form validation with React Hook Form + Zod
+- Loading states during save
+- Clear labels and descriptions
+- Note about 30-minute cron window
 
 ---
 
@@ -36,11 +44,41 @@
 
 **Instruction for AI:**
 
-Generate the following files to implement settings management UI.
+Generate the following files to implement the Settings page.
 
-### File 1.1: `apps/web/src/app/api/settings/email-schedule/route.ts`
+### File 1.1: `apps/web/src/lib/validations/settings.ts`
 
-**Goal:** Create API endpoint for reading and updating email schedule settings.
+**Goal:** Zod schema for email schedule validation.
+
+**Requirements:**
+
+```typescript
+import { z } from 'zod';
+
+export const emailScheduleSchema = z.object({
+  frequency: z.enum(['daily', 'weekly']),
+  dayOfWeek: z.number().min(1).max(7).optional(),
+  hour: z.number().min(0).max(23),
+}).refine(
+  (data) => {
+    // If frequency is weekly, dayOfWeek must be provided
+    if (data.frequency === 'weekly' && !data.dayOfWeek) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Day of week is required for weekly frequency',
+    path: ['dayOfWeek'],
+  }
+);
+
+export type EmailScheduleInput = z.infer<typeof emailScheduleSchema>;
+```
+
+### File 1.2: `apps/web/src/app/api/settings/email-schedule/route.ts`
+
+**Goal:** API endpoint for reading and updating email schedule.
 
 **Requirements:**
 
@@ -49,19 +87,10 @@ Generate the following files to implement settings management UI.
   import { NextRequest, NextResponse } from 'next/server';
   import { db, settings } from '@price-monitor/db';
   import { eq } from 'drizzle-orm';
-  import { basicAuth, unauthorizedResponse } from '@/middleware/basicAuth';
+  import { emailScheduleSchema } from '@/lib/validations/settings';
   ```
 
-* **Type Definition:**
-  ```typescript
-  interface EmailSchedule {
-    frequency: 'daily' | 'weekly';
-    dayOfWeek?: number; // 1-7 (1=Monday, 7=Sunday)
-    hour: number; // 0-23
-  }
-  ```
-
-* **GET Handler (Public - No Auth):**
+* **GET Handler (Read Current Schedule):**
   ```typescript
   export async function GET() {
     try {
@@ -72,67 +101,55 @@ Generate the following files to implement settings management UI.
         .limit(1);
 
       if (!result) {
-        // Return default
+        // Return default schedule
         return NextResponse.json({
-          frequency: 'daily',
-          hour: 9,
+          success: true,
+          schedule: {
+            frequency: 'daily',
+            hour: 9,
+          },
         });
       }
 
-      const schedule = JSON.parse(result.value) as EmailSchedule;
-      return NextResponse.json(schedule);
+      const schedule = JSON.parse(result.value);
+      return NextResponse.json({
+        success: true,
+        schedule,
+      });
     } catch (error) {
       console.error('[API] Error fetching email schedule:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch email schedule' },
+        {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch email schedule',
+        },
         { status: 500 }
       );
     }
   }
   ```
 
-* **POST Handler (Protected - Requires Auth):**
+* **POST Handler (Update Schedule):**
   ```typescript
   export async function POST(request: NextRequest) {
-    if (!basicAuth(request)) {
-      return unauthorizedResponse();
-    }
-
     try {
       const body = await request.json();
-      const { frequency, dayOfWeek, hour } = body;
+      const validation = emailScheduleSchema.safeParse(body);
 
-      // Validation
-      if (!frequency || !['daily', 'weekly'].includes(frequency)) {
+      if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid frequency. Must be "daily" or "weekly"' },
+          {
+            success: false,
+            error: 'Validation failed',
+            details: validation.error.errors,
+          },
           { status: 400 }
         );
       }
 
-      if (typeof hour !== 'number' || hour < 0 || hour > 23) {
-        return NextResponse.json(
-          { error: 'Invalid hour. Must be between 0 and 23' },
-          { status: 400 }
-        );
-      }
+      const schedule = validation.data;
 
-      if (frequency === 'weekly') {
-        if (typeof dayOfWeek !== 'number' || dayOfWeek < 1 || dayOfWeek > 7) {
-          return NextResponse.json(
-            { error: 'Invalid dayOfWeek. Must be between 1 (Monday) and 7 (Sunday)' },
-            { status: 400 }
-          );
-        }
-      }
-
-      // Build schedule object
-      const schedule: EmailSchedule = { frequency, hour };
-      if (frequency === 'weekly' && dayOfWeek) {
-        schedule.dayOfWeek = dayOfWeek;
-      }
-
-      // Save to database
+      // Upsert schedule to database
       await db
         .insert(settings)
         .values({
@@ -155,16 +172,46 @@ Generate the following files to implement settings management UI.
     } catch (error) {
       console.error('[API] Error updating email schedule:', error);
       return NextResponse.json(
-        { error: 'Failed to update email schedule' },
+        {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update email schedule',
+        },
         { status: 500 }
       );
     }
   }
   ```
 
-### File 1.2: `apps/web/src/components/EmailScheduleSettings.tsx`
+### File 1.3: `apps/web/src/app/(main)/dashboard/settings/page.tsx`
 
-**Goal:** Create UI component for email schedule configuration.
+**Goal:** Settings page with email schedule form.
+
+**Requirements:**
+
+```typescript
+export default function SettingsPage() {
+  return (
+    <div className="@container/main flex flex-col gap-4 md:gap-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">
+          Configure email digest schedule and preferences
+        </p>
+      </div>
+
+      {/* Email Schedule Settings */}
+      <EmailScheduleSettings />
+    </div>
+  );
+}
+```
+
+**Note:** Import `EmailScheduleSettings` from next file.
+
+### File 1.4: `apps/web/src/app/(main)/dashboard/settings/_components/email-schedule-settings.tsx`
+
+**Goal:** Email schedule configuration form component.
 
 **Requirements:**
 
@@ -175,23 +222,43 @@ Generate the following files to implement settings management UI.
   'use client';
 
   import { useState, useEffect } from 'react';
+  import { useForm } from 'react-hook-form';
+  import { zodResolver } from '@hookform/resolvers/zod';
+  import { toast } from 'sonner';
+  import { Loader2 } from 'lucide-react';
+
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+  import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+  } from '@/components/ui/form';
+  import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+  import { Button } from '@/components/ui/button';
+  import { Alert, AlertDescription } from '@/components/ui/alert';
+  import { emailScheduleSchema, type EmailScheduleInput } from '@/lib/validations/settings';
   ```
 
 * **Component Implementation:**
   ```typescript
-  interface EmailSchedule {
-    frequency: 'daily' | 'weekly';
-    dayOfWeek?: number;
-    hour: number;
-  }
+  export function EmailScheduleSettings() {
+    const [currentSchedule, setCurrentSchedule] = useState<EmailScheduleInput | null>(null);
+    const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
-  export default function EmailScheduleSettings() {
-    const [schedule, setSchedule] = useState<EmailSchedule | null>(null);
-    const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
-    const [dayOfWeek, setDayOfWeek] = useState<number>(1);
-    const [hour, setHour] = useState<number>(9);
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
+    const form = useForm<EmailScheduleInput>({
+      resolver: zodResolver(emailScheduleSchema),
+      defaultValues: {
+        frequency: 'daily',
+        hour: 9,
+      },
+    });
+
+    const frequency = form.watch('frequency');
 
     // Load current schedule on mount
     useEffect(() => {
@@ -199,236 +266,221 @@ Generate the following files to implement settings management UI.
         try {
           const response = await fetch('/api/settings/email-schedule');
           const data = await response.json();
-          setSchedule(data);
-          setFrequency(data.frequency);
-          setDayOfWeek(data.dayOfWeek || 1);
-          setHour(data.hour);
+
+          if (data.success && data.schedule) {
+            setCurrentSchedule(data.schedule);
+            form.reset(data.schedule);
+          }
         } catch (error) {
           console.error('Failed to load schedule:', error);
+          toast.error('Failed to load current schedule');
+        } finally {
+          setIsLoadingInitial(false);
         }
       }
+
       loadSchedule();
-    }, []);
+    }, [form]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setMessage('');
-
+    const onSubmit = async (data: EmailScheduleInput) => {
       try {
-        // Get credentials from user
-        const username = prompt('Admin username:');
-        const password = prompt('Admin password:');
-
-        if (!username || !password) {
-          setMessage('Authentication cancelled');
-          setLoading(false);
-          return;
-        }
-
-        const credentials = btoa(`${username}:${password}`);
-
-        const payload: EmailSchedule = { frequency, hour };
-        if (frequency === 'weekly') {
-          payload.dayOfWeek = dayOfWeek;
-        }
-
         const response = await fetch('/api/settings/email-schedule', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${credentials}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(data),
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
-        if (response.ok) {
-          setMessage('✓ Schedule updated successfully!');
-          setSchedule(data.schedule);
-        } else {
-          setMessage(`✗ Error: ${data.error || 'Failed to update schedule'}`);
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update schedule');
         }
+
+        setCurrentSchedule(data);
+        toast.success('Schedule updated successfully!', {
+          description: 'Your email digest schedule has been saved.',
+        });
       } catch (error) {
-        setMessage(`✗ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setLoading(false);
+        toast.error('Failed to update schedule', {
+          description: error instanceof Error ? error.message : 'Unknown error occurred',
+        });
       }
     };
 
-    // Day names
-    const dayNames = [
-      { value: 1, label: 'Monday' },
-      { value: 2, label: 'Tuesday' },
-      { value: 3, label: 'Wednesday' },
-      { value: 4, label: 'Thursday' },
-      { value: 5, label: 'Friday' },
-      { value: 6, label: 'Saturday' },
-      { value: 7, label: 'Sunday' },
-    ];
-
-    // Hour options (0-23)
-    const hourOptions = Array.from({ length: 24 }, (_, i) => i);
-
-    if (!schedule) {
-      return <div className="text-gray-500">Loading schedule...</div>;
+    if (isLoadingInitial) {
+      return (
+        <Card>
+          <CardContent className="flex items-center justify-center p-12">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      );
     }
 
     return (
-      <div className="bg-white border rounded-lg p-6 mb-8">
-        <h2 className="text-2xl font-bold mb-4">Email Schedule Settings</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Digest Schedule</CardTitle>
+          <CardDescription>
+            Configure when you want to receive automated price digest emails.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Frequency Selection */}
+              <FormField
+                control={form.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequency</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-col space-y-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="daily" id="daily" />
+                          <label htmlFor="daily" className="text-sm font-normal cursor-pointer">
+                            Daily - Send digest every day
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="weekly" id="weekly" />
+                          <label htmlFor="weekly" className="text-sm font-normal cursor-pointer">
+                            Weekly - Send digest once a week
+                          </label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Frequency selector */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Frequency
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="daily"
-                  checked={frequency === 'daily'}
-                  onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly')}
-                  className="mr-2"
+              {/* Day of Week Selection (only for weekly) */}
+              {frequency === 'weekly' && (
+                <FormField
+                  control={form.control}
+                  name="dayOfWeek"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Day of Week</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a day" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">Monday</SelectItem>
+                          <SelectItem value="2">Tuesday</SelectItem>
+                          <SelectItem value="3">Wednesday</SelectItem>
+                          <SelectItem value="4">Thursday</SelectItem>
+                          <SelectItem value="5">Friday</SelectItem>
+                          <SelectItem value="6">Saturday</SelectItem>
+                          <SelectItem value="7">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        The day of the week to send the digest.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                Daily
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="weekly"
-                  checked={frequency === 'weekly'}
-                  onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly')}
-                  className="mr-2"
-                />
-                Weekly
-              </label>
-            </div>
-          </div>
+              )}
 
-          {/* Day selector (only for weekly) */}
-          {frequency === 'weekly' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Day of Week
-              </label>
-              <select
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                className="w-full px-3 py-2 border rounded-md"
+              {/* Hour Selection */}
+              <FormField
+                control={form.control}
+                name="hour"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time (Hour)</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(Number(value))}
+                      value={field.value.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="max-h-[300px]">
+                        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                          <SelectItem key={hour} value={hour.toString()}>
+                            {hour.toString().padStart(2, '0')}:00
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      The hour of the day to send the digest (24-hour format).
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Info Alert */}
+              <Alert>
+                <AlertDescription>
+                  The digest will be sent on or after the selected time, typically within 30 minutes
+                  (depending on the cron schedule).
+                </AlertDescription>
+              </Alert>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                size="lg"
               >
-                {dayNames.map((day) => (
-                  <option key={day.value} value={day.value}>
-                    {day.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Schedule'
+                )}
+              </Button>
+            </form>
+          </Form>
 
-          {/* Hour selector */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Time (Hour)
-            </label>
-            <select
-              value={hour}
-              onChange={(e) => setHour(Number(e.target.value))}
-              className="w-full px-3 py-2 border rounded-md"
-            >
-              {hourOptions.map((h) => (
-                <option key={h} value={h}>
-                  {h.toString().padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-            ℹ️ Email will be sent on or after selected time (within 30 minutes)
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-          >
-            {loading ? 'Saving...' : 'Save Schedule'}
-          </button>
-
-          {message && (
-            <div className={`text-sm ${message.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
-              {message}
-            </div>
-          )}
-        </form>
-
-        {/* Current schedule display */}
-        <div className="mt-6 pt-6 border-t">
-          <h3 className="font-medium mb-2">Current Schedule:</h3>
-          <div className="text-sm text-gray-600">
-            {schedule.frequency === 'daily' ? (
-              <p>Daily at {schedule.hour.toString().padStart(2, '0')}:00</p>
-            ) : (
-              <p>
-                Weekly on {dayNames.find(d => d.value === schedule.dayOfWeek)?.label || 'Monday'} at{' '}
-                {schedule.hour.toString().padStart(2, '0')}:00
+          {/* Current Schedule Display */}
+          {currentSchedule && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="text-sm font-medium mb-2">Current Schedule</h3>
+              <p className="text-sm text-muted-foreground">
+                {currentSchedule.frequency === 'daily' ? (
+                  <>
+                    Daily at {currentSchedule.hour.toString().padStart(2, '0')}:00
+                  </>
+                ) : (
+                  <>
+                    Weekly on{' '}
+                    {
+                      ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][
+                        currentSchedule.dayOfWeek || 1
+                      ]
+                    }{' '}
+                    at {currentSchedule.hour.toString().padStart(2, '0')}:00
+                  </>
+                )}
               </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  ```
-
-### File 1.3: Update `apps/web/src/app/page.tsx`
-
-**Goal:** Add email schedule settings to dashboard.
-
-**Requirements:**
-
-* **Add import:**
-  ```typescript
-  import EmailScheduleSettings from '@/components/EmailScheduleSettings';
-  ```
-
-* **Add EmailScheduleSettings below AdminPanel:**
-  ```typescript
-  export default async function DashboardPage() {
-    const products = await getProductsWithLatestPrice();
-
-    return (
-      <main className="min-h-screen p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-2">Price Monitor</h1>
-          <p className="text-gray-600 mb-8">
-            Tracking {products.length} product{products.length !== 1 ? 's' : ''}
-          </p>
-
-          {/* Admin Panel */}
-          <AdminPanel />
-
-          {/* Email Schedule Settings */}
-          <EmailScheduleSettings />
-
-          {/* Product Grid */}
-          {products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No products being monitored yet.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
             </div>
           )}
-        </div>
-      </main>
+        </CardContent>
+      </Card>
     );
   }
   ```
@@ -444,110 +496,180 @@ cd apps/web
 pnpm dev
 ```
 
-### 2.2: Test Settings UI
+### 2.2: Verify Settings Page
 
-1. Open `http://localhost:3000`
-2. Scroll to "Email Schedule Settings" section
-3. Verify current schedule displays correctly
-4. Change frequency from Daily to Weekly
-5. Select a day of week
-6. Change hour
-7. Click "Save Schedule"
-8. Enter admin credentials when prompted
-9. Verify success message appears
-10. Refresh page and verify new schedule is saved
+Open `http://localhost:3000/dashboard/settings` and verify:
 
-### 2.3: Test API Endpoint Directly
+- [ ] Page loads without errors
+- [ ] "Settings" title displays
+- [ ] "Email Digest Schedule" card displays
+- [ ] Form loads with current schedule (or defaults)
+- [ ] Loading spinner shows briefly while fetching
+
+### 2.3: Test Daily Frequency
+
+1. Select "Daily" radio button
+2. Select an hour (e.g., 10:00)
+3. Click "Save Schedule"
+4. Verify:
+   - [ ] Button shows "Saving..." loading state
+   - [ ] Success toast appears
+   - [ ] "Current Schedule" updates at bottom
+   - [ ] Shows "Daily at 10:00"
+
+### 2.4: Test Weekly Frequency
+
+1. Select "Weekly" radio button
+2. Verify:
+   - [ ] "Day of Week" dropdown appears
+3. Select a day (e.g., Monday)
+4. Select an hour (e.g., 15:00)
+5. Click "Save Schedule"
+6. Verify:
+   - [ ] Success toast appears
+   - [ ] Current schedule updates
+   - [ ] Shows "Weekly on Monday at 15:00"
+
+### 2.5: Test Validation
+
+1. Select "Weekly" frequency
+2. Don't select a day of week
+3. Click "Save Schedule"
+4. Verify:
+   - [ ] Form validation shows error
+   - [ ] Error message appears under Day of Week field
+
+### 2.6: Test API Endpoint Directly
 
 **Get current schedule:**
 ```powershell
 Invoke-WebRequest -Uri "http://localhost:3000/api/settings/email-schedule"
 ```
 
-**Update schedule (with auth):**
+**Update schedule (daily):**
 ```powershell
-$credentials = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:your-password"))
-
 Invoke-WebRequest -Uri "http://localhost:3000/api/settings/email-schedule" `
   -Method POST `
-  -Headers @{ Authorization = "Basic $credentials" } `
   -ContentType "application/json" `
-  -Body '{"frequency":"weekly","dayOfWeek":1,"hour":10}'
+  -Body '{"frequency":"daily","hour":10}'
 ```
 
-### 2.4: Test Validation
+**Update schedule (weekly):**
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/api/settings/email-schedule" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"frequency":"weekly","dayOfWeek":1,"hour":15}'
+```
 
-Try invalid inputs to verify validation:
-- Invalid frequency: `{"frequency":"monthly","hour":9}`
-- Invalid hour: `{"frequency":"daily","hour":25}`
-- Weekly without dayOfWeek: `{"frequency":"weekly","hour":9}`
-- Invalid dayOfWeek: `{"frequency":"weekly","dayOfWeek":8,"hour":9}`
+### 2.7: Test Persistence
 
-All should return 400 errors with appropriate messages.
+1. Set a schedule
+2. Refresh the page
+3. Verify:
+   - [ ] Form loads with saved schedule
+   - [ ] Current schedule displays correctly
+
+### 2.8: Test Responsive Layout
+
+Resize browser window and verify:
+- [ ] Form remains usable on mobile screens
+- [ ] Radio buttons and dropdowns are accessible
+- [ ] Card layout adapts to screen size
 
 ---
 
 ## File Structure After Completion
 
 ```
-apps/web/src/
-├── app/
-│   ├── api/
-│   │   ├── products/
-│   │   │   ├── route.ts
-│   │   │   └── [id]/
-│   │   │       └── route.ts
-│   │   └── settings/
-│   │       └── email-schedule/
-│   │           └── route.ts      # NEW: Email schedule API
-│   └── page.tsx                  # UPDATED: Added EmailScheduleSettings
-├── components/
-│   ├── AdminPanel.tsx
-│   ├── EmailScheduleSettings.tsx # NEW: Settings UI
-│   ├── ProductCard.tsx
-│   └── PriceChart.tsx
-└── middleware/
-    └── basicAuth.ts
+apps/web/src/app/(main)/dashboard/settings/
+├── page.tsx                                  # UPDATED: Settings page
+└── _components/
+    └── email-schedule-settings.tsx           # NEW: Email schedule form
+
+apps/web/src/app/api/settings/
+└── email-schedule/
+    └── route.ts                              # NEW: GET/POST email schedule
+
+apps/web/src/lib/validations/
+└── settings.ts                               # NEW: Zod schema for settings
 ```
 
 ---
 
-## UI/UX Notes
+## Design Patterns
 
-**Design Decisions:**
-- Radio buttons for frequency (Daily/Weekly) - clear, mutually exclusive
-- Dropdown for day selection - familiar, prevents invalid input
-- Dropdown for hour - shows formatted time, prevents invalid input
-- Info box with note about 30-minute window
-- Current schedule display for confirmation
+### Form Layout
+- Card component for consistent styling
+- Form fields with proper labels and descriptions
+- RadioGroup for mutually exclusive options
+- Select components for dropdown choices
+- Conditional rendering for weekly day selection
+- Alert component for informational messages
 
-**Future Improvements:**
-- Time zone selection
-- Multiple schedules (e.g., daily + weekly)
-- Schedule history/audit log
-- Preview next send time
+### State Management
+- React Hook Form for form state
+- Zod for validation
+- Initial data fetch with loading state
+- Optimistic UI updates (current schedule display)
+
+### Validation
+- Client-side validation with Zod
+- Server-side validation with same schema
+- Custom refinement for dayOfWeek requirement
+- Clear error messages
+
+---
+
+## Styling Notes
+
+**Card Design:**
+- Uses template's Card component
+- CardHeader with title and description
+- CardContent with proper padding
+- Border-top separator for current schedule section
+
+**Form Design:**
+- Vertical spacing between fields (space-y-6)
+- RadioGroup with vertical layout
+- Select components with proper sizing
+- Button with loading state (spinner icon)
+
+**Typography:**
+- Labels: text-sm font-medium
+- Descriptions: text-sm text-muted-foreground
+- Current schedule: text-sm with muted color
 
 ---
 
 ## Troubleshooting
 
-### Issue: Schedule not saving
+### Issue: Day of Week dropdown doesn't appear
 
-**Cause:** Authentication failure or validation error.
+**Cause:** Form not re-rendering when frequency changes.
 
-**Solution:** Check browser console for errors. Verify credentials are correct. Check API response for validation errors.
+**Solution:** Ensure `const frequency = form.watch('frequency')` is used to react to frequency changes.
 
-### Issue: Day selector not showing
+### Issue: Schedule not persisting
 
-**Cause:** Frequency not set to "weekly".
+**Cause:** Database upsert not working or settings table doesn't exist.
 
-**Solution:** Ensure the radio button logic correctly toggles the day selector based on frequency.
+**Solution:**
+1. Verify settings table exists in database
+2. Check Drizzle schema has correct table definition
+3. Check API logs for errors
 
-### Issue: Schedule shows default after saving
+### Issue: Validation errors not showing
 
-**Cause:** Database update failed or not reading from database.
+**Cause:** FormMessage component not included in FormField.
 
-**Solution:** Check database using Drizzle Studio. Verify `email_schedule` row exists and value is valid JSON.
+**Solution:** Ensure each FormField has `<FormMessage />` component.
+
+### Issue: Time zone confusion
+
+**Cause:** Hours are stored in UTC but user expects local time.
+
+**Solution:** (For future enhancement) Add time zone configuration. For now, document that times are in server time zone.
 
 ---
 
@@ -555,23 +677,41 @@ apps/web/src/
 
 Task 5.3 is complete when:
 
-- [ ] API endpoint for email schedule (GET/POST) created
-- [ ] EmailScheduleSettings component renders on dashboard
-- [ ] Can view current schedule
-- [ ] Can change frequency (daily/weekly)
-- [ ] Day selector shows only for weekly
-- [ ] Hour selector shows all hours (00:00-23:00)
-- [ ] Can save schedule with admin auth
-- [ ] Validation prevents invalid inputs
-- [ ] Success/error messages display correctly
-- [ ] Schedule persists after page refresh
+- [ ] Settings page renders without errors
+- [ ] Email schedule form displays with current schedule
+- [ ] Can select daily or weekly frequency
+- [ ] Day of Week dropdown appears only for weekly
+- [ ] Hour dropdown shows all 24 hours
+- [ ] Form validation works (weekly requires dayOfWeek)
+- [ ] Save button shows loading state
+- [ ] Success toast appears on save
+- [ ] Current schedule displays at bottom
+- [ ] Schedule persists across page reloads
+- [ ] API endpoints (GET/POST) work correctly
 - [ ] No TypeScript errors
+- [ ] No console errors
+- [ ] Build completes successfully
 
 ---
 
-## Notes
+## Performance Notes
 
-- The schedule is stored in the `settings` table as JSON
-- The actual scheduling logic (calculateNextSendTime) will be implemented in Phase 6.3
-- This phase only handles the UI and persistence of the schedule configuration
-- The worker will read this schedule in Phase 6.3 to determine when to send emails
+- Initial data fetch happens once on mount
+- Form state managed client-side (no unnecessary API calls)
+- Validation happens before API call (reduces failed requests)
+- Toast notifications provide immediate feedback
+
+---
+
+## Future Enhancements (Out of Scope)
+
+- Time zone selection
+- Multiple email schedules
+- Email recipient configuration
+- Schedule history/audit log
+- Preview next send time
+- Test email button
+- Email template preview
+- Custom cron expressions for advanced users
+- Schedule enable/disable toggle
+- Schedule pause/resume functionality
