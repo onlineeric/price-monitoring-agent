@@ -45,7 +45,7 @@ The template provides:
 
 ---
 
-## Step 1: Clone Template (Manual Step - ALREADY DONE)
+## Step 1: Clone Template (Manual Step)
 
 **User Action:**
 
@@ -54,9 +54,16 @@ You've already completed this step by cloning the template to `apps/dashboard_te
 For future reference, the command was:
 ```bash
 cd apps
-git clone https://github.com/arhamkhnz/next-shadcn-admin-dashboard.git dashboard_template
+git clone https://github.com/arhamkhnz/next-shadcn-admin-dashboard.git dashboard_template --depth 1
 cd dashboard_template
 rm -rf .git
+```
+
+Then add the folder into the .gitignore file.
+```
+# dashboard template, cloned from https://github.com/arhamkhnz/next-shadcn-admin-dashboard
+# this is not part of the project, it is only used as a reference
+/apps/dashboard_template/
 ```
 
 **Note:** The `dashboard_template` folder serves as a reference during implementation. It can be removed after Phase 5 is complete, or kept for future reference.
@@ -377,6 +384,7 @@ export default function RootLayout({
 ### File 4.9: Remove Template Example Pages (Manual Cleanup)
 
 **Goal:** Clean up unused template pages to avoid confusion.
+If developer wants to keep the template as a reference, then skip this step.
 
 **Requirements:**
 
