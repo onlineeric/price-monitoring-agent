@@ -13,7 +13,15 @@ interface TriggerBody {
  * Only requires URL - worker will lookup/create product record automatically
  */
 export async function POST(request: Request) {
-  const body: TriggerBody = await request.json().catch(() => ({} as TriggerBody));
+  let body: TriggerBody;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON in request body" },
+      { status: 400 }
+    );
+  }
 
   if (!body.url) {
     return NextResponse.json(
@@ -22,15 +30,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const job = await priceQueue.add("check-price", {
-    url: body.url,
-    triggeredAt: new Date(),
-  });
+  try {
+    const job = await priceQueue.add("check-price", {
+      url: body.url,
+      triggeredAt: new Date(),
+    });
 
-  return NextResponse.json({
-    success: true,
-    jobId: job.id,
-    url: body.url,
-    message: "Job enqueued - worker will lookup/create product automatically",
-  });
+    return NextResponse.json({
+      success: true,
+      jobId: job.id,
+      url: body.url,
+      message: "Job enqueued - worker will lookup/create product automatically",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: "Queue service unavailable" },
+      { status: 503 }
+    );
+  }
 }

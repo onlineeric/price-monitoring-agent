@@ -20,7 +20,8 @@
       "Bash(rm:*)",
       "Bash(gh pr list:*)",
       "WebFetch(domain:github.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(gh pr comment:*)"
     ]
   }
 }

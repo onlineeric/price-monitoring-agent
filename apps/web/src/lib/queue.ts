@@ -10,11 +10,16 @@ interface GlobalWithQueue {
 
 const globalForQueue = globalThis as unknown as GlobalWithQueue;
 
+// Validate required environment variables
+if (!process.env.REDIS_URL) {
+  throw new Error('REDIS_URL environment variable is required');
+}
+
 // Create singleton Queue instance
 export const priceQueue =
   globalForQueue.priceQueue ??
   new Queue(QUEUE_NAME, {
-    connection: new Redis(process.env.REDIS_URL!, {
+    connection: new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: null,
     }),
   });
