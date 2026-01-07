@@ -12,6 +12,7 @@
   "packageManager": "pnpm@10.26.2",
   "workspaces": [
     "apps/*",
+    "!apps/dashboard_template",
     "packages/*"
   ]
 }
