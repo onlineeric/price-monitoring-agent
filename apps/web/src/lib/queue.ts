@@ -10,21 +10,42 @@ interface GlobalWithQueue {
 
 const globalForQueue = globalThis as unknown as GlobalWithQueue;
 
-// Validate required environment variables
-if (!process.env.REDIS_URL) {
-  throw new Error('REDIS_URL environment variable is required');
-}
+/**
+ * Lazy getter for the price queue singleton.
+ * Only validates REDIS_URL and creates the queue when first accessed (at runtime).
+ * This prevents build-time errors when REDIS_URL isn't available.
+ */
+function getPriceQueue(): Queue {
+  // Validate required environment variables (only at runtime)
+  if (!process.env.REDIS_URL) {
+    throw new Error('REDIS_URL environment variable is required');
+  }
 
-// Create singleton Queue instance
-export const priceQueue =
-  globalForQueue.priceQueue ??
-  new Queue(QUEUE_NAME, {
+  // Return cached instance if it exists
+  if (globalForQueue.priceQueue) {
+    return globalForQueue.priceQueue;
+  }
+
+  // Create new instance
+  const queue = new Queue(QUEUE_NAME, {
     connection: new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: null,
     }),
   });
 
-// Preserve instance across hot reloads in development
-if (process.env.NODE_ENV !== "production") {
-  globalForQueue.priceQueue = priceQueue;
+  // Cache for hot reload in development
+  if (process.env.NODE_ENV !== "production") {
+    globalForQueue.priceQueue = queue;
+  }
+
+  return queue;
 }
+
+// Export a proxy that lazily initializes the queue
+export const priceQueue = new Proxy({} as Queue, {
+  get(_target, prop) {
+    const queue = getPriceQueue();
+    const value = queue[prop as keyof Queue];
+    return typeof value === 'function' ? value.bind(queue) : value;
+  },
+});

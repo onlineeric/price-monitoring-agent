@@ -634,6 +634,80 @@ pnpm install
 
 **Solution:** Check that `apps/web/src/app/api/` folder exists with all routes from `web_backup`.
 
+### Issue: "Module not found: Can't resolve './schema.js'" (Step 6.3)
+
+**Cause:** The `packages/db/src/index.ts` file uses `.js` extensions in imports (`import * from './schema.js'`), but since the package exports TypeScript source files directly (`"main": "./src/index.ts"`), Next.js cannot resolve `.js` to `.ts` files.
+
+**Solution:** Remove `.js` extensions from imports in `packages/db/src/index.ts`:
+
+```typescript
+// Change this:
+import * as schema from './schema.js';
+export * from './schema.js';
+
+// To this:
+import * as schema from './schema';
+export * from './schema';
+```
+
+**Files affected:**
+- `packages/db/src/index.ts` (lines 13 and 23)
+
+### Issue: "REDIS_URL environment variable is required" during build (Step 6.5)
+
+**Cause:** The `apps/web/src/lib/queue.ts` file validates `REDIS_URL` at import time, which runs during the Next.js build process. The build doesn't need Redis, but the validation throws an error before the build completes.
+
+**Solution:** Implement lazy initialization for the queue using a Proxy pattern. This defers REDIS_URL validation until runtime (when API routes are actually called).
+
+Replace the immediate queue initialization in `apps/web/src/lib/queue.ts` with:
+
+```typescript
+/**
+ * Lazy getter for the price queue singleton.
+ * Only validates REDIS_URL and creates the queue when first accessed (at runtime).
+ * This prevents build-time errors when REDIS_URL isn't available.
+ */
+function getPriceQueue(): Queue {
+  // Validate required environment variables (only at runtime)
+  if (!process.env.REDIS_URL) {
+    throw new Error('REDIS_URL environment variable is required');
+  }
+
+  // Return cached instance if it exists
+  if (globalForQueue.priceQueue) {
+    return globalForQueue.priceQueue;
+  }
+
+  // Create new instance
+  const queue = new Queue(QUEUE_NAME, {
+    connection: new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: null,
+    }),
+  });
+
+  // Cache for hot reload in development
+  if (process.env.NODE_ENV !== "production") {
+    globalForQueue.priceQueue = queue;
+  }
+
+  return queue;
+}
+
+// Export a proxy that lazily initializes the queue
+export const priceQueue = new Proxy({} as Queue, {
+  get(_target, prop) {
+    const queue = getPriceQueue();
+    const value = queue[prop as keyof Queue];
+    return typeof value === 'function' ? value.bind(queue) : value;
+  },
+});
+```
+
+**Files affected:**
+- `apps/web/src/lib/queue.ts` (replace entire queue initialization section)
+
+**Note:** This change is backward compatible - existing code using `priceQueue.add()` works without modification.
+
 ---
 
 ## Completion Criteria
