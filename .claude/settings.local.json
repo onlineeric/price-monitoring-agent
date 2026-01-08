@@ -21,7 +21,13 @@
       "Bash(gh pr list:*)",
       "WebFetch(domain:github.com)",
       "Bash(find:*)",
-      "Bash(gh pr comment:*)"
+      "Bash(gh pr comment:*)",
+      "Bash(dir \"C:\\\\repos\\\\price-monitoring-agent\\\\apps\\\\web\\\\src\\\\app\\\\\\(main\\)\\\\dashboard\\\\_components\")",
+      "Bash(dir \"C:\\\\repos\\\\price-monitoring-agent\\\\apps\\\\web\\\\src\\\\app\\\\api\\\\digest\")",
+      "Bash(pnpm tsc:*)",
+      "Bash(pnpm install)",
+      "Bash(timeout 15 pnpm dev:*)",
+      "Bash(pnpm next build:*)"
     ]
   }
 }
