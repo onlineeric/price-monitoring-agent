@@ -20,7 +20,17 @@ export function ManualTriggerButton() {
         },
       });
 
-      const data = await response.json();
+      // Handle non-JSON responses (e.g., HTML error pages from proxies/gateways)
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        // If JSON parsing fails, it's likely an HTML error page or network issue
+        toast.error('Failed to trigger digest', {
+          description: `Server returned invalid response (HTTP ${response.status})`,
+        });
+        return;
+      }
 
       if (response.ok) {
         toast.success('Digest triggered successfully!', {

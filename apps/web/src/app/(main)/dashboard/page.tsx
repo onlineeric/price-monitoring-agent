@@ -7,13 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { ManualTriggerButton } from './_components/manual-trigger-button';
 
 async function getDashboardStats() {
-  // Get all active products
-  const activeProducts = await db
-    .select()
+  // Get total active products count
+  const [productCount] = await db
+    .select({ count: sql<number>`count(*)` })
     .from(products)
     .where(eq(products.active, true));
 
-  const totalProducts = activeProducts.length;
+  const totalProducts = Number(productCount?.count || 0);
 
   // Get total price checks
   const [priceCheckCount] = await db
@@ -22,51 +22,42 @@ async function getDashboardStats() {
 
   const totalPriceChecks = Number(priceCheckCount?.count || 0);
 
-  // Get current prices for average calculation
-  const currentPrices = await Promise.all(
-    activeProducts.map(async (product) => {
-      const [latest] = await db
-        .select()
-        .from(priceRecords)
-        .where(eq(priceRecords.productId, product.id))
-        .orderBy(desc(priceRecords.scrapedAt))
-        .limit(1);
-      return latest;
-    })
-  );
+  // Get latest prices for active products using DISTINCT ON (optimized, single query)
+  // This gets the most recent price record for each product in one query
+  const latestPricesResult = await db.execute<{ price: number }>(sql`
+    SELECT DISTINCT ON (pr.product_id) pr.price
+    FROM ${priceRecords} pr
+    INNER JOIN ${products} p ON pr.product_id = p.id
+    WHERE p.active = true
+    ORDER BY pr.product_id, pr.scraped_at DESC
+  `);
 
-  const validPrices = currentPrices.filter(Boolean);
-  const avgPrice = validPrices.length > 0
+  const latestPrices = Array.from(latestPricesResult).map((row) => row.price);
+
+  const avgPrice = latestPrices.length > 0
     ? Math.round(
-        validPrices.reduce((sum, record) => sum + record.price, 0) / validPrices.length
+        latestPrices.reduce((sum, price) => sum + price, 0) / latestPrices.length
       )
     : 0;
 
-  // Get recent changes (last 24 hours)
+  // Get count of products with price changes in last 24 hours (database aggregation)
   const oneDayAgo = subDays(new Date(), 1);
-  const recentChecks = await db
-    .select()
+  const productsWithChanges = await db
+    .select({
+      productId: priceRecords.productId,
+      distinctPrices: sql<number>`COUNT(DISTINCT ${priceRecords.price})`,
+    })
     .from(priceRecords)
-    .where(gte(priceRecords.scrapedAt, oneDayAgo));
-
-  // Count unique products with price changes in last 24h
-  const productsWithChanges = new Set<string>();
-  for (const product of activeProducts) {
-    const productChecks = recentChecks.filter(r => r.productId === product.id);
-    if (productChecks.length > 1) {
-      // Check if price actually changed
-      const prices = productChecks.map(c => c.price);
-      if (new Set(prices).size > 1) {
-        productsWithChanges.add(product.id);
-      }
-    }
-  }
+    .innerJoin(products, eq(priceRecords.productId, products.id))
+    .where(gte(priceRecords.scrapedAt, oneDayAgo))
+    .groupBy(priceRecords.productId)
+    .having(sql`COUNT(DISTINCT ${priceRecords.price}) > 1`);
 
   return {
     totalProducts,
     totalPriceChecks,
     avgPrice,
-    recentChanges: productsWithChanges.size,
+    recentChanges: productsWithChanges.length,
   };
 }
 

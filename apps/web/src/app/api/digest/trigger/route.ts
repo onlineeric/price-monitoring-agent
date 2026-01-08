@@ -1,19 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Queue } from 'bullmq';
-import { Redis } from 'ioredis';
-
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
-
-const queue = new Queue('price-monitor-queue', {
-  connection: redis,
-});
+import { priceQueue } from '@/lib/queue';
 
 export async function POST() {
   try {
     // Enqueue digest job
-    const job = await queue.add('send-digest', {
+    const job = await priceQueue.add('send-digest', {
       triggeredBy: 'manual',
       timestamp: new Date().toISOString(),
     });
