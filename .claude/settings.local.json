@@ -28,7 +28,8 @@
       "Bash(pnpm install)",
       "Bash(timeout 15 pnpm dev:*)",
       "Bash(pnpm next build:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Skill(create-pr)"
     ]
   }
 }

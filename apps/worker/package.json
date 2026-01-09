@@ -31,6 +31,8 @@
     "ai": "^6.0.5",
     "bullmq": "^5.66.4",
     "cheerio": "^1.1.2",
+    "date-fns": "^3.6.0",
+    "drizzle-orm": "^0.45.1",
     "ioredis": "^5.8.2",
     "playwright": "^1.57.0",
     "playwright-extra": "^4.3.6",
