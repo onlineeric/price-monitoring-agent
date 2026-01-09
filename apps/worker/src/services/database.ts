@@ -4,6 +4,7 @@ import {
   priceRecords,
   runLogs,
   eq,
+  sql,
   type Product,
 } from "@price-monitor/db";
 import { validate as isValidUuid } from "uuid";
@@ -118,26 +119,40 @@ export async function getProductById(
  * Get or create product by URL
  * Returns existing product if URL exists, creates new one if not
  * New products are created with active=false (must be manually activated for cron)
+ * Only updates name/imageUrl if current values are NULL (preserves user-provided data)
  * Uses ON CONFLICT to prevent race conditions
  */
 export async function getOrCreateProductByUrl(
   url: string,
-  extractedName: string
+  extractedName: string,
+  imageUrl?: string | null
 ): Promise<Product> {
   try {
     // Atomic insert-or-update using ON CONFLICT
-    // If URL exists: updates updatedAt and returns existing product
+    // If URL exists: conditionally updates name/imageUrl only if needed
     // If URL doesn't exist: inserts new product
+
+    // Build update set with conditional logic:
+    // - Only update name if current name is NULL (user didn't provide custom name)
+    // - Only update imageUrl if current value is NULL (preserve existing images)
+    // - Always update updatedAt timestamp
     const result = await db
       .insert(products)
       .values({
         url,
         name: extractedName,
+        imageUrl: imageUrl || null,
         active: false, // Don't include in cron until manually activated
       })
       .onConflictDoUpdate({
         target: products.url,
-        set: { updatedAt: new Date() },
+        set: {
+          // Only set name if current value is NULL (preserve user-provided names)
+          name: sql`COALESCE(${products.name}, ${extractedName})`,
+          // Only set imageUrl if we don't have one yet
+          imageUrl: sql`COALESCE(${products.imageUrl}, ${imageUrl})`,
+          updatedAt: new Date(),
+        },
       })
       .returning();
 

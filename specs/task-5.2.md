@@ -42,7 +42,7 @@
 **Add Product Dialog:**
 - Shadcn Dialog component
 - React Hook Form with Zod validation
-- Fields: URL (required), Name (optional, defaults to "Untitled Product")
+- Fields: URL (required), Name (optional, defaults to "Detecting Product Name...")
 - Validates URL format
 - Shows loading state during submission
 - Toast notification on success/error
@@ -852,7 +852,7 @@ Generate the following files to implement the Products management page.
           },
           body: JSON.stringify({
             url: data.url,
-            name: data.name || 'Untitled Product',
+            name: data.name || 'Detecting Product Name...',
           }),
         });
 
@@ -922,7 +922,7 @@ Generate the following files to implement the Products management page.
                     </FormControl>
                     <FormDescription>
                       Optional. If not provided, the name will be auto-detected or set to
-                      "Untitled Product".
+                      "Detecting Product Name...".
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -1345,7 +1345,7 @@ Generate the following files to implement the Products management page.
         .insert(products)
         .values({
           url,
-          name: name || 'Untitled Product',
+          name: name || 'Detecting Product Name...',
           active: true,
         })
         .returning();

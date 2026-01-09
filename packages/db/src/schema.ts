@@ -12,7 +12,7 @@ import { relations } from 'drizzle-orm';
 export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
   url: text('url').notNull().unique(),
-  name: text('name').notNull(),
+  name: text('name'), // Nullable - will be filled by scraper if not provided
   imageUrl: text('image_url'),
   active: boolean('active').default(true),
   lastSuccessAt: timestamp('last_success_at'),
