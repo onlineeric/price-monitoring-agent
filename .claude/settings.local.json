@@ -28,7 +28,13 @@
       "Bash(pnpm install)",
       "Bash(timeout 15 pnpm dev:*)",
       "Bash(pnpm next build:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Skill(create-pr)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm --filter @price-monitor/db build:*)",
+      "Bash(node --check:*)"
     ]
   }
 }
