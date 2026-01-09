@@ -86,7 +86,17 @@ export async function POST(request: NextRequest) {
       });
     } catch (queueError) {
       console.error('[API] Failed to enqueue price check job:', queueError);
-      // Don't fail the request if queue is unavailable
+
+      // Rollback: delete the product since we can't monitor it
+      await db.delete(products).where(eq(products.id, newProduct.id));
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to start price monitoring. Please try again later.',
+        },
+        { status: 503 }
+      );
     }
 
     return NextResponse.json({

@@ -75,10 +75,10 @@ export function parsePrice(
 }
 
 /**
- * Resolve a potentially relative URL to absolute
+ * Resolve a potentially relative URL to absolute and validate it's safe
  * @param imageUrl - The image URL (may be relative)
  * @param baseUrl - The base URL of the page
- * @returns Absolute URL
+ * @returns Absolute URL if valid and safe, null otherwise
  */
 export function resolveImageUrl(
   imageUrl: string | null,
@@ -86,23 +86,59 @@ export function resolveImageUrl(
 ): string | null {
   if (!imageUrl) return null;
 
+  // Sanitize: trim whitespace and reject dangerous protocols
+  const trimmed = imageUrl.trim();
+  const lowerUrl = trimmed.toLowerCase();
+
+  // Block dangerous protocols (XSS vectors)
+  const dangerousProtocols = [
+    "javascript:",
+    "data:",
+    "file:",
+    "vbscript:",
+    "about:",
+  ];
+  if (dangerousProtocols.some((proto) => lowerUrl.startsWith(proto))) {
+    console.warn(`[Security] Blocked dangerous image URL: ${trimmed}`);
+    return null;
+  }
+
+  let resolvedUrl: string;
+
   // Already absolute
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    return imageUrl;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    resolvedUrl = trimmed;
   }
-
   // Protocol-relative URL
-  if (imageUrl.startsWith("//")) {
-    return "https:" + imageUrl;
+  else if (trimmed.startsWith("//")) {
+    resolvedUrl = "https:" + trimmed;
   }
-
   // Absolute path
-  if (imageUrl.startsWith("/")) {
-    const url = new URL(baseUrl);
-    return url.origin + imageUrl;
+  else if (trimmed.startsWith("/")) {
+    try {
+      const url = new URL(baseUrl);
+      resolvedUrl = url.origin + trimmed;
+    } catch (e) {
+      console.warn(`[Security] Invalid base URL for image: ${baseUrl}`);
+      return null;
+    }
+  }
+  // Relative path (e.g., "../images/pic.jpg")
+  else {
+    try {
+      const url = new URL(baseUrl);
+      resolvedUrl = new URL(trimmed, url.href).href;
+    } catch (e) {
+      console.warn(`[Security] Failed to resolve relative image URL: ${trimmed}`);
+      return null;
+    }
   }
 
-  // Relative path (e.g., "../images/pic.jpg")
-  const url = new URL(baseUrl);
-  return new URL(imageUrl, url.href).href;
+  // Final validation: ensure result is http or https
+  if (!resolvedUrl.startsWith("http://") && !resolvedUrl.startsWith("https://")) {
+    console.warn(`[Security] Resolved URL has invalid protocol: ${resolvedUrl}`);
+    return null;
+  }
+
+  return resolvedUrl;
 }

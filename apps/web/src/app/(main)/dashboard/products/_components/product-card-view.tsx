@@ -25,7 +25,9 @@ interface ProductCardViewProps {
 
 export function ProductCardView({ products }: ProductCardViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const formatPrice = (cents: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -71,12 +73,20 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
                           <Pencil className="size-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => setDeletingProduct(product)}
+                          onClick={() => {
+                            setDeletingProduct(product);
+                            setIsDeleteDialogOpen(true);
+                          }}
                           className="text-destructive"
                         >
                           <Trash2 className="size-4 mr-2" />
@@ -156,15 +166,21 @@ export function ProductCardView({ products }: ProductCardViewProps) {
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}
-          open={!!editingProduct}
-          onOpenChange={(open) => !open && setEditingProduct(null)}
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            if (!open) setEditingProduct(null);
+          }}
         />
       )}
       {deletingProduct && (
         <DeleteProductDialog
           product={deletingProduct}
-          open={!!deletingProduct}
-          onOpenChange={(open) => !open && setDeletingProduct(null)}
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open);
+            if (!open) setDeletingProduct(null);
+          }}
         />
       )}
     </>
