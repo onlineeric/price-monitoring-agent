@@ -27,7 +27,8 @@
       "Bash(pnpm tsc:*)",
       "Bash(pnpm install)",
       "Bash(timeout 15 pnpm dev:*)",
-      "Bash(pnpm next build:*)"
+      "Bash(pnpm next build:*)",
+      "Bash(pnpm lint:*)"
     ]
   }
 }
