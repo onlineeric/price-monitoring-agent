@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { db, settings } from '@price-monitor/db';
 import { eq } from 'drizzle-orm';
 import { emailScheduleSchema } from '@/lib/validations/settings';
@@ -22,11 +22,38 @@ export async function GET() {
       });
     }
 
-    const schedule = JSON.parse(result.value);
-    return NextResponse.json({
-      success: true,
-      schedule,
-    });
+    // Parse and validate JSON from database
+    try {
+      const parsed = JSON.parse(result.value);
+      const validation = emailScheduleSchema.safeParse(parsed);
+
+      if (!validation.success) {
+        console.error('[API] Invalid schedule data in database:', validation.error);
+        // Return default schedule if stored data is invalid
+        return NextResponse.json({
+          success: true,
+          schedule: {
+            frequency: 'daily',
+            hour: 9,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        schedule: validation.data,
+      });
+    } catch (parseError) {
+      console.error('[API] Failed to parse schedule JSON from database:', parseError);
+      // Return default schedule if JSON is malformed
+      return NextResponse.json({
+        success: true,
+        schedule: {
+          frequency: 'daily',
+          hour: 9,
+        },
+      });
+    }
   } catch (error) {
     console.error('[API] Error fetching email schedule:', error);
     return NextResponse.json(

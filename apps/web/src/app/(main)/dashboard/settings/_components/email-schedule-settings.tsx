@@ -22,6 +22,20 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { emailScheduleSchema, type EmailScheduleInput } from '@/lib/validations/settings';
 
+// Helper function to safely get day name
+function getDayName(dayOfWeek: number | undefined): string {
+  const dayNames: Record<number, string> = {
+    1: 'Monday',
+    2: 'Tuesday',
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+    6: 'Saturday',
+    7: 'Sunday',
+  };
+  return dayNames[dayOfWeek ?? 1] ?? 'Monday';
+}
+
 export function EmailScheduleSettings() {
   const [currentSchedule, setCurrentSchedule] = useState<EmailScheduleInput | null>(null);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
@@ -35,6 +49,13 @@ export function EmailScheduleSettings() {
   });
 
   const frequency = form.watch('frequency');
+
+  // Clear dayOfWeek when switching to daily frequency
+  useEffect(() => {
+    if (frequency === 'daily') {
+      form.setValue('dayOfWeek', undefined);
+    }
+  }, [frequency, form]);
 
   // Load current schedule on mount
   useEffect(() => {
@@ -56,7 +77,8 @@ export function EmailScheduleSettings() {
     }
 
     loadSchedule();
-  }, [form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (data: EmailScheduleInput) => {
     try {
@@ -243,13 +265,8 @@ export function EmailScheduleSettings() {
                 </>
               ) : (
                 <>
-                  Weekly on{' '}
-                  {
-                    ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][
-                      currentSchedule.dayOfWeek || 1
-                    ]
-                  }{' '}
-                  at {currentSchedule.hour.toString().padStart(2, '0')}:00
+                  Weekly on {getDayName(currentSchedule.dayOfWeek)} at{' '}
+                  {currentSchedule.hour.toString().padStart(2, '0')}:00
                 </>
               )}
             </p>

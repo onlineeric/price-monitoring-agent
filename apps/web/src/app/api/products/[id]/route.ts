@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { db, products } from '@price-monitor/db';
 import { eq } from 'drizzle-orm';
 
