@@ -69,11 +69,12 @@ async function savePriceData(
   title: string | null,
   price: number,
   currency: string,
+  imageUrl: string | null,
   jobId: string
 ): Promise<string | null> {
   try {
     const productName = title || "Unknown Product";
-    const product = await getOrCreateProductByUrl(url, productName);
+    const product = await getOrCreateProductByUrl(url, productName, imageUrl);
 
     console.log(`[${jobId}] Using product ID: ${product.id}`);
 
@@ -153,6 +154,7 @@ export default async function priceCheckJob(
         result.data.title,
         result.data.price,
         result.data.currency,
+        result.data.imageUrl,
         jobId
       );
     } catch (dbError) {
