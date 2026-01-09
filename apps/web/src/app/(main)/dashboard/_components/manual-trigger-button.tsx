@@ -5,38 +5,37 @@ import { Mail } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+
+// Note: Authentication intentionally removed in this phase.
+// Proper authentication will be added app-wide in a future phase.
 
 export function ManualTriggerButton() {
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [forceAI, setForceAI] = useState(false);
 
-  const handleTrigger = async () => {
-    // Confirm action
-    const confirmed = confirm('This will check all products and send a digest email. Continue?');
-    if (!confirmed) {
-      return;
-    }
-
-    // Get credentials
-    const username = prompt('Admin username:');
-    const password = prompt('Admin password:');
-
-    if (!username || !password) {
-      toast.error('Authentication cancelled', {
-        description: 'Username and password are required',
-      });
-      return;
-    }
-
+  const handleConfirm = async () => {
     setLoading(true);
+    setOpen(false);
 
     try {
-      const credentials = btoa(`${username}:${password}`);
-
       const response = await fetch('/api/digest/trigger', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
         },
       });
 
@@ -71,14 +70,48 @@ export function ManualTriggerButton() {
   };
 
   return (
-    <Button
-      onClick={handleTrigger}
-      disabled={loading}
-      className="gap-2"
-      size="lg"
-    >
-      <Mail className="size-4" />
-      {loading ? 'Triggering...' : 'Check All & Send Email'}
-    </Button>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          disabled={loading}
+          className="gap-2"
+          size="lg"
+        >
+          <Mail className="size-4" />
+          {loading ? 'Triggering...' : 'Check All & Send Email'}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Digest Trigger</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will check all active products and send a digest email. Are you sure you want to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {/* Force AI Option (Disabled) */}
+        <div className="flex items-center space-x-2 py-4">
+          <Switch
+            id="force-ai"
+            checked={forceAI}
+            onCheckedChange={setForceAI}
+            disabled
+          />
+          <Label htmlFor="force-ai" className="text-sm">
+            Force AI Extraction
+          </Label>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2 ml-12">
+          (Feature under construction)
+        </p>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirm}>
+            Continue
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

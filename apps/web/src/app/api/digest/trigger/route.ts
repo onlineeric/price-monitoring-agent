@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { priceQueue } from '@/lib/queue';
-import { basicAuth, unauthorizedResponse } from '@/middleware/basicAuth';
+
+// Note: Authentication intentionally removed in this phase.
+// Proper authentication will be added app-wide in a future phase.
 
 export async function POST(request: NextRequest) {
-  // Require authentication
-  if (!basicAuth(request)) {
-    return unauthorizedResponse();
-  }
-
   try {
     // Enqueue digest job
     const job = await priceQueue.add('send-digest', {
