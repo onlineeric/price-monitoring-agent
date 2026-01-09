@@ -48,147 +48,32 @@ function calculatePercentageChange(
 }
 
 /**
- * Calculate trends for all active products
- * Returns array of ProductTrendData with price statistics
+ * Private helper to calculate trend data for a single product
+ * Fetches all necessary price records in one query to avoid N+1 problem
  */
-export async function calculateTrendsForAllProducts(): Promise<ProductTrendData[]> {
-  console.log('[Trend Calculator] Calculating trends for all products...');
-
-  // Get all active products
-  const allProducts = await db
-    .select()
-    .from(products)
-    .where(eq(products.active, true));
-
-  console.log(`[Trend Calculator] Found ${allProducts.length} active products`);
-
-  // Calculate trends for each product
-  const trendsData = await Promise.all(
-    allProducts.map(async (product) => {
-      // Get latest price
-      const [latestPrice] = await db
-        .select()
-        .from(priceRecords)
-        .where(eq(priceRecords.productId, product.id))
-        .orderBy(desc(priceRecords.scrapedAt))
-        .limit(1);
-
-      // Get previous price (second most recent)
-      const [previousPrice] = await db
-        .select()
-        .from(priceRecords)
-        .where(eq(priceRecords.productId, product.id))
-        .orderBy(desc(priceRecords.scrapedAt))
-        .limit(1)
-        .offset(1);
-
-      // Get price history for different time periods
-      const now = new Date();
-      const periods = [
-        { days: 7, label: '7d' },
-        { days: 30, label: '30d' },
-        { days: 90, label: '90d' },
-        { days: 180, label: '180d' },
-      ];
-
-      const averages: Record<string, number | null> = {};
-      const vsAverages: Record<string, number | null> = {};
-
-      for (const period of periods) {
-        const startDate = subDays(now, period.days);
-
-        const records = await db
-          .select()
-          .from(priceRecords)
-          .where(
-            and(
-              eq(priceRecords.productId, product.id),
-              gte(priceRecords.scrapedAt, startDate)
-            )
-          );
-
-        const prices = records.map((r) => r.price);
-        const avg = calculateAverage(prices);
-
-        averages[`avg${period.label}`] = avg;
-        vsAverages[`vs${period.label}Avg`] = calculatePercentageChange(
-          latestPrice?.price || null,
-          avg
-        );
-      }
-
-      // Calculate vs last check
-      const vsLastCheck = calculatePercentageChange(
-        latestPrice?.price || null,
-        previousPrice?.price || null
-      );
-
-      return {
-        productId: product.id,
-        name: product.name || 'Unknown Product',
-        url: product.url,
-        imageUrl: product.imageUrl,
-        currentPrice: latestPrice?.price || null,
-        currency: latestPrice?.currency || null,
-        lastChecked: product.lastSuccessAt,
-        lastFailed: product.lastFailedAt,
-        previousPrice: previousPrice?.price || null,
-        vsLastCheck,
-        avg7d: averages.avg7d,
-        vs7dAvg: vsAverages.vs7dAvg,
-        avg30d: averages.avg30d,
-        vs30dAvg: vsAverages.vs30dAvg,
-        avg90d: averages.avg90d,
-        vs90dAvg: vsAverages.vs90dAvg,
-        avg180d: averages.avg180d,
-        vs180dAvg: vsAverages.vs180dAvg,
-      } as ProductTrendData;
-    })
-  );
-
-  console.log('[Trend Calculator] Trends calculated for all products');
-  return trendsData;
-}
-
-/**
- * Calculate trends for a single product by ID
- * Returns ProductTrendData or null if product not found
- */
-export async function calculateTrendsForProduct(
-  productId: string
-): Promise<ProductTrendData | null> {
-  console.log(`[Trend Calculator] Calculating trends for product ${productId}...`);
-
-  const [product] = await db
-    .select()
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!product) {
-    console.error(`[Trend Calculator] Product not found: ${productId}`);
-    return null;
-  }
-
-  // Get latest price
-  const [latestPrice] = await db
-    .select()
-    .from(priceRecords)
-    .where(eq(priceRecords.productId, product.id))
-    .orderBy(desc(priceRecords.scrapedAt))
-    .limit(1);
-
-  // Get previous price (second most recent)
-  const [previousPrice] = await db
-    .select()
-    .from(priceRecords)
-    .where(eq(priceRecords.productId, product.id))
-    .orderBy(desc(priceRecords.scrapedAt))
-    .limit(1)
-    .offset(1);
-
-  // Get price history for different time periods
+async function calculateTrendDataForProduct(
+  product: typeof products.$inferSelect
+): Promise<ProductTrendData> {
   const now = new Date();
+
+  // Single query: fetch all price records from last 180 days (covers all periods)
+  // Ordered by most recent first
+  const allRecords = await db
+    .select()
+    .from(priceRecords)
+    .where(
+      and(
+        eq(priceRecords.productId, product.id),
+        gte(priceRecords.scrapedAt, subDays(now, 180))
+      )
+    )
+    .orderBy(desc(priceRecords.scrapedAt));
+
+  // Extract latest and previous prices from the sorted records
+  const latestPrice = allRecords[0] || null;
+  const previousPrice = allRecords[1] || null;
+
+  // Calculate averages for each time period using in-memory filtering
   const periods = [
     { days: 7, label: '7d' },
     { days: 30, label: '30d' },
@@ -202,17 +87,12 @@ export async function calculateTrendsForProduct(
   for (const period of periods) {
     const startDate = subDays(now, period.days);
 
-    const records = await db
-      .select()
-      .from(priceRecords)
-      .where(
-        and(
-          eq(priceRecords.productId, product.id),
-          gte(priceRecords.scrapedAt, startDate)
-        )
-      );
+    // Filter records in-memory (already fetched)
+    const periodRecords = allRecords.filter(
+      (r) => r.scrapedAt >= startDate
+    );
 
-    const prices = records.map((r) => r.price);
+    const prices = periodRecords.map((r) => r.price);
     const avg = calculateAverage(prices);
 
     averages[`avg${period.label}`] = avg;
@@ -239,13 +119,61 @@ export async function calculateTrendsForProduct(
     lastFailed: product.lastFailedAt,
     previousPrice: previousPrice?.price || null,
     vsLastCheck,
-    avg7d: averages.avg7d,
-    vs7dAvg: vsAverages.vs7dAvg,
-    avg30d: averages.avg30d,
-    vs30dAvg: vsAverages.vs30dAvg,
-    avg90d: averages.avg90d,
-    vs90dAvg: vsAverages.vs90dAvg,
-    avg180d: averages.avg180d,
-    vs180dAvg: vsAverages.vs180dAvg,
-  } as ProductTrendData;
+    avg7d: averages.avg7d ?? null,
+    vs7dAvg: vsAverages.vs7dAvg ?? null,
+    avg30d: averages.avg30d ?? null,
+    vs30dAvg: vsAverages.vs30dAvg ?? null,
+    avg90d: averages.avg90d ?? null,
+    vs90dAvg: vsAverages.vs90dAvg ?? null,
+    avg180d: averages.avg180d ?? null,
+    vs180dAvg: vsAverages.vs180dAvg ?? null,
+  };
+}
+
+/**
+ * Calculate trends for all active products
+ * Returns array of ProductTrendData with price statistics
+ */
+export async function calculateTrendsForAllProducts(): Promise<ProductTrendData[]> {
+  console.log('[Trend Calculator] Calculating trends for all products...');
+
+  // Get all active products
+  const allProducts = await db
+    .select()
+    .from(products)
+    .where(eq(products.active, true));
+
+  console.log(`[Trend Calculator] Found ${allProducts.length} active products`);
+
+  // Calculate trends for each product using shared helper
+  const trendsData = await Promise.all(
+    allProducts.map((product) => calculateTrendDataForProduct(product))
+  );
+
+  console.log('[Trend Calculator] Trends calculated for all products');
+  return trendsData;
+}
+
+/**
+ * Calculate trends for a single product by ID
+ * Returns ProductTrendData or null if product not found
+ */
+export async function calculateTrendsForProduct(
+  productId: string
+): Promise<ProductTrendData | null> {
+  console.log(`[Trend Calculator] Calculating trends for product ${productId}...`);
+
+  const [product] = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  if (!product) {
+    console.error(`[Trend Calculator] Product not found: ${productId}`);
+    return null;
+  }
+
+  // Use shared helper to calculate trends
+  return calculateTrendDataForProduct(product);
 }
