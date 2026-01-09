@@ -1,26 +1,31 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { priceQueue } from '@/lib/queue';
+import { basicAuth, unauthorizedResponse } from '@/middleware/basicAuth';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Require authentication
+  if (!basicAuth(request)) {
+    return unauthorizedResponse();
+  }
+
   try {
     // Enqueue digest job
     const job = await priceQueue.add('send-digest', {
       triggeredBy: 'manual',
-      timestamp: new Date().toISOString(),
+      triggeredAt: new Date().toISOString(),
     });
+
+    console.log('[API] Digest job enqueued:', job.id);
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Digest job enqueued successfully',
+      message: 'Digest email process started',
     });
   } catch (error) {
-    console.error('[API] Error enqueueing digest job:', error);
+    console.error('[API] Error triggering digest:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to enqueue digest job',
-      },
+      { error: 'Failed to trigger digest' },
       { status: 500 }
     );
   }
