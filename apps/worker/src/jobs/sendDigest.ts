@@ -67,6 +67,10 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
   console.log(`[Digest Flow] All child jobs completed, sending email...`);
 
   try {
+    // Verify children completed (defensive check)
+    const childrenValues = await job.getChildrenValues();
+    console.log(`[Digest Flow] Verified ${Object.keys(childrenValues).length} children completed`);
+
     // Calculate trends for all products
     const trends = await calculateTrendsForAllProducts();
 

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { priceQueue } from '@/lib/queue';
 
 // Note: Authentication intentionally removed in this phase.
 // Proper authentication will be added app-wide in a future phase.
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Enqueue digest job
     const job = await priceQueue.add('send-digest', {

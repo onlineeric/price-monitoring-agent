@@ -34,7 +34,8 @@
       "Bash(pnpm exec tsc:*)",
       "Bash(grep:*)",
       "Bash(pnpm --filter @price-monitor/db build:*)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "WebFetch(domain:docs.bullmq.io)"
     ]
   }
 }
