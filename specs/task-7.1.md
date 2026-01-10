@@ -403,10 +403,22 @@ notepad .env
 
 ### 6.2: Start Full Stack
 
+**Option 1: Docker Compose CLI (PowerShell)**
+
 ```powershell
 # Build and start all services
 docker-compose up --build
 ```
+
+**Option 2: Docker Desktop GUI**
+
+1. Open **Docker Desktop**
+2. Click **Containers** in the left sidebar
+3. Click the **"+"** button (or **Import** if you see it)
+4. Navigate to your project root folder (`C:\repos\price-monitoring-agent`)
+5. Select `docker-compose.yml`
+6. Docker Desktop will parse the compose file and start all services
+7. View running containers grouped together in the Containers tab
 
 This will start:
 - PostgreSQL on port 5432
@@ -416,6 +428,8 @@ This will start:
 
 ### 6.3: Initialize Database
 
+**Option 1: Docker Compose CLI (PowerShell)**
+
 In a new terminal:
 
 ```powershell
@@ -423,7 +437,18 @@ In a new terminal:
 docker-compose exec web pnpm --filter @price-monitor/db push
 ```
 
-Or connect to local PostgreSQL and run migrations manually:
+**Option 2: Docker Desktop GUI**
+
+1. Open **Docker Desktop** → **Containers** tab
+2. Find the running **web** container (should show as part of your compose stack)
+3. Click on the **web** container row to open details
+4. Click the **Exec** tab (or look for a **CLI/Terminal** icon)
+5. In the terminal that opens inside the container, run:
+   ```bash
+   pnpm --filter @price-monitor/db push
+   ```
+
+**Option 3: Connect to Local PostgreSQL Directly**
 
 ```powershell
 # Set local DATABASE_URL
@@ -437,6 +462,9 @@ pnpm push
 ### 6.4: Verify Services
 
 **Check logs:**
+
+**Option 1: Docker Compose CLI (PowerShell)**
+
 ```powershell
 # All services
 docker-compose logs -f
@@ -445,6 +473,14 @@ docker-compose logs -f
 docker-compose logs -f worker
 docker-compose logs -f web
 ```
+
+**Option 2: Docker Desktop GUI**
+
+1. Open **Docker Desktop** → **Containers** tab
+2. Click on a specific container (e.g., **worker** or **web**) to view its logs
+3. Logs appear in the **Logs** tab (auto-refreshing)
+4. Use the search box to filter log messages
+5. Toggle **Auto-scroll** to follow new logs in real-time
 
 **Test web app:**
 1. Open http://localhost:3000
@@ -458,6 +494,8 @@ docker-compose logs -f web
 
 ### 6.5: Stop Services
 
+**Option 1: Docker Compose CLI (PowerShell)**
+
 ```powershell
 # Stop all services
 docker-compose down
@@ -466,6 +504,17 @@ docker-compose down
 docker-compose down -v
 ```
 
+**Option 2: Docker Desktop GUI**
+
+1. Open **Docker Desktop** → **Containers** tab
+2. Find your compose stack (containers will be grouped together)
+3. **To Stop:** Click the **Stop** button (square icon) on the stack or individual containers
+4. **To Remove:** Click the **Delete** button (trash icon) after stopping
+5. **To Remove Volumes:**
+   - Go to **Volumes** tab in the left sidebar
+   - Find `postgres_data` volume
+   - Click the **Delete** button (trash icon) to remove database data
+
 ---
 
 ## Step 7: Build Worker Image for Production (Manual Step)
@@ -473,6 +522,8 @@ docker-compose down -v
 **User Action:**
 
 Test building the worker image locally:
+
+**Option 1: Docker CLI (PowerShell) - Recommended**
 
 ```powershell
 # Build worker image
@@ -490,6 +541,22 @@ docker run --rm `
   -e ALERT_EMAIL="your-email" `
   price-monitor-worker:test
 ```
+
+**Option 2: Docker Desktop GUI**
+
+**Build Image:**
+1. Open **Docker Desktop**
+2. Open **PowerShell** or **Terminal** (Docker Desktop doesn't have a GUI for custom builds with specific Dockerfiles)
+3. Use the CLI command above to build
+
+**Run Container:**
+1. After building, go to **Docker Desktop** → **Images** tab
+2. Find `price-monitor-worker:test` image
+3. Click the **Run** button (play icon)
+4. Click **Optional settings** to expand environment variables section
+5. Add all required environment variables (DATABASE_URL, REDIS_URL, etc.)
+6. Click **Run**
+7. Monitor logs in the **Containers** tab
 
 **Note:** This is just for testing. In production, GitHub Actions will build and push the image.
 
