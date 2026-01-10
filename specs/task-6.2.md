@@ -249,6 +249,8 @@ Generate the following files to implement manual digest trigger with job flow.
 
 **Goal:** Create API endpoint to trigger manual digest.
 
+**Note:** Authentication intentionally removed in this phase. Proper authentication will be added app-wide in a future phase.
+
 **Requirements:**
 
 * **Imports:**
@@ -256,7 +258,6 @@ Generate the following files to implement manual digest trigger with job flow.
   import { NextRequest, NextResponse } from 'next/server';
   import { Queue } from 'bullmq';
   import { redisConnection } from '@/lib/redis';
-  import { basicAuth, unauthorizedResponse } from '@/middleware/basicAuth';
   ```
 
 * **Queue Instance (Singleton):**
@@ -276,11 +277,6 @@ Generate the following files to implement manual digest trigger with job flow.
 * **POST Handler:**
   ```typescript
   export async function POST(request: NextRequest) {
-    // Require authentication
-    if (!basicAuth(request)) {
-      return unauthorizedResponse();
-    }
-
     try {
       const queue = getQueue();
 
@@ -334,7 +330,9 @@ export const redisConnection = new Redis(redisUrl, {
 
 ### File 2.5: `apps/web/src/components/TriggerDigestButton.tsx`
 
-**Goal:** Create UI button to trigger manual digest.
+**Goal:** Create UI button to trigger manual digest with confirmation dialog and Force AI option (disabled).
+
+**Note:** Authentication removed - will be added app-wide in a future phase.
 
 **Requirements:**
 
@@ -345,37 +343,34 @@ export const redisConnection = new Redis(redisUrl, {
   'use client';
 
   import { useState } from 'react';
+  import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from '@/components/ui/alert-dialog';
+  import { Switch } from '@/components/ui/switch';
+  import { Label } from '@/components/ui/label';
 
   export default function TriggerDigestButton() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [open, setOpen] = useState(false);
+    const [forceAI, setForceAI] = useState(false);
 
-    const handleClick = async () => {
-      if (!confirm('This will check all products and send a digest email. Continue?')) {
-        return;
-      }
-
+    const handleConfirm = async () => {
       setLoading(true);
       setMessage('');
+      setOpen(false);
 
       try {
-        // Get credentials
-        const username = prompt('Admin username:');
-        const password = prompt('Admin password:');
-
-        if (!username || !password) {
-          setMessage('Authentication cancelled');
-          setLoading(false);
-          return;
-        }
-
-        const credentials = btoa(`${username}:${password}`);
-
         const response = await fetch('/api/digest/trigger', {
           method: 'POST',
-          headers: {
-            'Authorization': `Basic ${credentials}`,
-          },
         });
 
         const data = await response.json();
@@ -393,19 +388,53 @@ export const redisConnection = new Redis(redisUrl, {
     };
 
     return (
-      <div className="bg-white border rounded-lg p-6 mb-8">
+      <div className="bg-white dark:bg-gray-800 border rounded-lg p-6 mb-8">
         <h2 className="text-2xl font-bold mb-4">Manual Digest Trigger</h2>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           Check all product prices now and send a digest email immediately.
         </p>
 
-        <button
-          onClick={handleClick}
-          disabled={loading}
-          className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
-        >
-          {loading ? 'Processing...' : 'Check All & Send Email'}
-        </button>
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogTrigger asChild>
+            <button
+              disabled={loading}
+              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+            >
+              {loading ? 'Processing...' : 'Check All & Send Email'}
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Digest Trigger</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will check all active products and send a digest email. Are you sure you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {/* Force AI Option (Disabled) */}
+            <div className="flex items-center space-x-2 py-4">
+              <Switch
+                id="force-ai"
+                checked={forceAI}
+                onCheckedChange={setForceAI}
+                disabled
+              />
+              <Label htmlFor="force-ai" className="text-sm">
+                Force AI Extraction
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 -mt-2 ml-12">
+              (Feature under construction)
+            </p>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirm}>
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {message && (
           <div className={`mt-4 text-sm ${message.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>

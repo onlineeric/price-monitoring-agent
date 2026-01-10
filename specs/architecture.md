@@ -137,6 +137,45 @@ A demo-friendly, high-performance system that:
 
 ---
 
+## Future Enhancements Roadmap
+
+The following features are planned for future implementation:
+
+### Security & Authentication
+- **User Authentication**: Implement authentication/authorization across the entire application
+- **Role-Based Access Control (RBAC)**: Admin vs read-only users with different permission levels
+- **API Security**: Secure all API endpoints with proper session management and token-based auth
+- **Audit Logging**: Track sensitive operations (deletions, settings changes, manual triggers)
+
+### Extraction Features
+- **Force AI Extraction Mode**: Allow users to bypass HTML/Playwright tiers and force AI extraction for specific products or all products
+- **Configurable Extraction Strategies**: Per-product configuration for extraction method preferences
+- **Custom Extraction Rules**: Support for custom CSS selectors and XPath patterns per product
+- **Multi-Region Support**: Proxy rotation for region-specific pricing
+
+### Monitoring & Observability
+- **Real-Time Job Status Dashboard**: Live view of running jobs with progress indicators
+- **Failed Job Retry Mechanism**: Automatic retry with exponential backoff for failed extractions
+- **Price Change History Visualization**: Interactive charts showing price trends over time
+- **Email Delivery Status Tracking**: Monitor email send success/failure rates
+- **Worker Health Monitoring**: CPU, memory, and queue depth metrics
+
+### User Experience Enhancements
+- **Multi-User Support**: Individual user accounts with separate product lists
+- **Product Tagging & Categorization**: Organize products with custom tags and categories
+- **Custom Price Alerts**: Per-product threshold alerts (notify when price drops below X)
+- **Browser Extension**: One-click product monitoring from any e-commerce site
+- **Mobile-Responsive Dashboard**: Improved mobile UI/UX
+- **Bulk Operations**: Bulk add/edit/delete products via CSV import
+
+### Data & Analytics
+- **Price Prediction**: ML-based price trend forecasting
+- **Historical Data Export**: CSV/JSON export of price history
+- **Comparative Analytics**: Cross-product price comparison reports
+- **Discount Pattern Analysis**: Identify best times to buy based on historical patterns
+
+---
+
 ## CI/CD (GitHub Actions)
 
 ### Approach
