@@ -1,17 +1,56 @@
 version: '3.8'
 
 services:
-  # Redis Service
-  # Acts as the message broker for BullMQ (Job Queue)
+  # PostgreSQL database (local alternative to Neon)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: pricemonitor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis (local alternative to Upstash)
   redis:
-    image: redis:alpine
-    container_name: price-monitor-redis
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
-    restart: always
-    volumes:
-      - redis_data:/data
+
+  # Worker application
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      # Database
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricemonitor
+      # Redis
+      REDIS_URL: redis://redis:6379
+      # AI Provider (use your actual keys)
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5}
+      FORCE_AI_EXTRACTION: ${FORCE_AI_EXTRACTION:-false}
+      # Email
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM:-Price Monitor <onboarding@resend.dev>}
+      ALERT_EMAIL: ${ALERT_EMAIL}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Note: For local development, run web app directly with:
+  #   pnpm --filter @price-monitor/web dev
+  # This is faster and avoids Docker pnpm workspace issues.
+  # Web Dockerfile is only needed for production (but we deploy to Vercel which doesn't use it).
 
 volumes:
-  redis_data:
+  postgres_data:

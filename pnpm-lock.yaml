@@ -107,8 +107,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: 3.23.8
+        version: 3.23.8
       zustand:
         specifier: ^5.0.9
         version: 5.0.9(@types/react@19.2.7)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
@@ -4032,8 +4032,8 @@ packages:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
     engines: {node: '>=18'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@3.23.8:
+    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
   zod@4.3.3:
     resolution: {integrity: sha512-bQ7Rxwfn04DCrTjjRfD9SavY2vWdmf3REjs/mkc1LdwI1KkcHClBRJmnvmA/6epGeqlHePtIRF1J4SrMMlW7IA==}
@@ -7517,7 +7517,7 @@ snapshots:
 
   yoctocolors@2.1.2: {}
 
-  zod@3.25.76: {}
+  zod@3.23.8: {}
 
   zod@4.3.3: {}
 

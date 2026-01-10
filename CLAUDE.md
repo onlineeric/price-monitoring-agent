@@ -111,25 +111,30 @@ Products are auto-created on first price check using URL as the natural key. All
 Required in `.env` (place at monorepo root):
 
 ```bash
-# Database
-DATABASE_URL=postgresql://...  # Neon PostgreSQL connection string
+# PostgreSQL Database (Neon)
+DATABASE_URL=""
 
-# Redis (local Docker or Upstash for production)
-REDIS_URL=redis://localhost:6379
+# Connection string for the local Redis Docker container
+REDIS_URL="redis://localhost:6379"
 
-# AI Provider Configuration
-AI_PROVIDER=openai  # Options: openai | google | anthropic
-OPENAI_API_KEY=sk-proj-...
-GOOGLE_GENERATIVE_AI_API_KEY=...  # Optional, only if using Google
-ANTHROPIC_API_KEY=sk-ant-...      # Optional, only if using Anthropic
+# AI Provider Selection (openai | google | anthropic)
+AI_PROVIDER="anthropic"
 
-# AI Models (optional, defaults provided)
-OPENAI_MODEL=gpt-4o-mini
-ANTHROPIC_MODEL=claude-3-5-haiku-20241022
-GOOGLE_MODEL=gemini-1.5-flash
+# Provider API Keys
+OPENAI_API_KEY=""
+GOOGLE_GENERATIVE_AI_API_KEY=""
+ANTHROPIC_API_KEY=""
 
-# Debug
-FORCE_AI_EXTRACTION=false  # Set to true to skip HTML fetcher and test AI directly
+# AI data models
+# OpenAI: "gpt-4o-mini", "gpt-5-mini", "gpt-5.1", "gpt-5.2"
+# Anthropic: "claude-3-5-haiku-20241022", "claude-3-haiku-20240307", "claude-haiku-4-5"
+# Google Gemini: "gemini-1.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview"
+OPENAI_MODEL="gpt-5-mini"
+ANTHROPIC_MODEL="claude-haiku-4-5"
+GOOGLE_MODEL="gemini-2.5-flash"
+
+# Debug: Force AI extraction (bypass HTML fetcher and Playwright selectors)
+FORCE_AI_EXTRACTION=false
 ```
 
 Next.js automatically loads `.env` from the monorepo root via `next.config.ts`.

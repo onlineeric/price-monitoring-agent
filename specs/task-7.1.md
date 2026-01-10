@@ -107,28 +107,28 @@ FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm (specific version for consistency)
+RUN npm install -g pnpm@10.26.2
 
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/db/package.json ./packages/db/
 COPY apps/worker/package.json ./apps/worker/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with shamefully-hoist for Docker compatibility
+RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 # Copy source code
 COPY packages/db ./packages/db
 COPY apps/worker ./apps/worker
 
 # Build db package if needed
-RUN cd packages/db && pnpm build || true
+RUN pnpm --filter @price-monitor/db build || true
 
 # Set environment
 ENV NODE_ENV=production
 
-# Start worker
+# Start worker using pnpm filter command
 CMD ["pnpm", "--filter", "@price-monitor/worker", "start"]
 ```
 
@@ -224,12 +224,17 @@ services:
       # Redis
       REDIS_URL: redis://redis:6379
       # AI Provider (use your actual keys)
-      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-flash}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5}
+      FORCE_AI_EXTRACTION: ${FORCE_AI_EXTRACTION:-false}
       # Email
       RESEND_API_KEY: ${RESEND_API_KEY}
-      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM: ${EMAIL_FROM:-Price Monitor <onboarding@resend.dev>}
       ALERT_EMAIL: ${ALERT_EMAIL}
     depends_on:
       - postgres
@@ -246,9 +251,6 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricemonitor
       # Redis
       REDIS_URL: redis://redis:6379
-      # Admin
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
     ports:
       - "3000:3000"
     depends_on:
@@ -367,22 +369,35 @@ Create .env.example template for docker-compose.
 **Requirements:**
 
 ```env
-# AI Provider Configuration
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+# PostgreSQL Database (Neon)
+DATABASE_URL=""
 
-# Email Service (Resend)
-RESEND_API_KEY=re_...
-EMAIL_FROM=Price Monitor <alerts@yourdomain.com>
-ALERT_EMAIL=your-email@example.com
+# Connection string for the local Redis Docker container
+REDIS_URL="redis://localhost:6379"
 
-# Admin Credentials
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-secure-password
+# AI Provider Selection (openai | google | anthropic)
+AI_PROVIDER="anthropic"
 
-# Note: DATABASE_URL and REDIS_URL are set in docker-compose.yml
-# for local development. For production, use Neon and Upstash URLs.
+# Provider API Keys
+OPENAI_API_KEY=""
+GOOGLE_GENERATIVE_AI_API_KEY=""
+ANTHROPIC_API_KEY=""
+
+# AI data models
+# OpenAI: "gpt-4o-mini", "gpt-5-mini", "gpt-5.1", "gpt-5.2"
+# Anthropic: "claude-3-5-haiku-20241022", "claude-3-haiku-20240307", "claude-haiku-4-5"
+# Google Gemini: "gemini-1.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview"
+OPENAI_MODEL="gpt-5-mini"
+ANTHROPIC_MODEL="claude-haiku-4-5"
+GOOGLE_MODEL="gemini-2.5-flash"
+
+# Debug: Force AI extraction (bypass HTML fetcher and Playwright selectors)
+FORCE_AI_EXTRACTION=false
+
+# Resend Email Service
+RESEND_API_KEY=""
+EMAIL_FROM="Price Monitor <onboarding@resend.dev>"
+ALERT_EMAIL=""
 ```
 
 ---
@@ -403,22 +418,19 @@ notepad .env
 
 ### 6.2: Start Full Stack
 
-**Option 1: Docker Compose CLI (PowerShell)**
+**Step 1: Docker Compose CLI (PowerShell)**
 
 ```powershell
 # Build and start all services
 docker-compose up --build
 ```
 
-**Option 2: Docker Desktop GUI**
+**Step 2: Check with Docker Desktop GUI**
 
-1. Open **Docker Desktop**
-2. Click **Containers** in the left sidebar
-3. Click the **"+"** button (or **Import** if you see it)
-4. Navigate to your project root folder (`C:\repos\price-monitoring-agent`)
-5. Select `docker-compose.yml`
-6. Docker Desktop will parse the compose file and start all services
-7. View running containers grouped together in the Containers tab
+    1. Go to Containers tab
+    2. You'll see a group called price-monitoring-agent (or similar)
+    3. Expand it to see all 4 containers running
+    4. Click any container to view its logs
 
 This will start:
 - PostgreSQL on port 5432
@@ -533,11 +545,11 @@ docker build -f apps/worker/Dockerfile -t price-monitor-worker:test .
 docker run --rm `
   -e DATABASE_URL="your-neon-url" `
   -e REDIS_URL="your-upstash-url" `
-  -e AI_PROVIDER="openai" `
-  -e OPENAI_API_KEY="your-key" `
-  -e OPENAI_MODEL="gpt-4o-mini" `
+  -e AI_PROVIDER="anthropic" `
+  -e ANTHROPIC_API_KEY="your-key" `
+  -e ANTHROPIC_MODEL="claude-haiku-4-5" `
   -e RESEND_API_KEY="your-key" `
-  -e EMAIL_FROM="test@example.com" `
+  -e EMAIL_FROM="Price Monitor <onboarding@resend.dev>" `
   -e ALERT_EMAIL="your-email" `
   price-monitor-worker:test
 ```

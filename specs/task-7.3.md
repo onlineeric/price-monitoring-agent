@@ -163,12 +163,6 @@ DATABASE_URL = <your-neon-connection-string>
 REDIS_URL = <your-upstash-redis-url>
 ```
 
-**Admin Credentials:**
-```
-ADMIN_USERNAME = admin
-ADMIN_PASSWORD = <your-secure-password>
-```
-
 **Important:** Click **Add** for each variable. These will be used in all environments (Production, Preview, Development).
 
 ### 4.3: Deploy
@@ -257,9 +251,18 @@ REDIS_URL = <your-upstash-redis-url>
 
 **AI Provider:**
 ```
-AI_PROVIDER = openai
+AI_PROVIDER = anthropic
 OPENAI_API_KEY = <your-openai-key>
-OPENAI_MODEL = gpt-4o-mini
+OPENAI_MODEL = gpt-5-mini
+GOOGLE_GENERATIVE_AI_API_KEY = <your-google-key>
+GOOGLE_MODEL = gemini-2.5-flash
+ANTHROPIC_API_KEY = <your-anthropic-key>
+ANTHROPIC_MODEL = claude-haiku-4-5
+```
+
+**Debug:**
+```
+FORCE_AI_EXTRACTION = false
 ```
 
 **Email:**
@@ -357,7 +360,6 @@ ON CONFLICT DO NOTHING;
 2. Verify dashboard loads
 3. Try adding a product:
    - Fill in URL (e.g., `https://www.amazon.com/dp/B0...`)
-   - Enter admin credentials when prompted
    - Click "Add Product"
    - Verify success message
 
@@ -389,9 +391,8 @@ ON CONFLICT DO NOTHING;
 
 1. On your Vercel app, scroll to **Manual Digest Trigger**
 2. Click **"Check All & Send Email"**
-3. Enter admin credentials
-4. Verify success message
-5. Check Render worker logs for:
+3. Verify success message
+4. Check Render worker logs for:
    ```
    [Digest Flow] All child jobs completed, sending email...
    [Email] Digest sent successfully
@@ -473,8 +474,6 @@ Wait 30 minutes (or until next 30-minute mark), then:
 ```
 ✓ DATABASE_URL
 ✓ REDIS_URL
-✓ ADMIN_USERNAME
-✓ ADMIN_PASSWORD
 ✓ CRON_SECRET (optional)
 ```
 
@@ -485,6 +484,11 @@ Wait 30 minutes (or until next 30-minute mark), then:
 ✓ AI_PROVIDER
 ✓ OPENAI_API_KEY
 ✓ OPENAI_MODEL
+✓ GOOGLE_GENERATIVE_AI_API_KEY
+✓ GOOGLE_MODEL
+✓ ANTHROPIC_API_KEY
+✓ ANTHROPIC_MODEL
+✓ FORCE_AI_EXTRACTION
 ✓ RESEND_API_KEY
 ✓ EMAIL_FROM
 ✓ ALERT_EMAIL
