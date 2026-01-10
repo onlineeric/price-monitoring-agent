@@ -34,8 +34,9 @@ Developer pushes to main branch
 
 **Key Points:**
 - **GitHub Container Registry (GHCR)**: Free Docker registry for GitHub repos
-- **Render**: Pulls image from GHCR and deploys automatically
+- **Render Background Worker**: Pulls pre-built image from GHCR and deploys when triggered by webhook
 - **Vercel**: Separate auto-deploy via GitHub integration (no GitHub Actions needed)
+- **Service Type**: Background Worker (not Web Service) - for long-running queue consumers
 
 ---
 
@@ -205,22 +206,35 @@ GitHub Container Registry (GHCR) is automatically enabled for your repository. N
 
 **User Action:**
 
-### 3.1: Create Render Service
+### 3.1: Create Render Background Worker
 
 **Note:** Detailed Render setup is in Phase 7.3. For now, just get the deploy hook URL.
 
+**Important:** The worker is a Background Worker (processes async tasks from a queue), NOT a Web Service.
+
 1. Go to [render.com](https://render.com)
 2. Sign up / Log in
-3. Click **New +** → **Web Service**
-4. Connect your GitHub repository
-5. Configure service:
+3. Click **New +** → **Background Worker**
+4. Select **"Deploy an existing image from a registry"**
+   - Do NOT choose "Build and deploy from a Git repository"
+5. Configure image:
+   - **Image URL:** `ghcr.io/<your-github-username>/<your-repo-name>/worker:latest`
+     - Example: `ghcr.io/onlineeric/price-monitoring-agent/worker:latest`
+   - **Registry Credential:**
+     - If your GitHub repo is **public**: Select "No credential"
+     - If your GitHub repo is **private**: Add credential with GitHub username and Personal Access Token (with `read:packages` permission)
+6. Configure service:
    - **Name:** `price-monitor-worker`
    - **Region:** Choose closest to your users
-   - **Branch:** `main`
-   - **Runtime:** `Docker`
-   - **Docker Command:** (leave empty, uses Dockerfile CMD)
    - **Instance Type:** `Free` or `Starter` ($7/month recommended for better performance)
-6. Click **Create Web Service**
+7. Add environment variables (required):
+   - `DATABASE_URL` - Your Neon PostgreSQL connection string
+   - `REDIS_URL` - Your Upstash Redis URL (not localhost)
+   - `AI_PROVIDER` - e.g., `anthropic`
+   - `ANTHROPIC_API_KEY` - Your AI provider API key
+   - `ANTHROPIC_MODEL` - e.g., `claude-haiku-4-5`
+   - (Add other env vars as needed from your `.env`)
+8. Click **Create Background Worker**
 
 ### 3.2: Get Deploy Hook URL
 
@@ -277,10 +291,12 @@ git push origin main
 ### 4.4: Verify Render Deployment
 
 1. Go to Render dashboard
-2. Click on your `price-monitor-worker` service
+2. Click on your `price-monitor-worker` background worker
 3. Check **Events** tab for deployment progress
-4. Wait for deployment to complete (~5-10 minutes)
+4. Wait for deployment to complete (~2-5 minutes to pull image and start)
 5. Check **Logs** tab to verify worker started successfully
+
+**Note:** Render pulls the pre-built image from GHCR. The first deploy may take a few minutes to pull the image layers.
 
 ---
 
@@ -314,13 +330,15 @@ git push origin main
 
 1. GitHub Actions workflow triggers automatically
 2. New Docker image built and pushed to GHCR
-3. Render detects new image and redeploys
+3. Deploy hook triggers Render to pull the new image and redeploy
 4. Check Render logs to see your new log message
 
 **Expected timeline:**
 - GitHub Actions: ~5-10 minutes (build + push)
-- Render deploy: ~5-10 minutes (pull + deploy)
-- **Total:** ~10-20 minutes from push to deployed
+- Render deploy: ~2-5 minutes (pull + start)
+- **Total:** ~7-15 minutes from push to deployed
+
+**Important:** Render does NOT automatically detect new images with the `latest` tag. The deploy hook from GitHub Actions is what triggers Render to pull and deploy.
 
 ---
 
@@ -354,14 +372,33 @@ git push origin main
 - Using `${{ secrets.GITHUB_TOKEN }}` (automatically provided)
 - Repository visibility allows packages (public repos work by default)
 
+### Issue: "Error: failed to read dockerfile: open Dockerfile: no such file or directory"
+
+**Cause:** You created a Web Service instead of a Background Worker, or Render is trying to build from source instead of pulling from GHCR.
+
+**Solution:**
+1. Delete the current Render service
+2. Create a new **Background Worker** (not Web Service)
+3. Select **"Deploy an existing image from a registry"**
+4. Use image URL: `ghcr.io/<your-username>/<your-repo>/worker:latest`
+
 ### Issue: Render deploy hook returns 404
 
 **Cause:** Wrong deploy hook URL or service deleted.
 
 **Solution:**
-1. Go to Render service → Settings → Deploy Hook
-2. Generate a new deploy hook
+1. Go to Render service → Settings → Build & Deploy → Deploy Hook
+2. Click "Regenerate hook" to get a new URL
 3. Update GitHub secret `RENDER_DEPLOY_HOOK_URL`
+
+### Issue: Render says "Image not found" or authentication error
+
+**Cause:** GHCR image is private or wrong image URL.
+
+**Solution:**
+- Verify image URL format: `ghcr.io/<username>/<repo>/worker:latest`
+- Check GHCR package visibility (Settings → Packages → Change visibility)
+- For private images: Add registry credential in Render with GitHub PAT (Personal Access Token) with `read:packages` permission
 
 ### Issue: Workflow doesn't trigger on push
 
@@ -371,14 +408,15 @@ git push origin main
 - Check if modified files match paths in workflow trigger
 - Or remove `paths:` filter to trigger on any push to main
 
-### Issue: Docker build fails with "no space left on device"
+### Issue: Render deployed but worker not processing jobs
 
-**Cause:** GitHub Actions runner out of disk space.
+**Cause:** Missing environment variables or wrong configuration.
 
-**Solution:** This is rare. Try:
-- Clean up build with multi-stage Dockerfile
-- Remove unnecessary files in .dockerignore
-- Contact GitHub support if persistent
+**Solution:**
+1. Check Render logs for errors
+2. Verify all environment variables are set (especially `DATABASE_URL`, `REDIS_URL`)
+3. Ensure `REDIS_URL` uses Upstash URL, not `localhost:6379`
+4. Check that worker code is connecting to the correct queue name
 
 ---
 
@@ -388,12 +426,14 @@ Task 7.2 is complete when:
 
 - [ ] `.github/workflows/deploy-worker.yml` created
 - [ ] GitHub repository has workflow permissions enabled
+- [ ] Render Background Worker created (not Web Service)
+- [ ] Render configured to pull from GHCR image URL
 - [ ] Render deploy hook URL added to GitHub secrets
 - [ ] Workflow triggers on push to main
 - [ ] Docker image builds successfully
 - [ ] Image pushed to GHCR successfully
 - [ ] Image visible in GitHub Packages
-- [ ] Render service deploys automatically
+- [ ] Render worker deploys automatically via webhook
 - [ ] Worker starts and processes jobs in production
 - [ ] Test deployment works end-to-end
 - [ ] Logs show successful deployment
@@ -420,3 +460,7 @@ Task 7.2 is complete when:
 - Vercel deployment is separate and configured via Vercel dashboard (Phase 7.3)
 - First build may take longer due to Docker layer caching setup
 - Subsequent builds are faster with cached layers
+- **Architecture:** GitHub Actions builds the image → GHCR stores it → Render pulls and deploys it
+- Render does NOT auto-detect new images; the deploy hook from GitHub Actions triggers the pull and deploy
+- Background Workers are for long-running processes that consume from queues (like BullMQ)
+- Web Services are for HTTP servers that respond to requests (like Next.js API)
