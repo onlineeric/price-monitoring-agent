@@ -35,7 +35,13 @@
       "Bash(grep:*)",
       "Bash(pnpm --filter @price-monitor/db build:*)",
       "Bash(node --check:*)",
-      "WebFetch(domain:docs.bullmq.io)"
+      "WebFetch(domain:docs.bullmq.io)",
+      "Bash(pnpm build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)"
     ]
   }
 }

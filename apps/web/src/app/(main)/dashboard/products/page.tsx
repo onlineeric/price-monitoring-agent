@@ -1,5 +1,5 @@
 import { db, products, priceRecords } from '@price-monitor/db';
-import { eq, desc, gte } from 'drizzle-orm';
+import { eq, desc, gte, and } from 'drizzle-orm';
 import { subDays } from 'date-fns';
 
 import { ProductsView } from './_components/products-view';
@@ -28,19 +28,26 @@ async function getProductsWithStats() {
       const priceHistory = await db
         .select()
         .from(priceRecords)
-        .where(eq(priceRecords.productId, product.id))
-        .where(gte(priceRecords.scrapedAt, thirtyDaysAgo))
+        .where(and(
+          eq(priceRecords.productId, product.id),
+          gte(priceRecords.scrapedAt, thirtyDaysAgo)
+        ))
         .orderBy(priceRecords.scrapedAt);
 
       return {
         ...product,
+        name: product.name || 'Unnamed Product',
+        imageUrl: product.imageUrl || null,
+        active: product.active ?? true,
         currentPrice: latestPrice?.price || null,
         currency: latestPrice?.currency || 'USD',
         lastChecked: latestPrice?.scrapedAt || null,
-        priceHistory: priceHistory.map((record) => ({
-          date: record.scrapedAt,
-          price: record.price,
-        })),
+        priceHistory: priceHistory
+          .filter((record) => record.scrapedAt !== null)
+          .map((record) => ({
+            date: record.scrapedAt!,
+            price: record.price,
+          })),
       };
     })
   );

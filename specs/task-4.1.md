@@ -97,12 +97,12 @@ GOOGLE_GENERATIVE_AI_API_KEY="..."
 ANTHROPIC_API_KEY="sk-ant-..."
 
 # AI data models
-# OpenAI: "gpt-4o-mini", "gpt-5-mini", "gpt-5.2"
-# Anthropic: "claude-haiku-4-5", "claude-sonnet-4-5"
-# Google Gemini: "gemini-3-pro", "gemini-3-flash", "gemini-3-flash-preview"
+# OpenAI: "gpt-4o-mini", "gpt-5-mini", "gpt-5.1", "gpt-5.2"
+# Anthropic: "claude-3-5-haiku-20241022", "claude-3-haiku-20240307", "claude-haiku-4-5"
+# Google Gemini: "gemini-1.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview"
 OPENAI_MODEL="gpt-5-mini"
 ANTHROPIC_MODEL="claude-haiku-4-5"
-GOOGLE_MODEL="gemini-3-flash"
+GOOGLE_MODEL="gemini-2.5-flash"
 ```
 
 **Note:** You must set both the API key AND model name for the provider you're using. Check the provider's documentation for available model names.

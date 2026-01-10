@@ -1,6 +1,6 @@
 ---
 description: read specs documents from specs folder
-argument-hint: [additonal prompts]
+argument-hint: [additonal instructions]
 ---
 
 # Read Specs Documents
