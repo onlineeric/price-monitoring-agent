@@ -128,8 +128,11 @@ RUN pnpm --filter @price-monitor/db build || true
 # Set environment
 ENV NODE_ENV=production
 
-# Start worker using pnpm filter command
-CMD ["pnpm", "--filter", "@price-monitor/worker", "start"]
+# Change working directory to worker app
+WORKDIR /app/apps/worker
+
+# Start worker directly (tsx is hoisted to /app/node_modules)
+CMD ["../../node_modules/.bin/tsx", "src/index.ts"]
 ```
 
 ### File 1.2: `apps/worker/.dockerignore`
