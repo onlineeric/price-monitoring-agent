@@ -186,11 +186,11 @@ Add to the `scripts` section:
 
 **Instruction for AI:**
 
-Create docker-compose.yml for local full-stack development.
+Create docker-compose.yml for local database and worker testing.
 
 ### File 3.1: `docker-compose.yml` (in repository root)
 
-**Goal:** Run complete stack locally: web, worker, redis, postgres.
+**Goal:** Run worker, Redis, and PostgreSQL locally for development. Web app runs separately with `pnpm dev` (not in Docker).
 
 **Requirements:**
 
@@ -244,128 +244,19 @@ services:
       - redis
     restart: unless-stopped
 
-  # Next.js web application
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    environment:
-      # Database
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricemonitor
-      # Redis
-      REDIS_URL: redis://redis:6379
-    ports:
-      - "3000:3000"
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
-
 volumes:
   postgres_data:
 ```
 
 ---
 
-## Step 4: Create Web Dockerfile (AI Generation Step)
-
-**Instruction for AI:**
-
-Create Dockerfile for Next.js web application (for docker-compose).
-
-### File 4.1: `apps/web/Dockerfile`
-
-**Goal:** Create Docker image for Next.js app.
-
-**Requirements:**
-
-```dockerfile
-FROM node:20-alpine AS base
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Dependencies stage
-FROM base AS deps
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/db/package.json ./packages/db/
-COPY apps/web/package.json ./apps/web/
-
-RUN pnpm install --frozen-lockfile
-
-# Builder stage
-FROM base AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-
-COPY packages/db ./packages/db
-COPY apps/web ./apps/web
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# Build db package
-RUN cd packages/db && pnpm build || true
-
-# Build Next.js
-RUN cd apps/web && pnpm build
-
-# Runner stage
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/packages/db ./packages/db
-COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=builder /app/package.json ./package.json
-
-USER nextjs
-
-EXPOSE 3000
-
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["pnpm", "--filter", "@price-monitor/web", "start"]
-```
-
-### File 4.2: `apps/web/.dockerignore`
-
-**Goal:** Exclude files from web Docker build.
-
-**Requirements:**
-
-```
-node_modules
-.next
-.env
-.env.*
-*.log
-.DS_Store
-.git
-.gitignore
-README.md
-```
-
----
-
-## Step 5: Create Environment Template (AI Generation Step)
+## Step 4: Create Environment Template (AI Generation Step)
 
 **Instruction for AI:**
 
 Create .env.example template for docker-compose.
 
-### File 5.1: `.env.example` (in repository root)
+### File 4.1: `.env.example` (in repository root)
 
 **Goal:** Template for environment variables needed by docker-compose.
 
@@ -405,11 +296,11 @@ ALERT_EMAIL=""
 
 ---
 
-## Step 6: Local Testing Guide (Manual Step)
+## Step 5: Local Testing Guide (Manual Step)
 
 **User Action:**
 
-### 6.1: Copy Environment Template
+### 5.1: Copy Environment Template
 
 ```powershell
 # Copy .env.example to .env and fill in your API keys
@@ -419,7 +310,7 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-### 6.2: Start Full Stack
+### 5.2: Start Full Stack
 
 **Step 1: Docker Compose CLI (PowerShell)**
 
@@ -441,7 +332,7 @@ This will start:
 - Worker (background process)
 - Web app on http://localhost:3000
 
-### 6.3: Initialize Database
+### 5.3: Initialize Database
 
 **Option 1: Docker Compose CLI (PowerShell)**
 
@@ -474,7 +365,7 @@ cd packages/db
 pnpm push
 ```
 
-### 6.4: Verify Services
+### 5.4: Verify Services
 
 **Check logs:**
 
@@ -507,7 +398,7 @@ docker-compose logs -f web
 2. Worker should automatically pick up job
 3. Check logs for scraping activity
 
-### 6.5: Stop Services
+### 5.5: Stop Services
 
 **Option 1: Docker Compose CLI (PowerShell)**
 
@@ -532,7 +423,7 @@ docker-compose down -v
 
 ---
 
-## Step 7: Build Worker Image for Production (Manual Step)
+## Step 6: Build Worker Image for Production (Manual Step)
 
 **User Action:**
 
@@ -583,9 +474,6 @@ docker run --rm `
 ├── docker-compose.yml           # NEW: Local development stack
 ├── .env.example                 # NEW: Environment template
 ├── apps/
-│   ├── web/
-│   │   ├── Dockerfile          # NEW: Web app Docker image
-│   │   └── .dockerignore       # NEW: Web ignore file
 │   └── worker/
 │       ├── Dockerfile          # NEW: Worker Docker image
 │       ├── .dockerignore       # NEW: Worker ignore file
@@ -629,16 +517,14 @@ Task 7.1 is complete when:
 - [ ] `apps/worker/Dockerfile` created with Playwright base image
 - [ ] `apps/worker/.dockerignore` created
 - [ ] `apps/worker/package.json` has `start` script
-- [ ] `apps/web/Dockerfile` created for Next.js
-- [ ] `apps/web/.dockerignore` created
-- [ ] `docker-compose.yml` created with all services
+- [ ] `docker-compose.yml` created with worker, Redis, and PostgreSQL
 - [ ] `.env.example` template created
 - [ ] Can run `docker-compose up` successfully
-- [ ] Web app accessible at http://localhost:3000
 - [ ] Worker processes jobs from queue
 - [ ] Database migrations run successfully
+- [ ] Can run web app locally with `pnpm dev`
 - [ ] Can build worker image for production
-- [ ] All services communicate correctly
+- [ ] All services (worker, DB, Redis) communicate correctly
 
 ---
 
@@ -647,6 +533,7 @@ Task 7.1 is complete when:
 - Docker Compose is for **local development only**
 - Production uses: Vercel (web), Render (worker), Neon (DB), Upstash (Redis)
 - The worker Dockerfile will be used by GitHub Actions in Phase 7.2
-- Next.js Dockerfile is only for local docker-compose (Vercel deploys directly)
+- Web app runs locally with `pnpm dev` (not in Docker)
+- Web app deploys to Vercel without Docker (Vercel auto-deploys from GitHub)
 - Playwright base image includes Chromium, Firefox, WebKit (we only use Chromium)
 - Image size ~1-2GB due to Playwright browsers (acceptable for Render)

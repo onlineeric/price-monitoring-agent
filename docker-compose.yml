@@ -45,10 +45,9 @@ services:
       - redis
     restart: unless-stopped
 
-  # Note: For local development, run web app directly with:
+  # Note: For local development, run web app directly in another terminal:
   #   pnpm --filter @price-monitor/web dev
-  # This is faster and avoids Docker pnpm workspace issues.
-  # Web Dockerfile is only needed for production (but we deploy to Vercel which doesn't use it).
+  # This is faster and simpler than Docker. Web app will connect to this local Redis/Postgres.
 
 volumes:
   postgres_data:
