@@ -1,15 +1,20 @@
 # Price Monitoring Agent - Architecture Changes
 
 ## Document overview
-This document provides an overview of the architecture changes for our Price Monitor AI Agent, from the old architecture to the new architecture.
+This document provides an overview of the architecture changes for our Price Monitor AI Agent (implementation 2), from the old architecture to the new architecture.
 
 **Cautions:** This document is an overview document. Do NOT put technical details in this document.
 
 ## Quick Links
-- [Architecture Old](specs\implementation-2\architecture-old.md) - overview of the old architecture
+- [Architecture Old](specs\implementation-2\architecture-old.md) - overview of the old architecture (implementation 1)
 - [Task Overview](specs\implementation-2\task-overview.md) - overview of the implementation change tasks, don't put technical details in this document.
-- **Detailed task specifications**: multiple files named `specs/implementation-2/task-X.md` files, where X = Task number
-    - Example: `task-01.md` = Task 1, `task-03.md` = Task 3
+- **Detailed task specifications**: multiple files named `specs/implementation-2/task-X.Y.md` files
+    - Example: `task-1.1.md` = Phase 1, Task 1; `task-2.5.md` = Phase 2, Task 5
+
+## Implementation Plan for Implementation 2
+- We are using **Spec-Driven Development** (Write Spec → Generate Code → Review & Refine) to implement the project.  
+- Spec documents are the source of truth for the implementation.  
+- For any updates to the implementation plan, update the spec documents first.
 
 ---
 

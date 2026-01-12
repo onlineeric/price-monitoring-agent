@@ -8,8 +8,8 @@ This document provides an overview of the OLD architecture of our Price Monitor 
 ## Quick Links
 - [Architecture Change Plan](specs\implementation-2\architecture-change.md) - overview of the architecture change plan
 - [Task Overview](specs\implementation-2\task-overview.md) - overview of the implementation change tasks, don't put technical details in this document.
-- **Detailed task specifications**: multiple files named `specs/implementation-2/task-X.md` files, where X = Task number
-    - Example: `task-01.md` = Task 1, `task-03.md` = Task 3
+- **Detailed task specifications**: multiple files named `specs/implementation-2/task-X.Y.md` files
+    - Example: `task-1.1.md` = Phase 1, Task 1; `task-2.5.md` = Phase 2, Task 5
 
 ## Tech Stack
 
