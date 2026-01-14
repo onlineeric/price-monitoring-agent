@@ -37,13 +37,14 @@ SSH into the VM and run the official Coolify installation script. The installati
 
 **Success Criteria:**
 - Coolify installed successfully on VM
-- Coolify dashboard accessible at `http://<vm-ip>:8000`
+- Coolify dashboard accessible via hostname `http://coolify-local.mshome.net:8000` (Stable) or IP address
 - Admin account created
 - Initial setup completed
 
 **How to Verify:**
 - Open browser on host machine
-- Navigate to `http://<vm-ip>:8000`
+- **Primary Method:** Navigate to `http://coolify-local.mshome.net:8000` (Recommended for Hyper-V as IP changes after reboot)
+- **Fallback Method:** If hostname fails, run `multipass info coolify-local` to get the current IP, then navigate to `http://<vm-ip>:8000`
 - Should see Coolify login page
 - Can log in with created admin credentials
 - Dashboard shows "Welcome" or project overview page

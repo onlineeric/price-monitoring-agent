@@ -31,9 +31,10 @@ This PostgreSQL instance will replace the Neon cloud database for local developm
 
 Use Coolify dashboard to create a new PostgreSQL database. Configure the database name, username, password, and ensure port 5432 is exposed. Enable persistent volume for data durability. Once created, generate and document the connection string for use in `.env` configuration.
 
-**Connection String Format:**
+### Connection String Format
+NOTE: Use the Coolify hostname `coolify-local.mshome.net` instead of the VM IP, which `coolify-local` is the Multipass VM name.
 ```
-postgresql://postgres:<password>@<vm-ip>:5432/priceMonitor
+postgresql://postgres:<password>@coolify-local.mshome.net:5432/priceMonitor
 ```
 
 ---
