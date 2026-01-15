@@ -20,6 +20,12 @@ Create a production-ready Dockerfile for the Next.js web application that:
 
 The web app (`apps/web`) is a Next.js 16 application that needs to be containerized for deployment via Coolify. Currently, there is no Dockerfile for the web app (only the worker has one).
 
+**IMPORTANT: Build Process**
+- GitHub Actions builds this Dockerfile and pushes the image to GHCR
+- Coolify ONLY pulls pre-built images from GHCR (never builds locally)
+- The VPS never compiles code - all builds happen in GitHub Actions
+- This "build once, deploy anywhere" approach conserves VPS resources
+
 **Next.js Standalone Mode:**
 Next.js can build a standalone output that includes only necessary files, significantly reducing image size.
 

@@ -30,6 +30,12 @@ pnpm redeploy:local
 - Shows deployment status in terminal
 - Much faster workflow
 
+**IMPORTANT: What "Redeploy" Means**
+- Coolify pulls the latest image from GHCR (`:dev` or `:latest` tag)
+- Restarts the container with the new image
+- Coolify does NOT rebuild the image on the VPS
+- All image building happens in GitHub Actions
+
 ---
 
 ## Technical Specifications

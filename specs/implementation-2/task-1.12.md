@@ -21,6 +21,12 @@ The worker already has a Dockerfile from Implementation 1 (created in Phase 7.1)
 - Update if needed for new deployment approach
 - Confirm it works with GHCR workflow
 
+**IMPORTANT: Deployment Flow**
+- GitHub Actions builds this Dockerfile and pushes the image to GHCR
+- Coolify pulls the pre-built image from GHCR (does NOT build locally)
+- The VPS never compiles code - all image building happens in GitHub Actions
+- This "build once, deploy anywhere" approach ensures consistency across environments
+
 ---
 
 ## Review Checklist
