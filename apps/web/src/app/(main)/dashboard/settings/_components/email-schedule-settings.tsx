@@ -231,8 +231,8 @@ export function EmailScheduleSettings() {
             {/* Info Alert */}
             <Alert>
               <AlertDescription>
-                The digest will be sent on or after the selected time, typically within 30 minutes
-                (depending on the cron schedule).
+                The digest will be sent at the selected time. Changes take effect within 5 minutes
+                (the worker polls for schedule updates every 5 minutes).
               </AlertDescription>
             </Alert>
 

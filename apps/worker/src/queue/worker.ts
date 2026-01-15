@@ -10,6 +10,8 @@ async function processJob(job: Job) {
       return await priceCheckJob(job);
 
     case 'send-digest':
+    case 'send-digest-scheduled':
+      // Both manual and scheduled digest jobs use the same handler
       return await sendDigestJob(job);
 
     case 'send-digest-flow':

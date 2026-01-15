@@ -11,7 +11,8 @@
       "Skill(create-pr)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:docs.bullmq.io)"
+      "WebFetch(domain:docs.bullmq.io)",
+      "Bash(git commit:*)"
     ]
   }
 }
