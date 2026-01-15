@@ -16,13 +16,9 @@ Generate a GitHub Personal Access Token (classic) with package permissions to al
 
 Coolify needs authentication to pull private Docker images from GHCR. The PAT provides:
 - Read access to pull images
-- Write access (for GitHub Actions to push images)
-- Delete access (for cleanup if needed)
 
 **Required Scopes:**
 - `write:packages`
-- `read:packages`
-- `delete:packages`
 
 ---
 
@@ -37,7 +33,7 @@ Navigate to GitHub Settings → Developer settings → Personal access tokens �
 ## Expected Results
 
 **Success Criteria:**
-- PAT created with correct scopes (write:packages, read:packages, delete:packages)
+- PAT created with correct scopes (read:packages)
 - Token copied and stored securely
 - Token documented for use in task 1.10
 
