@@ -4,6 +4,7 @@
 
 export function setClientCookie(key: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  // biome-ignore lint/suspicious/noDocumentCookie: Using traditional cookie API for wide browser support
   document.cookie = `${key}=${value}; expires=${expires}; path=/`;
 }
 
@@ -15,5 +16,6 @@ export function getClientCookie(key: string) {
 }
 
 export function deleteClientCookie(key: string) {
+  // biome-ignore lint/suspicious/noDocumentCookie: Using traditional cookie API for wide browser support
   document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
 }

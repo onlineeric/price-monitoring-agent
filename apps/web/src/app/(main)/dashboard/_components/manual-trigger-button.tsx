@@ -41,7 +41,7 @@ export function ManualTriggerButton() {
       });
 
       // Handle non-JSON responses (e.g., HTML error pages from proxies/gateways)
-      let data: any;
+      let data: { success?: boolean; error?: string } | undefined;
       try {
         data = await response.json();
       } catch (_parseError) {

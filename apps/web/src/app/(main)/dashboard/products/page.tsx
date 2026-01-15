@@ -37,9 +37,9 @@ async function getProductsWithStats() {
         currency: latestPrice?.currency || "USD",
         lastChecked: latestPrice?.scrapedAt || null,
         priceHistory: priceHistory
-          .filter((record) => record.scrapedAt !== null)
+          .filter((record): record is typeof record & { scrapedAt: Date } => record.scrapedAt !== null)
           .map((record) => ({
-            date: record.scrapedAt!,
+            date: record.scrapedAt,
             price: record.price,
           })),
       };
