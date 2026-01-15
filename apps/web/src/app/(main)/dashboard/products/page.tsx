@@ -1,16 +1,13 @@
-import { db, products, priceRecords } from '@price-monitor/db';
-import { eq, desc, gte, and } from 'drizzle-orm';
-import { subDays } from 'date-fns';
+import { db, priceRecords, products } from "@price-monitor/db";
+import { subDays } from "date-fns";
+import { and, desc, eq, gte } from "drizzle-orm";
 
-import { ProductsView } from './_components/products-view';
-import { AddProductButton } from './_components/add-product-button';
+import { AddProductButton } from "./_components/add-product-button";
+import { ProductsView } from "./_components/products-view";
 
 async function getProductsWithStats() {
   // Get all products
-  const allProducts = await db
-    .select()
-    .from(products)
-    .orderBy(desc(products.createdAt));
+  const allProducts = await db.select().from(products).orderBy(desc(products.createdAt));
 
   // For each product, get current price and price history (last 30 days)
   const productsWithStats = await Promise.all(
@@ -28,19 +25,16 @@ async function getProductsWithStats() {
       const priceHistory = await db
         .select()
         .from(priceRecords)
-        .where(and(
-          eq(priceRecords.productId, product.id),
-          gte(priceRecords.scrapedAt, thirtyDaysAgo)
-        ))
+        .where(and(eq(priceRecords.productId, product.id), gte(priceRecords.scrapedAt, thirtyDaysAgo)))
         .orderBy(priceRecords.scrapedAt);
 
       return {
         ...product,
-        name: product.name || 'Unnamed Product',
+        name: product.name || "Unnamed Product",
         imageUrl: product.imageUrl || null,
         active: product.active ?? true,
         currentPrice: latestPrice?.price || null,
-        currency: latestPrice?.currency || 'USD',
+        currency: latestPrice?.currency || "USD",
         lastChecked: latestPrice?.scrapedAt || null,
         priceHistory: priceHistory
           .filter((record) => record.scrapedAt !== null)
@@ -49,7 +43,7 @@ async function getProductsWithStats() {
             price: record.price,
           })),
       };
-    })
+    }),
   );
 
   return productsWithStats;
@@ -63,9 +57,9 @@ export default async function ProductsPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Products</h1>
+          <h1 className="font-bold text-3xl">Products</h1>
           <p className="text-muted-foreground">
-            Manage your {products.length} monitored product{products.length !== 1 ? 's' : ''}
+            Manage your {products.length} monitored product{products.length !== 1 ? "s" : ""}
           </p>
         </div>
         <AddProductButton />

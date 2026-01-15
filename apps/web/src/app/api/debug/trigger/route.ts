@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { priceQueue } from "@/lib/queue";
 
 /**
@@ -17,17 +18,11 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "Invalid JSON in request body" }, { status: 400 });
   }
 
   if (!body.url) {
-    return NextResponse.json(
-      { success: false, error: "URL is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "URL is required" }, { status: 400 });
   }
 
   try {
@@ -42,10 +37,7 @@ export async function POST(request: Request) {
       url: body.url,
       message: "Job enqueued - worker will lookup/create product automatically",
     });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: "Queue service unavailable" },
-      { status: 503 }
-    );
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: "Queue service unavailable" }, { status: 503 });
   }
 }

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 interface MiniPriceChartProps {
   data: Array<{
@@ -27,22 +27,14 @@ export function MiniPriceChart({ data }: MiniPriceChartProps) {
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor={isUpTrend ? '#ef4444' : '#10b981'}
-                stopOpacity={0.3}
-              />
-              <stop
-                offset="95%"
-                stopColor={isUpTrend ? '#ef4444' : '#10b981'}
-                stopOpacity={0}
-              />
+              <stop offset="5%" stopColor={isUpTrend ? "#ef4444" : "#10b981"} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={isUpTrend ? "#ef4444" : "#10b981"} stopOpacity={0} />
             </linearGradient>
           </defs>
           <Area
             type="monotone"
             dataKey="price"
-            stroke={isUpTrend ? '#ef4444' : '#10b981'}
+            stroke={isUpTrend ? "#ef4444" : "#10b981"}
             strokeWidth={2}
             fill="url(#priceGradient)"
             isAnimationActive={false}

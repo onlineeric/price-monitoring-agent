@@ -1,23 +1,26 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { useState } from "react";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import Image from "next/image";
+
+import { formatDistanceToNow } from "date-fns";
+import { MoreVertical, Pencil, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { EditProductDialog } from './edit-product-dialog';
-import { DeleteProductDialog } from './delete-product-dialog';
-import { MiniPriceChart } from './mini-price-chart';
-import type { ProductWithStats } from './products-view';
+} from "@/components/ui/dropdown-menu";
+
+import { DeleteProductDialog } from "./delete-product-dialog";
+import { EditProductDialog } from "./edit-product-dialog";
+import { MiniPriceChart } from "./mini-price-chart";
+import type { ProductWithStats } from "./products-view";
 
 interface ProductCardViewProps {
   products: ProductWithStats[];
@@ -30,8 +33,8 @@ export function ProductCardView({ products }: ProductCardViewProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const formatPrice = (cents: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
       currency: currency,
     }).format(cents / 100);
   };
@@ -54,17 +57,17 @@ export function ProductCardView({ products }: ProductCardViewProps) {
             <Card key={product.id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <CardTitle className="line-clamp-2 text-lg">
-                      {product.name || 'Detecting Product Name...'}
+                      {product.name || "Detecting Product Name..."}
                     </CardTitle>
-                    <CardDescription className="line-clamp-1 text-xs mt-1">
+                    <CardDescription className="mt-1 line-clamp-1 text-xs">
                       {new URL(product.url).hostname}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant={product.active ? 'default' : 'secondary'} className="text-xs">
-                      {product.active ? 'Active' : 'Inactive'}
+                    <Badge variant={product.active ? "default" : "secondary"} className="text-xs">
+                      {product.active ? "Active" : "Inactive"}
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -79,7 +82,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                             setIsEditDialogOpen(true);
                           }}
                         >
-                          <Pencil className="size-4 mr-2" />
+                          <Pencil className="mr-2 size-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -89,7 +92,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           }}
                           className="text-destructive"
                         >
-                          <Trash2 className="size-4 mr-2" />
+                          <Trash2 className="mr-2 size-4" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -102,28 +105,20 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                 {/* Product Image */}
                 {product.imageUrl ? (
                   <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
+                    <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
                   </div>
                 ) : (
-                  <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No image</p>
+                  <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-muted">
+                    <p className="text-muted-foreground text-sm">No image</p>
                   </div>
                 )}
 
                 {/* Price Information */}
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Current Price</p>
-                    <p className="text-2xl font-bold tabular-nums">
-                      {product.currentPrice !== null
-                        ? formatPrice(product.currentPrice, product.currency)
-                        : 'N/A'}
+                    <p className="text-muted-foreground text-xs">Current Price</p>
+                    <p className="font-bold text-2xl tabular-nums">
+                      {product.currentPrice !== null ? formatPrice(product.currentPrice, product.currency) : "N/A"}
                     </p>
                   </div>
                   {priceChange !== null && (
@@ -133,12 +128,8 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                       ) : (
                         <TrendingDown className="size-4 text-green-500" />
                       )}
-                      <span
-                        className={`text-sm font-medium ${
-                          priceChange > 0 ? 'text-red-500' : 'text-green-500'
-                        }`}
-                      >
-                        {priceChange > 0 ? '+' : ''}
+                      <span className={`font-medium text-sm ${priceChange > 0 ? "text-red-500" : "text-green-500"}`}>
+                        {priceChange > 0 ? "+" : ""}
                         {priceChange.toFixed(1)}%
                       </span>
                     </div>
@@ -146,16 +137,14 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                 </div>
 
                 {/* Mini Chart */}
-                {product.priceHistory.length > 0 && (
-                  <MiniPriceChart data={product.priceHistory} />
-                )}
+                {product.priceHistory.length > 0 && <MiniPriceChart data={product.priceHistory} />}
               </CardContent>
 
-              <CardFooter className="text-xs text-muted-foreground border-t pt-3">
-                Last checked:{' '}
+              <CardFooter className="border-t pt-3 text-muted-foreground text-xs">
+                Last checked:{" "}
                 {product.lastChecked
                   ? formatDistanceToNow(new Date(product.lastChecked), { addSuffix: true })
-                  : 'Never'}
+                  : "Never"}
               </CardFooter>
             </Card>
           );

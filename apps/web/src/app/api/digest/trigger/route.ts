@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { priceQueue } from '@/lib/queue';
+import { NextResponse } from "next/server";
+
+import { priceQueue } from "@/lib/queue";
 
 // Note: Authentication intentionally removed in this phase.
 // Proper authentication will be added app-wide in a future phase.
@@ -7,23 +8,20 @@ import { priceQueue } from '@/lib/queue';
 export async function POST() {
   try {
     // Enqueue digest job
-    const job = await priceQueue.add('send-digest', {
-      triggeredBy: 'manual',
+    const job = await priceQueue.add("send-digest", {
+      triggeredBy: "manual",
       triggeredAt: new Date().toISOString(),
     });
 
-    console.log('[API] Digest job enqueued:', job.id);
+    console.log("[API] Digest job enqueued:", job.id);
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Digest email process started',
+      message: "Digest email process started",
     });
   } catch (error) {
-    console.error('[API] Error triggering digest:', error);
-    return NextResponse.json(
-      { error: 'Failed to trigger digest' },
-      { status: 500 }
-    );
+    console.error("[API] Error triggering digest:", error);
+    return NextResponse.json({ error: "Failed to trigger digest" }, { status: 500 });
   }
 }

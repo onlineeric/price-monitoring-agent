@@ -18,7 +18,7 @@ const globalForQueue = globalThis as unknown as GlobalWithQueue;
 function getPriceQueue(): Queue {
   // Validate required environment variables (only at runtime)
   if (!process.env.REDIS_URL) {
-    throw new Error('REDIS_URL environment variable is required');
+    throw new Error("REDIS_URL environment variable is required");
   }
 
   // Return cached instance if it exists
@@ -46,6 +46,6 @@ export const priceQueue = new Proxy({} as Queue, {
   get(_target, prop) {
     const queue = getPriceQueue();
     const value = queue[prop as keyof Queue];
-    return typeof value === 'function' ? value.bind(queue) : value;
+    return typeof value === "function" ? value.bind(queue) : value;
   },
 });

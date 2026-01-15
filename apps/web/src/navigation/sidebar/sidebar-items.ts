@@ -1,9 +1,4 @@
-import {
-  LayoutDashboard,
-  type LucideIcon,
-  Package,
-  Settings,
-} from "lucide-react";
+import { LayoutDashboard, type LucideIcon, Package, Settings } from "lucide-react";
 
 export interface NavSubItem {
   title: string;

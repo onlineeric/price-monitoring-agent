@@ -1,10 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { AddProductDialog } from './add-product-dialog';
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
+import { AddProductDialog } from "./add-product-dialog";
 
 export function AddProductButton() {
   const [open, setOpen] = useState(false);

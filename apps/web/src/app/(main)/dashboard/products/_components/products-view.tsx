@@ -1,11 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { LayoutGrid, Table } from 'lucide-react';
+import { useEffect, useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { ProductCardView } from './product-card-view';
-import { ProductTableView } from './product-table-view';
+import { LayoutGrid, Table } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
+import { ProductCardView } from "./product-card-view";
+import { ProductTableView } from "./product-table-view";
 
 export type ProductWithStats = {
   id: string;
@@ -26,19 +28,19 @@ export type ProductWithStats = {
   }>;
 };
 
-type ViewMode = 'card' | 'table';
+type ViewMode = "card" | "table";
 
 interface ProductsViewProps {
   products: ProductWithStats[];
 }
 
 export function ProductsView({ products }: ProductsViewProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
 
   // Load preference from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('products-view-mode');
-    if (saved === 'card' || saved === 'table') {
+    const saved = localStorage.getItem("products-view-mode");
+    if (saved === "card" || saved === "table") {
       setViewMode(saved);
     }
   }, []);
@@ -46,7 +48,7 @@ export function ProductsView({ products }: ProductsViewProps) {
   // Save preference to localStorage
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
-    localStorage.setItem('products-view-mode', mode);
+    localStorage.setItem("products-view-mode", mode);
   };
 
   return (
@@ -54,18 +56,18 @@ export function ProductsView({ products }: ProductsViewProps) {
       {/* View Toggle */}
       <div className="flex items-center justify-end gap-2">
         <Button
-          variant={viewMode === 'card' ? 'default' : 'outline'}
+          variant={viewMode === "card" ? "default" : "outline"}
           size="sm"
-          onClick={() => handleViewChange('card')}
+          onClick={() => handleViewChange("card")}
           className="gap-2"
         >
           <LayoutGrid className="size-4" />
           Card View
         </Button>
         <Button
-          variant={viewMode === 'table' ? 'default' : 'outline'}
+          variant={viewMode === "table" ? "default" : "outline"}
           size="sm"
-          onClick={() => handleViewChange('table')}
+          onClick={() => handleViewChange("table")}
           className="gap-2"
         >
           <Table className="size-4" />
@@ -76,11 +78,11 @@ export function ProductsView({ products }: ProductsViewProps) {
       {/* Render appropriate view */}
       {products.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="mb-4 text-muted-foreground">
             No products yet. Add your first product to start monitoring prices.
           </p>
         </div>
-      ) : viewMode === 'card' ? (
+      ) : viewMode === "card" ? (
         <ProductCardView products={products} />
       ) : (
         <ProductTableView products={products} />

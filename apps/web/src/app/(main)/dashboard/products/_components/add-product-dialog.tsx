@@ -1,11 +1,13 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { toast } from 'sonner';
+import { useRouter } from "next/navigation";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,29 +15,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
-  url: z
-    .string()
-    .min(1, 'URL is required')
-    .url('Must be a valid URL'),
+  url: z.string().min(1, "URL is required").url("Must be a valid URL"),
   name: z
     .string()
     .optional()
     .transform((val) => {
-      if (!val || val.trim() === '') return undefined;
+      if (!val || val.trim() === "") return undefined;
       return val.trim();
     }),
 });
@@ -53,17 +43,17 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      url: '',
-      name: '',
+      url: "",
+      name: "",
     },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
-      const response = await fetch('/api/products', {
-        method: 'POST',
+      const response = await fetch("/api/products", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           url: data.url,
@@ -74,19 +64,19 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to add product');
+        throw new Error(result.error || "Failed to add product");
       }
 
-      toast.success('Product added successfully!', {
-        description: 'The product has been added to your monitoring list.',
+      toast.success("Product added successfully!", {
+        description: "The product has been added to your monitoring list.",
       });
 
       form.reset();
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      toast.error('Failed to add product', {
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      toast.error("Failed to add product", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   };
@@ -110,14 +100,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                 <FormItem>
                   <FormLabel>Product URL *</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="https://example.com/product"
-                      {...field}
-                    />
+                    <Input placeholder="https://example.com/product" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    The URL of the product page you want to monitor.
-                  </FormDescription>
+                  <FormDescription>The URL of the product page you want to monitor.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -130,14 +115,10 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                 <FormItem>
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Leave empty to auto-detect"
-                      {...field}
-                    />
+                    <Input placeholder="Leave empty to auto-detect" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Optional. If not provided, the name will be auto-detected or set to
-                    "Detecting Product Name...".
+                    Optional. If not provided, the name will be auto-detected or set to "Detecting Product Name...".
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -145,18 +126,11 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
             />
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-              >
-                {form.formState.isSubmitting ? 'Adding...' : 'Add Product'}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Adding..." : "Add Product"}
               </Button>
             </DialogFooter>
           </form>

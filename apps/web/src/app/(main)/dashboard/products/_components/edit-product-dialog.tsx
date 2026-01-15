@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { toast } from 'sonner';
-import Image from 'next/image';
+import { useEffect } from "react";
 
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -15,23 +18,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import type { ProductWithStats } from './products-view';
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+
+import type { ProductWithStats } from "./products-view";
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, "Name is required"),
   active: z.boolean(),
 });
 
@@ -43,17 +38,13 @@ interface EditProductDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function EditProductDialog({
-  product,
-  open,
-  onOpenChange,
-}: EditProductDialogProps) {
+export function EditProductDialog({ product, open, onOpenChange }: EditProductDialogProps) {
   const router = useRouter();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: product.name || '',
+      name: product.name || "",
       active: product.active,
     },
   });
@@ -61,7 +52,7 @@ export function EditProductDialog({
   // Reset form when product changes
   useEffect(() => {
     form.reset({
-      name: product.name || '',
+      name: product.name || "",
       active: product.active,
     });
   }, [product, form]);
@@ -69,9 +60,9 @@ export function EditProductDialog({
   const onSubmit = async (data: FormData) => {
     try {
       const response = await fetch(`/api/products/${product.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
@@ -79,18 +70,18 @@ export function EditProductDialog({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update product');
+        throw new Error(result.error || "Failed to update product");
       }
 
-      toast.success('Product updated successfully!', {
-        description: 'Your changes have been saved.',
+      toast.success("Product updated successfully!", {
+        description: "Your changes have been saved.",
       });
 
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      toast.error('Failed to update product', {
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      toast.error("Failed to update product", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   };
@@ -100,31 +91,23 @@ export function EditProductDialog({
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
-          <DialogDescription>
-            Update product details. URL cannot be changed.
-          </DialogDescription>
+          <DialogDescription>Update product details. URL cannot be changed.</DialogDescription>
         </DialogHeader>
 
         {/* Product Preview */}
-        <div className="flex items-center gap-3 rounded-lg border p-3 bg-muted/50">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
           {product.imageUrl ? (
-            <div className="relative size-16 overflow-hidden rounded-md bg-muted flex-shrink-0">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+            <div className="relative size-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+              <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
             </div>
           ) : (
-            <div className="size-16 overflow-hidden rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-              <span className="text-xs text-muted-foreground">No img</span>
+            <div className="flex size-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+              <span className="text-muted-foreground text-xs">No img</span>
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">{product.name || 'Detecting Product Name...'}</p>
-            <p className="text-xs text-muted-foreground truncate">{product.url}</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium text-sm">{product.name || "Detecting Product Name..."}</p>
+            <p className="truncate text-muted-foreground text-xs">{product.url}</p>
           </div>
         </div>
 
@@ -151,33 +134,21 @@ export function EditProductDialog({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Active</FormLabel>
-                    <FormDescription>
-                      Enable or disable price monitoring for this product.
-                    </FormDescription>
+                    <FormDescription>Enable or disable price monitoring for this product.</FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
             />
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-              >
-                {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

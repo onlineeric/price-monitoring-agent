@@ -1,8 +1,10 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { useState } from "react";
+
+import { useRouter } from "next/navigation";
+
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -13,8 +15,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import type { ProductWithStats } from './products-view';
+} from "@/components/ui/alert-dialog";
+
+import type { ProductWithStats } from "./products-view";
 
 interface DeleteProductDialogProps {
   product: ProductWithStats;
@@ -22,11 +25,7 @@ interface DeleteProductDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function DeleteProductDialog({
-  product,
-  open,
-  onOpenChange,
-}: DeleteProductDialogProps) {
+export function DeleteProductDialog({ product, open, onOpenChange }: DeleteProductDialogProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -35,24 +34,24 @@ export function DeleteProductDialog({
 
     try {
       const response = await fetch(`/api/products/${product.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete product');
+        throw new Error(result.error || "Failed to delete product");
       }
 
-      toast.success('Product deleted successfully', {
-        description: 'The product and all its price records have been removed.',
+      toast.success("Product deleted successfully", {
+        description: "The product and all its price records have been removed.",
       });
 
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      toast.error('Failed to delete product', {
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      toast.error("Failed to delete product", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
       setIsDeleting(false);
@@ -65,7 +64,7 @@ export function DeleteProductDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete <strong>{product.name || 'Detecting Product Name...'}</strong> and all its
+            This will permanently delete <strong>{product.name || "Detecting Product Name..."}</strong> and all its
             price records. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -76,7 +75,7 @@ export function DeleteProductDialog({
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? 'Deleting...' : 'Delete Product'}
+            {isDeleting ? "Deleting..." : "Delete Product"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,39 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { emailScheduleSchema, type EmailScheduleInput } from '@/lib/validations/settings';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type EmailScheduleInput, emailScheduleSchema } from "@/lib/validations/settings";
 
 // Helper function to safely get day name
 function getDayName(dayOfWeek: number | undefined): string {
   const dayNames: Record<number, string> = {
-    1: 'Monday',
-    2: 'Tuesday',
-    3: 'Wednesday',
-    4: 'Thursday',
-    5: 'Friday',
-    6: 'Saturday',
-    7: 'Sunday',
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+    7: "Sunday",
   };
-  return dayNames[dayOfWeek ?? 1] ?? 'Monday';
+  return dayNames[dayOfWeek ?? 1] ?? "Monday";
 }
 
 export function EmailScheduleSettings() {
@@ -43,17 +36,17 @@ export function EmailScheduleSettings() {
   const form = useForm<EmailScheduleInput>({
     resolver: zodResolver(emailScheduleSchema),
     defaultValues: {
-      frequency: 'daily',
+      frequency: "daily",
       hour: 9,
     },
   });
 
-  const frequency = form.watch('frequency');
+  const frequency = form.watch("frequency");
 
   // Clear dayOfWeek when switching to daily frequency
   useEffect(() => {
-    if (frequency === 'daily') {
-      form.setValue('dayOfWeek', undefined);
+    if (frequency === "daily") {
+      form.setValue("dayOfWeek", undefined);
     }
   }, [frequency, form]);
 
@@ -61,7 +54,7 @@ export function EmailScheduleSettings() {
   useEffect(() => {
     async function loadSchedule() {
       try {
-        const response = await fetch('/api/settings/email-schedule');
+        const response = await fetch("/api/settings/email-schedule");
         const data = await response.json();
 
         if (data.success && data.schedule) {
@@ -69,8 +62,8 @@ export function EmailScheduleSettings() {
           form.reset(data.schedule);
         }
       } catch (error) {
-        console.error('Failed to load schedule:', error);
-        toast.error('Failed to load current schedule');
+        console.error("Failed to load schedule:", error);
+        toast.error("Failed to load current schedule");
       } finally {
         setIsLoadingInitial(false);
       }
@@ -78,14 +71,14 @@ export function EmailScheduleSettings() {
 
     loadSchedule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form.reset]);
 
   const onSubmit = async (data: EmailScheduleInput) => {
     try {
-      const response = await fetch('/api/settings/email-schedule', {
-        method: 'POST',
+      const response = await fetch("/api/settings/email-schedule", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
@@ -93,16 +86,16 @@ export function EmailScheduleSettings() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update schedule');
+        throw new Error(result.error || "Failed to update schedule");
       }
 
       setCurrentSchedule(data);
-      toast.success('Schedule updated successfully!', {
-        description: 'Your email digest schedule has been saved.',
+      toast.success("Schedule updated successfully!", {
+        description: "Your email digest schedule has been saved.",
       });
     } catch (error) {
-      toast.error('Failed to update schedule', {
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      toast.error("Failed to update schedule", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
       });
     }
   };
@@ -121,9 +114,7 @@ export function EmailScheduleSettings() {
     <Card>
       <CardHeader>
         <CardTitle>Email Digest Schedule</CardTitle>
-        <CardDescription>
-          Configure when you want to receive automated price digest emails.
-        </CardDescription>
+        <CardDescription>Configure when you want to receive automated price digest emails.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -136,20 +127,16 @@ export function EmailScheduleSettings() {
                 <FormItem>
                   <FormLabel>Frequency</FormLabel>
                   <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex flex-col space-y-2"
-                    >
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-col space-y-2">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="daily" id="daily" />
-                        <label htmlFor="daily" className="text-sm font-normal cursor-pointer">
+                        <label htmlFor="daily" className="cursor-pointer font-normal text-sm">
                           Daily - Send digest every day
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="weekly" id="weekly" />
-                        <label htmlFor="weekly" className="text-sm font-normal cursor-pointer">
+                        <label htmlFor="weekly" className="cursor-pointer font-normal text-sm">
                           Weekly - Send digest once a week
                         </label>
                       </div>
@@ -161,17 +148,14 @@ export function EmailScheduleSettings() {
             />
 
             {/* Day of Week Selection (only for weekly) */}
-            {frequency === 'weekly' && (
+            {frequency === "weekly" && (
               <FormField
                 control={form.control}
                 name="dayOfWeek"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Day of Week</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(Number(value))}
-                      value={field.value?.toString()}
-                    >
+                    <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a day" />
@@ -187,9 +171,7 @@ export function EmailScheduleSettings() {
                         <SelectItem value="7">Sunday</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      The day of the week to send the digest.
-                    </FormDescription>
+                    <FormDescription>The day of the week to send the digest.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -203,10 +185,7 @@ export function EmailScheduleSettings() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Time (Hour)</FormLabel>
-                  <Select
-                    onValueChange={(value) => field.onChange(Number(value))}
-                    value={field.value.toString()}
-                  >
+                  <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value.toString()}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -215,14 +194,12 @@ export function EmailScheduleSettings() {
                     <SelectContent className="max-h-[300px]">
                       {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                         <SelectItem key={hour} value={hour.toString()}>
-                          {hour.toString().padStart(2, '0')}:00
+                          {hour.toString().padStart(2, "0")}:00
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    The hour of the day to send the digest (24-hour format).
-                  </FormDescription>
+                  <FormDescription>The hour of the day to send the digest (24-hour format).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -231,24 +208,20 @@ export function EmailScheduleSettings() {
             {/* Info Alert */}
             <Alert>
               <AlertDescription>
-                The digest will be sent at the selected time. Changes take effect within 5 minutes
-                (the worker polls for schedule updates every 5 minutes).
+                The digest will be sent at the selected time. Changes take effect within 5 minutes (the worker polls for
+                schedule updates every 5 minutes).
               </AlertDescription>
             </Alert>
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={form.formState.isSubmitting}
-              size="lg"
-            >
+            <Button type="submit" disabled={form.formState.isSubmitting} size="lg">
               {form.formState.isSubmitting ? (
                 <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 size-4 animate-spin" />
                   Saving...
                 </>
               ) : (
-                'Save Schedule'
+                "Save Schedule"
               )}
             </Button>
           </form>
@@ -256,17 +229,15 @@ export function EmailScheduleSettings() {
 
         {/* Current Schedule Display */}
         {currentSchedule && (
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-medium mb-2">Current Schedule</h3>
-            <p className="text-sm text-muted-foreground">
-              {currentSchedule.frequency === 'daily' ? (
-                <>
-                  Daily at {currentSchedule.hour.toString().padStart(2, '0')}:00
-                </>
+          <div className="mt-6 border-t pt-6">
+            <h3 className="mb-2 font-medium text-sm">Current Schedule</h3>
+            <p className="text-muted-foreground text-sm">
+              {currentSchedule.frequency === "daily" ? (
+                <>Daily at {currentSchedule.hour.toString().padStart(2, "0")}:00</>
               ) : (
                 <>
-                  Weekly on {getDayName(currentSchedule.dayOfWeek)} at{' '}
-                  {currentSchedule.hour.toString().padStart(2, '0')}:00
+                  Weekly on {getDayName(currentSchedule.dayOfWeek)} at{" "}
+                  {currentSchedule.hour.toString().padStart(2, "0")}:00
                 </>
               )}
             </p>
