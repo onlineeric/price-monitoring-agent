@@ -45,9 +45,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Trim and convert empty strings to undefined
+      // Trim and convert empty strings to null (standardized representation)
       const trimmedName = data.name?.trim();
-      const productName = trimmedName && trimmedName !== "" ? trimmedName : undefined;
+      const productName = trimmedName && trimmedName !== "" ? trimmedName : null;
 
       const response = await fetch("/api/products", {
         method: "POST",
@@ -56,7 +56,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
         },
         body: JSON.stringify({
           url: data.url,
-          name: productName, // undefined if empty - worker will extract title
+          name: productName, // null if empty - worker will extract title
         }),
       });
 

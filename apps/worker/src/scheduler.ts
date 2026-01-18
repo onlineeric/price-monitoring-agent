@@ -102,10 +102,14 @@ export class DigestScheduler {
       }
 
       // Check if schedule has changed
+      // Explicitly handle undefined vs missing property for dayOfWeek
+      const currentDayOfWeek = this.currentSchedule?.dayOfWeek ?? null;
+      const newDayOfWeek = scheduleSettings.dayOfWeek ?? null;
+
       const hasChanged = !this.currentSchedule ||
         this.currentSchedule.frequency !== scheduleSettings.frequency ||
         this.currentSchedule.hour !== scheduleSettings.hour ||
-        this.currentSchedule.dayOfWeek !== scheduleSettings.dayOfWeek;
+        currentDayOfWeek !== newDayOfWeek;
 
       if (!hasChanged) {
         // Schedule hasn't changed, no action needed
