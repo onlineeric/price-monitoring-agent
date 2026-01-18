@@ -34,7 +34,6 @@ export function EmailScheduleSettings() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
   const form = useForm<EmailScheduleInput>({
-    // @ts-expect-error - Zod v3.23.8 type compatibility issue with @hookform/resolvers
     resolver: zodResolver(emailScheduleSchema),
     defaultValues: {
       frequency: "daily",
