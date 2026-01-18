@@ -57,12 +57,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product
+    // Normalize name: convert empty string/undefined/null to null explicitly
     // If no name provided, leave it null - worker will extract title from URL
+    const normalizedName = name && typeof name === "string" && name.trim() !== "" ? name.trim() : null;
+
     const [newProduct] = await db
       .insert(products)
       .values({
         url,
-        name: name || null,
+        name: normalizedName,
         active: true,
       })
       .returning();
@@ -76,9 +79,8 @@ export async function POST(request: NextRequest) {
     } catch (queueError) {
       console.error("[API] Failed to enqueue price check job:", queueError);
 
-      // Rollback: delete the product since we can't monitor it
-      await db.delete(products).where(eq(products.id, newProduct.id));
-
+      // Don't delete the product - it exists in DB and user can retry or manually delete
+      // Deleting here creates a race condition with the worker
       return NextResponse.json(
         {
           success: false,

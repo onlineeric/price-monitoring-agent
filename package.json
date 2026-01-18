@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "redeploy:local": "node scripts/redeploy-local.js"
+    "redeploy:local": "node scripts/redeploy-local.js",
+    "lint": "pnpm --filter @price-monitor/web lint"
   },
   "keywords": [],
   "author": "",

@@ -42,6 +42,7 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
   const router = useRouter();
 
   const form = useForm<FormData>({
+    // @ts-expect-error - Zod v3.23.8 type compatibility issue with @hookform/resolvers
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: product.name || "",

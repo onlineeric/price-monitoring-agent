@@ -58,7 +58,7 @@ export function ManualTriggerButton() {
         });
       } else {
         toast.error("Failed to trigger digest", {
-          description: data.error || "Unknown error occurred",
+          description: data?.error || "Unknown error occurred",
         });
       }
     } catch (error) {

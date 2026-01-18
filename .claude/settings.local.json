@@ -12,7 +12,10 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:docs.bullmq.io)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr comment:*)"
     ]
   }
 }

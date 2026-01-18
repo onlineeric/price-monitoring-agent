@@ -88,9 +88,10 @@ async function calculateTrendDataForProduct(
     const startDate = subDays(now, period.days);
 
     // Filter records in-memory (already fetched)
-    const periodRecords = allRecords.filter(
-      (r) => r.scrapedAt >= startDate
-    );
+    const periodRecords = allRecords.filter((r) => {
+      if (r.scrapedAt === null) return false;
+      return r.scrapedAt >= startDate;
+    });
 
     const prices = periodRecords.map((r) => r.price);
     const avg = calculateAverage(prices);

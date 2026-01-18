@@ -102,10 +102,14 @@ export class DigestScheduler {
       }
 
       // Check if schedule has changed
+      // Explicitly handle undefined vs missing property for dayOfWeek
+      const currentDayOfWeek = this.currentSchedule?.dayOfWeek ?? null;
+      const newDayOfWeek = scheduleSettings.dayOfWeek ?? null;
+
       const hasChanged = !this.currentSchedule ||
         this.currentSchedule.frequency !== scheduleSettings.frequency ||
         this.currentSchedule.hour !== scheduleSettings.hour ||
-        this.currentSchedule.dayOfWeek !== scheduleSettings.dayOfWeek;
+        currentDayOfWeek !== newDayOfWeek;
 
       if (!hasChanged) {
         // Schedule hasn't changed, no action needed
@@ -165,7 +169,11 @@ export class DigestScheduler {
       const hour = Number.parseInt(hourSetting[0].value);
       const dayOfWeek = dayOfWeekSetting[0] ? Number.parseInt(dayOfWeekSetting[0].value) : undefined;
 
-      return { frequency, hour, dayOfWeek };
+      // Conditionally include dayOfWeek to satisfy exactOptionalPropertyTypes
+      if (dayOfWeek !== undefined) {
+        return { frequency, hour, dayOfWeek };
+      }
+      return { frequency, hour };
     } catch (error) {
       console.error('❌ Error fetching schedule settings:', error);
       return null;

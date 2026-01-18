@@ -63,11 +63,21 @@ export function cronPatternToDescription(cronPattern: string): string {
 
   const [minute, hour, , , dayOfWeek] = parts;
 
+  // Ensure hour and minute are defined
+  if (!hour || !minute) {
+    return cronPattern;
+  }
+
   const hourStr = hour.padStart(2, '0');
   const minuteStr = minute.padStart(2, '0');
 
   if (dayOfWeek === '*') {
     return `Daily at ${hourStr}:${minuteStr}`;
+  }
+
+  // Ensure dayOfWeek is defined for weekly schedules
+  if (!dayOfWeek) {
+    return `Weekly at ${hourStr}:${minuteStr}`;
   }
 
   const dayNames: Record<string, string> = {
