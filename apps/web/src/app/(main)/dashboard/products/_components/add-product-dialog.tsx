@@ -21,13 +21,7 @@ import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
   url: z.string().min(1, "URL is required").url("Must be a valid URL"),
-  name: z
-    .string()
-    .optional()
-    .transform((val) => {
-      if (!val || val.trim() === "") return undefined;
-      return val.trim();
-    }),
+  name: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -41,6 +35,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
   const router = useRouter();
 
   const form = useForm<FormData>({
+    // @ts-expect-error - Zod v3.23.8 type compatibility issue with @hookform/resolvers
     resolver: zodResolver(formSchema),
     defaultValues: {
       url: "",
@@ -50,6 +45,10 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
 
   const onSubmit = async (data: FormData) => {
     try {
+      // Trim and convert empty strings to undefined
+      const trimmedName = data.name?.trim();
+      const productName = trimmedName && trimmedName !== "" ? trimmedName : undefined;
+
       const response = await fetch("/api/products", {
         method: "POST",
         headers: {
@@ -57,7 +56,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
         },
         body: JSON.stringify({
           url: data.url,
-          name: data.name, // undefined if empty - worker will extract title
+          name: productName, // undefined if empty - worker will extract title
         }),
       });
 

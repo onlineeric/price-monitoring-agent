@@ -6,7 +6,7 @@ import { GripVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-function DragHandle({ id }: { id: number }) {
+function DragHandle({ id }: { id: string | number }) {
   const { attributes, listeners } = useSortable({
     id,
   });

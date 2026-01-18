@@ -165,7 +165,11 @@ export class DigestScheduler {
       const hour = Number.parseInt(hourSetting[0].value);
       const dayOfWeek = dayOfWeekSetting[0] ? Number.parseInt(dayOfWeekSetting[0].value) : undefined;
 
-      return { frequency, hour, dayOfWeek };
+      // Conditionally include dayOfWeek to satisfy exactOptionalPropertyTypes
+      if (dayOfWeek !== undefined) {
+        return { frequency, hour, dayOfWeek };
+      }
+      return { frequency, hour };
     } catch (error) {
       console.error('❌ Error fetching schedule settings:', error);
       return null;

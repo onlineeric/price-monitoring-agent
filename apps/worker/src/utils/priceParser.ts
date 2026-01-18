@@ -41,8 +41,9 @@ export function parsePrice(
 
   // Also check for currency codes like "USD", "EUR" etc.
   const codeMatch = cleaned.match(/\b(USD|EUR|GBP|JPY|INR|AUD|CAD)\b/i);
-  if (codeMatch) {
-    currency = codeMatch[1].toUpperCase();
+  const currencyCode = codeMatch?.[1];
+  if (currencyCode) {
+    currency = currencyCode.toUpperCase();
   }
 
   // Extract numeric value
