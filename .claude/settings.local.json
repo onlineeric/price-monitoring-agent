@@ -1,21 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git *)",
-      "Bash(pnpm *)",
-      "Bash(node *)",
-      "Bash(gh *)",
-      "Bash(docker-compose *)",
       "Skill(tc)",
       "Skill(code-review)",
       "Skill(create-pr)",
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:docs.bullmq.io)",
-      "Bash(git commit:*)",
       "Bash(gh pr create:*)",
       "Bash(gh api:*)",
-      "Bash(gh pr comment:*)"
+      "Bash(gh pr comment:*)",
+      "Bash(git diff:*)",
+      "Bash(git grep:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)"
     ]
   }
 }

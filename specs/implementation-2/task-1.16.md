@@ -171,44 +171,28 @@ Same as containerized deployment, but using production Coolify instance on Digit
 
 #### B. Development Workflow Section
 
-Update with new workflow:
+Update with new sequential workflow:
 
 ```markdown
 ## Development Workflow
 
-### Option 1: Local Code + VM Services (Recommended for development)
+### Environment 1: Local Development
+We first do fast iteration with hot reload:
+1. Ensure local VM services running (PostgreSQL, Redis in Coolify)
+2. Update `.env` with VM IP: `DATABASE_URL="postgresql://...@<VM_IP>:5432/..."`
+3. Run: `pnpm --filter @price-monitor/web dev` and `pnpm --filter @price-monitor/worker dev`
 
-**Use Case:** Fast iteration with hot reload
+### Environment 2: Test Containerized Locally
+When merge into `dev` branch and ready for local deployment testing:
+1. Push to `dev` branch → GitHub Actions builds `:dev` images
+2. Run `pnpm redeploy:local` to deploy to local Coolify
+3. Test at `http://<vm-ip>:8000` to verify the deployment
 
-1. Ensure VM services running (PostgreSQL, Redis)
-2. Update `.env` with VM connection strings
-3. Run apps locally:
-   ```bash
-   pnpm --filter @price-monitor/web dev      # Port 3000
-   pnpm --filter @price-monitor/worker dev   # Background
-   ```
-4. Code changes auto-reload
-
-### Option 2: Full Containerized (Recommended for testing)
-
-**Use Case:** Test deployment before production
-
-1. Push code to `dev` branch
-2. GitHub Actions builds `:dev` images
-3. Redeploy on local Coolify:
-   ```bash
-   pnpm redeploy:local
-   ```
-4. Test containerized apps
-
-### Option 3: Production Deployment
-
-**Use Case:** Deploy to production
-
-1. Merge `dev` to `main`
-2. GitHub Actions builds `:latest` images
-3. Automatic deployment to production Coolify
-4. Monitor logs and verify
+### Environment 3: Production Deployment
+1. Create PR from `dev` to `main` or merge `dev` into `main`
+2. GitHub Actions auto-builds `:latest` images
+3. Coolify webhooks trigger production auto-deployment on DigitalOcean
+4. Production auto-deploys on DigitalOcean
 ```
 
 #### C. Commands Section

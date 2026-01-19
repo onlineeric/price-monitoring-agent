@@ -212,17 +212,17 @@ Developer → GitHub (code)
 
 ### Environments
 
-**Local Development:**
+**Environment 1: Local Development**
 - Code runs on host machine (`pnpm dev`)
 - Connects to services in Multipass VM
 - Fast iteration with hot reload
 
-**Local Staging:**
+**Environment 2: Test Containerized Locally**
 - Full containerized deployment in Multipass VM
 - Tests deployment process before production
 - Uses `:dev` images from GHCR
 
-**Production:**
+**Environment 3: Production Deployment**
 - DigitalOcean Droplet in Sydney region
 - Automatic deployment on `main` branch merge
 - Uses `:latest` images from GHCR

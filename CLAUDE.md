@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Price Monitor AI Agent - a system that monitors product prices from URLs, stores price history, and sends digest emails with trend analysis. Uses traditional web extraction with AI fallback for complex pages.
+Price Monitor AI Agent - monitors product prices from URLs, stores price history, and sends digest emails with trend analysis. Uses 2-tier extraction: HTML parsing → Playwright + AI fallback.
 
 **Implementation Status:** Implementation 2 (Self-hosted Micro-PaaS)
+**Spec-Driven Development:** See `specs/implementation-2/` for task specs
 
 ## Tech Stack
 
@@ -63,53 +64,34 @@ scripts/     # Utility scripts (redeploy-local, etc.)
 
 ## Commands
 
-### Root (pnpm workspaces)
+### Development
 ```bash
-pnpm install              # Install all dependencies
+pnpm install                                  # Install all dependencies
+pnpm --filter @price-monitor/web dev          # Next.js dev server (port 3000)
+pnpm --filter @price-monitor/worker dev       # Worker with hot reload
+pnpm --filter @price-monitor/web build        # Production build
+pnpm lint                                     # Lint (uses Biome)
 ```
 
-### Web App (apps/web)
+### Database (Drizzle ORM)
 ```bash
-pnpm --filter @price-monitor/web dev      # Start Next.js dev server (local)
-pnpm --filter @price-monitor/web build    # Production build
-pnpm --filter @price-monitor/web lint     # Run ESLint
+pnpm --filter @price-monitor/db generate      # Generate migrations
+pnpm --filter @price-monitor/db push          # Push schema to DB
+pnpm --filter @price-monitor/db studio        # Open Drizzle Studio
 ```
 
-### Worker (apps/worker)
+### Local VM (Multipass)
 ```bash
-pnpm --filter @price-monitor/worker dev   # Run worker with hot reload (local)
+multipass list                                # List VMs
+multipass info coolify-local                  # Get VM IP and details
+multipass shell coolify-local                 # SSH into VM
+multipass start/stop coolify-local            # Start/stop VM
 ```
 
-### Database (packages/db)
+### Deployment
 ```bash
-pnpm --filter @price-monitor/db generate  # Generate Drizzle migrations
-pnpm --filter @price-monitor/db push      # Push schema to database
-pnpm --filter @price-monitor/db studio    # Open Drizzle Studio
-```
-
-### Local VM Management
-```bash
-multipass list                            # List all VMs
-multipass info coolify-local              # Get VM details (IP, resources)
-multipass shell coolify-local             # SSH into VM
-multipass stop coolify-local              # Stop VM
-multipass start coolify-local             # Start VM
-```
-
-### Local Deployment
-```bash
-pnpm redeploy:local                       # Trigger redeploy on local Coolify
-```
-
-### Docker (Local Testing)
-```bash
-# Build images locally
-docker build -f apps/web/Dockerfile -t web:test .
-docker build -f apps/worker/Dockerfile -t worker:test .
-
-# Run containers locally
-docker run -p 3000:3000 --env-file .env web:test
-docker run --env-file .env worker:test
+pnpm redeploy:local                           # Redeploy to local Coolify
+# Production: Merge to main → Auto-deploy via GitHub Actions
 ```
 
 ---
@@ -173,357 +155,159 @@ Production environment (DigitalOcean):
 
 ## Development Workflow
 
-### Option 1: Local Code + VM Services (Recommended for development)
+### Environment 1: Local Development
+We first do fast iteration with hot reload:
+1. Ensure local VM services running (PostgreSQL, Redis in Coolify)
+2. Update `.env` with VM IP: `DATABASE_URL="postgresql://...@<VM_IP>:5432/..."`
+3. Run: `pnpm --filter @price-monitor/web dev` and `pnpm --filter @price-monitor/worker dev`
 
-**Use Case:** Fast iteration with hot reload
+### Environment 2: Test Containerized Locally
+When merge into `dev` branch and ready for local deployment testing:
+1. Push to `dev` branch → GitHub Actions builds `:dev` images
+2. Run `pnpm redeploy:local` to deploy to local Coolify
+3. Test at `http://<vm-ip>:8000` to verify the deployment
 
-1. Ensure VM services running (PostgreSQL, Redis)
-2. Update `.env` with VM connection strings
-3. Run apps locally:
-   ```bash
-   pnpm --filter @price-monitor/web dev      # Port 3000
-   pnpm --filter @price-monitor/worker dev   # Background
-   ```
-4. Code changes auto-reload
-
-### Option 2: Full Containerized (Recommended for testing)
-
-**Use Case:** Test deployment before production
-
-1. Push code to `dev` branch
-2. GitHub Actions builds `:dev` images
-3. Redeploy on local Coolify:
-   ```bash
-   pnpm redeploy:local
-   ```
-4. Test containerized apps
-
-### Option 3: Production Deployment
-
-**Use Case:** Deploy to production
-
-1. Develop and test on `dev` branch with local VM
-2. Create PR from `dev` to `main`
-3. Review and merge PR
-4. GitHub Actions automatically:
-   - Builds `:latest` images
-   - Pushes to GHCR
-   - Triggers Coolify webhooks
-   - Coolify pulls and redeploys
-5. Monitor production logs and verify
+### Environment 3: Production Deployment
+1. Create PR from `dev` to `main` or merge `dev` into `main`
+2. GitHub Actions auto-builds `:latest` images
+3. Coolify webhooks trigger production auto-deployment on DigitalOcean
+4. Production auto-deploys on DigitalOcean
 
 ---
 
-## Architecture (Implementation 2)
+## Architecture
 
-### Infrastructure
-
+### Infrastructure Stack
 | Component | Local VM | Production |
 |-----------|----------|------------|
-| **Orchestration** | Coolify on Multipass VM | Coolify on DigitalOcean |
-| **PostgreSQL** | Container on VM | Container on Droplet |
-| **Redis** | Container on VM | Container on Droplet |
-| **Web App** | Container from GHCR `:dev` | Container from GHCR `:latest` |
-| **Worker** | Container from GHCR `:dev` | Container from GHCR `:latest` |
-| **CICD** | GitHub Actions → GHCR | GitHub Actions → GHCR → Coolify |
+| **Orchestration** | Coolify (Multipass) | Coolify (DigitalOcean Sydney) |
+| **PostgreSQL/Redis** | Containers on VM | Containers on Droplet |
+| **Web/Worker** | GHCR `:dev` images | GHCR `:latest` images |
+| **CICD** | Manual/CLI redeploy | Auto-deploy on `main` merge |
 
-### API Endpoints
-
-**POST /api/debug/trigger**
-- Enqueues a price check job by URL
-- Body: `{ url: string }`
-- Returns: `{ success: boolean, jobId: string }`
-
-**Manual Digest** (via UI button)
-- Triggers digest email for all active products
-- No direct API endpoint (handled via UI action)
-
-**Settings API** (for email schedule configuration)
-- Managed through dashboard settings page
+### Key Endpoints
+- `POST /api/debug/trigger` - Enqueue price check: `{ url: string }`
+- Manual digest triggered via dashboard UI button
+- Settings managed through dashboard (email schedule, etc.)
 
 ---
 
-## Job Flow
+## Job Flow (BullMQ Queue)
 
-### A. Manual Price Check (Single Product)
-1. User sends URL to debug endpoint: `POST /api/debug/trigger`
-2. API enqueues a `check-price` job to BullMQ
-3. Worker extracts price using 2-tier fallback pipeline
-4. Worker saves price record to database
+**Manual Price Check:** API → `check-price` job → Worker extracts → Save to DB
 
-### B. Manual Digest (All Products + Email)
-1. User clicks "Check All & Send Email" button on dashboard
-2. API enqueues a `send-digest` job to BullMQ
-3. Worker creates parent-child job flow
-4. Child jobs: one `check-price` job per active product
-5. Worker waits for all jobs, calculates trends, sends digest email
+**Manual Digest:** UI button → `send-digest` job → Worker spawns child `check-price` jobs → Calculates trends → Sends email
 
-### C. Scheduled Digest (Automated)
-1. Worker reads email schedule settings from database on startup
-2. Worker registers BullMQ Repeatable Job with cron pattern
-3. BullMQ automatically triggers `send-digest` job on schedule
-4. Worker processes job (same as manual digest)
-5. Worker polls database every 5 minutes for schedule changes
+**Scheduled Digest:** Worker reads schedule from DB on startup → Registers BullMQ Repeatable Job → Auto-triggers on cron → Polls DB every 5 mins for schedule updates
 
 ---
 
-## Scheduling Architecture
+## Scheduling (Implementation 2 Change)
 
-**Old (Implementation 1):**
-```
-Vercel Cron (every 30 mins)
-    ↓
-GET /api/cron/check-all
-    ↓
-API checks schedule settings
-    ↓
-Enqueues jobs to BullMQ
-```
+**Old:** Vercel Cron → `/api/cron/check-all` endpoint → Enqueue jobs
+**New:** Worker-managed BullMQ Repeatable Jobs (reads from DB, polls every 5 mins)
 
-**New (Implementation 2):**
-```
-Worker starts
-    ↓
-Reads email schedule settings from PostgreSQL
-    ↓
-Registers BullMQ Repeatable Job with cron pattern
-    ↓
-BullMQ automatically triggers jobs on schedule
-    ↓
-(Settings change in UI → Worker polls → Updates repeatable job)
-```
-
-**Benefits:**
-- No external cron dependency
-- Worker is always running (no cold start)
-- Schedule changes take effect within 5 minutes
-- Single scheduler-enabled worker prevents duplicate jobs
+**Benefits:** No external cron, no cold starts, scheduler controlled by `ENABLE_SCHEDULER=true` env var (set on ONE worker only)
 
 ---
 
 ## Extraction Pipeline (2-Tier Fallback)
 
-The worker implements a tiered extraction strategy with graceful fallbacks:
+**Tier 1: HTML Fetcher** (~100-500ms, free)
+- Native fetch + Cheerio + selector-based extraction
 
-**Tier 1: HTML Fetcher** (fastest, ~100-500ms)
-- Native fetch + Cheerio for static HTML
-- Selector-based extraction (title, price, image)
-- Multiple fallback selectors for common e-commerce patterns
-- Speed: ~100-500ms | Cost: Free
+**Tier 2: Playwright + AI** (~3-6s, $0.001-0.01)
+- Chromium with stealth mode (playwright-extra + puppeteer-extra-plugin-stealth)
+- Bypasses ~70-80% bot detection, singleton browser instance
+- Tries selectors on rendered HTML first
+- Falls back to AI (Vercel AI SDK) with Zod validation if selectors fail
+- Supports OpenAI, Google, Anthropic (configurable via `AI_PROVIDER`)
 
-**Tier 2: Playwright Fetcher** (robust + smart path)
-- **Step 1**: Load page with Chromium (stealth mode)
-  - playwright-extra + stealth plugin
-  - Bypasses ~70-80% of bot detection
-  - DOM stability detection (waits for dynamic content)
-  - Singleton browser instance for efficiency
-- **Step 2**: Try selector-based extraction
-  - Same selectors as Tier 1, but on fully-rendered HTML
-- **Step 3**: If selectors fail → AI with rendered HTML
-  - Vercel AI SDK with multi-provider support (OpenAI, Google, Anthropic)
-  - Structured output with Zod schema validation
-  - HTML preprocessing: truncation, noise removal, semantic extraction
-  - Returns price (in cents), title, currency
-  - Speed: ~3-6s total | Cost: ~$0.001-0.01 per AI call
-
-**Debug Mode**: Set `FORCE_AI_EXTRACTION=true` to bypass HTML fetcher and test AI directly
+**Debug:** `FORCE_AI_EXTRACTION=true` to skip Tier 1
 
 ---
 
-## Data Model
+## Data Model (Drizzle ORM)
 
-- **products**: URL (unique, natural key), name, imageUrl, active flag, last success/failure timestamps
-- **priceRecords**: productId (FK cascade delete), price (in cents), currency, scrapedAt
-- **settings**: Key-value store for global configuration (email schedule, etc.)
-- **runLogs**: Status and error tracking for debugging
+- **products**: URL (unique key), name, imageUrl, active, last success/failure timestamps
+- **priceRecords**: productId (FK cascade), price (cents), currency, scrapedAt
+- **settings**: Key-value store (email schedule)
+- **runLogs**: Job status/error tracking
 
-Products are auto-created on first price check using URL as the natural key. All prices stored in cents to avoid floating-point precision issues.
+**Important:** Products auto-created on first check using URL as natural key (`ON CONFLICT DO NOTHING`). Prices in cents to avoid floating-point issues.
 
 ---
 
 ## Key Implementation Details
 
-### Product Auto-Creation
-Products are automatically created when a price check job is submitted with a URL. The system uses URL as a natural key with `ON CONFLICT DO NOTHING` to ensure idempotent upserts.
-
 ### Worker Architecture
-- **Singleton Browser**: Playwright browser instance is reused across jobs for efficiency
-- **Graceful Shutdown**: Worker handles SIGTERM/SIGINT with proper cleanup
-- **Hot Reload**: Development mode uses tsx watch for automatic restarts
-- **Stealth Mode**: Uses playwright-extra + puppeteer-extra-plugin-stealth to bypass bot detection
-- **Scheduler**: BullMQ Repeatable Jobs managed by worker (single instance with ENABLE_SCHEDULER=true)
+- **Singleton Browser**: Playwright instance reused across jobs
+- **Graceful Shutdown**: SIGTERM/SIGINT cleanup
+- **Hot Reload**: `tsx watch` in dev mode
+- **Scheduler**: Only ONE worker with `ENABLE_SCHEDULER=true`
 
-### Price Parsing
-The `priceParser` utility handles multiple formats:
-- Multi-currency support (USD, EUR, GBP, JPY, etc.)
-- European vs US number formats (€1.234,56 vs $1,234.56)
-- Automatic currency symbol detection
-- Relative-to-absolute URL conversion for images
+### Price Parser
+Multi-currency support (USD, EUR, GBP, JPY), handles European vs US formats (€1.234,56 vs $1,234.56)
 
-### Queue Configuration
-- Queue name: `price-monitor-queue`
-- Job data: `{ url: string }` or legacy `{ productId: string }`
-- Redis connection shared between web (producer) and worker (consumer)
+### Queue Config
+Queue: `price-monitor-queue`, Job data: `{ url: string }`, Redis shared between web/worker
 
 ---
 
 ## Production Deployment
 
-### Infrastructure
+**Platform:** DigitalOcean Droplet (Sydney), Coolify orchestration, GHCR `:latest` images
 
-**Platform:** DigitalOcean Droplet (Sydney region)
-**Orchestration:** Coolify (self-hosted)
-**Containers:** Pulled from GHCR (`:latest` tag)
+**Auto-Deploy:** Merge to `main` → GitHub Actions builds → Triggers Coolify webhooks → Redeploys
 
-### Deployment Process
-
-**Automatic Deployment (Recommended):**
-1. Develop and test on `dev` branch with local VM
-2. Create PR from `dev` to `main`
-3. Review and merge PR
-4. GitHub Actions automatically:
-   - Builds `:latest` images
-   - Pushes to GHCR
-   - Triggers Coolify webhooks
-   - Coolify pulls and redeploys
-
-**Manual Deployment (if needed):**
-1. Access production Coolify: `http://<droplet-ip>:8000`
-2. Navigate to application
-3. Click "Redeploy"
-
-### Environment Configuration
-
-Production apps environment variables set in Coolify dashboard:
-
+**Environment (Coolify dashboard):**
 ```env
-# Database (Coolify internal DNS)
-DATABASE_URL="postgresql://postgres:<password>@price-monitor-postgres-prod:5432/priceMonitor"
-
-# Redis (Coolify internal DNS)
+DATABASE_URL="postgresql://postgres:...@price-monitor-postgres-prod:5432/priceMonitor"  # Internal DNS
 REDIS_URL="redis://price-monitor-redis-prod:6379"
-
-# AI Provider
 AI_PROVIDER="anthropic"
-ANTHROPIC_API_KEY="<your-key>"
-ANTHROPIC_MODEL="claude-haiku-4-5"
-
-# Email
-RESEND_API_KEY="<your-key>"
-
-# Worker Scheduler (IMPORTANT: Only ONE worker should have this)
-ENABLE_SCHEDULER="true"
-
-# Environment
+ANTHROPIC_API_KEY="..."
+RESEND_API_KEY="..."
+ENABLE_SCHEDULER="true"  # ONLY on ONE worker
 NODE_ENV="production"
 ```
 
-See `docs/production-env.md` for complete environment variable documentation.
-
-### Production vs Local Differences
-
-| Aspect | Local VM | Production |
-|--------|----------|------------|
-| **Location** | Multipass VM on dev machine | DigitalOcean Droplet (Sydney) |
-| **Access** | `http://<vm-ip>:8000` | `http://<droplet-ip>:8000` |
-| **Database URLs** | VM IP-based | Coolify internal DNS |
-| **Deployment** | Manual trigger or CLI script | Automatic on `main` merge |
-| **Images** | `:dev` tag | `:latest` tag |
-| **SSL** | No (HTTP only) | Optional (can add domain + SSL) |
-| **Cost** | Free (local resources) | ~$24/month |
+**Local vs Production:**
+- Local: VM IP-based URLs, `:dev` tags, manual redeploy
+- Production: Coolify internal DNS, `:latest` tags, auto-deploy on merge
 
 ---
 
 ## Troubleshooting
 
-### Local VM Issues
+### Local VM
+- **VM won't start:** `multipass start coolify-local`
+- **Can't access Coolify:** Get IP with `multipass info coolify-local`, access `http://<vm-ip>:8000`
+- **DB connection failed:** Check containers in Coolify, verify `.env` URLs, test with `pnpm --filter @price-monitor/db push`
 
-**VM won't start:**
-```bash
-multipass list  # Check VM status
-multipass start coolify-local
-```
+### Production
+- **Deployment failed:** Check GitHub Actions logs → Coolify logs → env vars
+- **App won't start:** Check Coolify logs, verify env vars, check DB connectivity, verify `:latest` tag
+- **Worker not processing:** Check worker logs, verify Redis connection, check `ENABLE_SCHEDULER`
+- **Scheduled emails not sending:** Verify `ENABLE_SCHEDULER=true`, check worker logs for "Scheduler started", verify RESEND_API_KEY
 
-**Can't access Coolify dashboard:**
-- Verify VM IP: `multipass info coolify-local`
-- Check firewall: VM should allow port 8000
-- Try: `http://<vm-ip>:8000`
-
-**Database connection failed:**
-- Verify containers running in Coolify
-- Check connection string in `.env`
-- Test: `pnpm --filter @price-monitor/db push`
-
-### Production Issues
-
-**Deployment failed:**
-1. Check GitHub Actions logs
-2. Verify Docker image built successfully
-3. Check Coolify deployment logs
-4. Verify environment variables set
-
-**Application won't start:**
-1. Check logs in Coolify
-2. Verify environment variables
-3. Check database connectivity
-4. Verify image tag is correct (`:latest`)
-
-**Worker not processing jobs:**
-1. Check worker logs for errors
-2. Verify Redis connection
-3. Check `ENABLE_SCHEDULER` setting
-4. Verify BullMQ connection in logs
-
-**Scheduled emails not sending:**
-1. Check worker logs for "Scheduler started"
-2. Verify `ENABLE_SCHEDULER=true`
-3. Check email schedule settings in DB
-4. Verify RESEND_API_KEY is set
-5. Check worker logs for cron pattern
-
-### CICD Issues
-
-**GitHub Actions failing:**
-1. Check workflow file syntax
-2. Verify Docker builds locally
-3. Check GHCR authentication
-4. Review Actions logs for specific error
-
-**Webhooks not triggering:**
-1. Verify GitHub Secrets are set
-2. Check webhook URLs are correct
-3. Test webhook manually with curl
-4. Check Coolify logs for webhook received
-
-**Images not updating:**
-1. Verify image pushed to GHCR
-2. Check image tag is correct
-3. Manually trigger redeploy in Coolify
-4. Clear image cache if needed
+### CICD
+- **GitHub Actions failing:** Check workflow syntax, test Docker builds locally, verify GHCR auth
+- **Webhooks not triggering:** Verify GitHub Secrets set, check webhook URLs, test with curl
+- **Images not updating:** Verify push to GHCR, check tag, manually redeploy in Coolify
 
 ---
 
-## Development Workflow
+## Important Notes
 
-This project follows **Spec-Driven Development**. Task specifications are in the `specs/implementation-2/` folder.
+### Spec-Driven Development
+- Task specs in `specs/implementation-2/`
+- Update specs first, then code
 
-### Git Commit Conventions
+### Git Workflow
+- **Manual commits only:** Make changes, then let user commit (don't commit yourself)
+- Branch strategy: `feature/*` → `dev` → `main`
 
-Commit messages use task tags that match spec documents:
-
-- **Single task**: `[task-1.11] create web app dockerfile`
-- **Multiple tasks**: `[task-1.11-1.19] implement local VM CICD`
-- **No task**: `[misc] minor cleanup`
-
-Tag format: `[task-X.Y]` corresponds to `specs/implementation-2/task-X.Y.md`.
-
----
-
-## Implementation Status
-
-**Current Status:** Implementation 2 (Self-hosted Micro-PaaS)
-
-See `specs/implementation-2/task-overview.md` for full roadmap and `specs/implementation-2/task-*.md` for detailed task specs.
-
-**Phase 1:** Local VM + CICD - In Progress
-**Phase 2:** Production Deployment - Planned
+### Implementation Status
+- **Phase 1:** Local VM + CICD - In Progress
+- **Phase 2:** Production Deployment - Planned
+- See `specs/implementation-2/task-overview.md` for roadmap
