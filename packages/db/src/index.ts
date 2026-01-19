@@ -12,12 +12,27 @@ config({ path: resolve(__dirname, '../../../.env') });
 import postgres from 'postgres';
 import * as schema from './schema';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is required');
+// Lazy database connection - only initialized when accessed
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
+
+function getDb() {
+  if (!_db) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+    _client = postgres(process.env.DATABASE_URL);
+    _db = drizzle(_client, { schema });
+  }
+  return _db;
 }
 
-const client = postgres(process.env.DATABASE_URL);
-export const db = drizzle(client, { schema });
+// Export db as a getter via Proxy to maintain compatibility
+export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+  get(_target, prop) {
+    return getDb()[prop as keyof ReturnType<typeof drizzle<typeof schema>>];
+  },
+});
 
 // Re-export schema
 export * from './schema';
