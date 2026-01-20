@@ -1,7 +1,7 @@
 services:
   # PostgreSQL database (local alternative to Neon)
   postgres:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: pricemonitor
       POSTGRES_USER: postgres
@@ -13,7 +13,7 @@ services:
 
   # Redis (local alternative to Upstash)
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "6379:6379"
 

@@ -29,9 +29,9 @@ Provide a simple, declarative configuration for local development services that:
 
 Create `docker-compose.yml` in project root with the following requirements:
 
-### Service 1: PostgreSQL 15
+### Service 1: PostgreSQL 18
 
-**Image:** `postgres:15-alpine`
+**Image:** `postgres:18-alpine`
 
 **Container Name:** `price-monitor-postgres`
 
@@ -54,9 +54,9 @@ Create `docker-compose.yml` in project root with the following requirements:
 
 **Restart Policy:** `unless-stopped`
 
-### Service 2: Redis 7
+### Service 2: Redis 8
 
-**Image:** `redis:7-alpine`
+**Image:** `redis:8-alpine`
 
 **Container Name:** `price-monitor-redis`
 
@@ -197,8 +197,8 @@ docker-compose down
 
 - [x] docker-compose.yml exists in project root
 - [x] Compose syntax validation passes
-- [x] PostgreSQL service uses postgres:15-alpine
-- [x] Redis service uses redis:7-alpine
+- [x] PostgreSQL service uses postgres:18-alpine
+- [x] Redis service uses redis:8-alpine
 - [x] Both services expose correct ports
 - [x] Healthchecks configured for both services
 - [x] Named volumes defined for data persistence
@@ -276,8 +276,8 @@ ports:
 
 **Solution:** Verify image exists:
 ```bash
-docker pull postgres:15-alpine
-docker pull redis:7-alpine
+docker pull postgres:18-alpine
+docker pull redis:8-alpine
 ```
 
 ---
@@ -298,7 +298,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: price-monitor-postgres
     environment:
       POSTGRES_USER: postgres
@@ -316,7 +316,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: price-monitor-redis
     ports:
       - "6379:6379"

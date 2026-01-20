@@ -45,7 +45,7 @@ pnpm docker:up
 
 **Or directly:**
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 **Flags explained:**
@@ -70,8 +70,8 @@ docker ps
 **Expected output:**
 ```
 CONTAINER ID   IMAGE              STATUS                    PORTS                    NAMES
-abc123def456   postgres:15-alpine Up 10 seconds (healthy)   0.0.0.0:5432->5432/tcp   price-monitoring-agent-postgres-1
-xyz789uvw012   redis:7-alpine     Up 10 seconds (healthy)   0.0.0.0:6379->6379/tcp   price-monitoring-agent-redis-1
+abc123def456   postgres:18-alpine Up 10 seconds (healthy)   0.0.0.0:5432->5432/tcp   price-monitoring-agent-postgres-1
+xyz789uvw012   redis:8-alpine     Up 10 seconds (healthy)   0.0.0.0:6379->6379/tcp   price-monitoring-agent-redis-1
 ```
 
 **Key indicators:**
