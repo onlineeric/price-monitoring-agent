@@ -1,16 +1,15 @@
 # Price Monitor AI Agent
 
-AI-powered price monitoring system that tracks product prices, stores history, and sends digest emails with trend analysis.
+AI-powered price monitoring system for tracking product prices over time.
 
-## Features
+## Prerequisites
 
-- 🤖 **AI-powered price extraction** - Anthropic Claude, OpenAI GPT, Google Gemini
-- 🌐 **Multi-site support** - Works with major e-commerce platforms (Amazon, eBay, etc.)
-- 📊 **Price history tracking** - Comprehensive historical data with trend analysis
-- 📧 **Automated digest emails** - Scheduled reports with price insights
-- 🎨 **Professional dashboard** - Built with Shadcn UI and Tailwind CSS
-- 🐳 **Docker-based services** - Local PostgreSQL & Redis via docker-compose
-- 🚀 **Production-ready** - Automated deployment to DigitalOcean
+- Node.js (LTS recommended)
+- pnpm (this repo pins a version in `package.json`)
+- Docker Desktop (or Docker Engine with `docker compose`)
+- API keys:
+  - One AI provider: Anthropic / OpenAI / Google
+  - Resend (for email)
 
 ## Tech Stack
 
@@ -57,119 +56,6 @@ Developer → GitHub → GitHub Actions
               (Docker containers)
 ```
 
-## Quick Start
-
-### Prerequisites
-- Node.js 20+
-- pnpm 8+
-- Docker Desktop (or Docker Engine on WSL2)
-
-### Setup
-
-1. **Clone repository:**
-   ```bash
-   git clone <repo-url>
-   cd price-monitoring-agent
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Start services:**
-   ```bash
-   pnpm docker:up  # Starts PostgreSQL & Redis
-   ```
-
-4. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys (DATABASE_URL and REDIS_URL already set to localhost)
-   ```
-
-5. **Push database schema:**
-   ```bash
-   pnpm --filter @price-monitor/db push
-   ```
-
-6. **Run apps:**
-   ```bash
-   # Terminal 1: Web app
-   pnpm --filter @price-monitor/web dev      # Port 3000
-
-   # Terminal 2: Worker
-   pnpm --filter @price-monitor/worker dev   # Background
-   ```
-
-7. **Access dashboard:**
-   Open http://localhost:3000
-
-8. **Stop services (when done):**
-   ```bash
-   pnpm docker:down
-   ```
-
-## Development Workflow
-
-### Local Development
-```bash
-# Start services
-pnpm docker:up
-
-# Run apps with hot reload
-pnpm --filter @price-monitor/web dev
-pnpm --filter @price-monitor/worker dev
-
-# Stop services when done
-pnpm docker:down
-```
-
-### Production Deployment
-```bash
-# Create PR: dev → main
-# Review and merge
-# GitHub Actions auto-deploys to production
-```
-
-## Deployment
-
-### Local Development
-- Code runs on host machine with hot reload (`pnpm dev`)
-- Services (PostgreSQL, Redis) run via docker-compose
-- Fast iteration with instant feedback
-
-### Production
-- **Platform:** DigitalOcean Droplet with Coolify orchestration
-- **Deployment:** Automatic on `main` branch merge
-- **Flow:** GitHub Actions → GHCR → Coolify → Production
-
-**Production Deployment Flow:**
-1. Push/merge to `main` branch
-2. GitHub Actions builds Docker images (`:latest` tag)
-3. Images pushed to GitHub Container Registry
-4. Coolify webhook triggers auto-deployment
-5. Production updated with new images
-
-For detailed deployment instructions, see [CLAUDE.md](CLAUDE.md).
-
-## Project Structure
-
-```
-price-monitoring-agent/
-├── apps/
-│   ├── web/              # Next.js dashboard (UI + API)
-│   └── worker/           # Background worker (BullMQ + Playwright)
-├── packages/
-│   └── db/               # Shared Drizzle schema
-├── specs/                # Implementation specifications
-│   ├── implementation-1/ # Serverless approach (archived)
-│   ├── implementation-2/ # VM-based approach (archived)
-│   └── implementation-3/ # Current simplified approach
-├── docs/                 # Documentation
-└── .github/workflows/    # GitHub Actions CICD
-```
-
 ## Key Features
 
 ### 2-Tier Extraction Pipeline
@@ -200,64 +86,76 @@ price-monitoring-agent/
 - Settings page (email schedule configuration)
 - Light/dark mode support
 
-## Commands
 
-See [CLAUDE.md](CLAUDE.md) for complete command reference.
+## Quick Start (Local Development)
 
-**Development:**
+1. Install dependencies
+   ```bash
+   pnpm install
+   ```
+
+2. Start PostgreSQL + Redis (Docker)
+   ```bash
+   pnpm docker:up
+   ```
+
+3. Configure environment variables
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` and set:
+   - `AI_PROVIDER` and the matching API key (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`)
+   - `RESEND_API_KEY`
+
+   `DATABASE_URL` and `REDIS_URL` are already set for localhost in `.env.example`.
+
+4. Create/update database schema
+   ```bash
+   pnpm --filter @price-monitor/db push
+   ```
+
+5. Start the app (two terminals)
+
+   Terminal 1 (web):
+   ```bash
+   pnpm --filter @price-monitor/web dev
+   ```
+
+   Terminal 2 (worker):
+   ```bash
+   pnpm --filter @price-monitor/worker dev
+   ```
+
+6. Open the dashboard
+
+   http://localhost:3000
+
+7. Stop services when done
+   ```bash
+   pnpm docker:down
+   ```
+
+## Common Commands
+
 ```bash
-pnpm docker:up                            # Start PostgreSQL & Redis
-pnpm docker:down                          # Stop services
-pnpm --filter @price-monitor/web dev      # Start web app
-pnpm --filter @price-monitor/worker dev   # Start worker
-pnpm --filter @price-monitor/db studio    # Open database UI
-pnpm --filter @price-monitor/db push      # Push schema to DB
+# Docker services
+pnpm docker:up
+pnpm docker:down
+pnpm docker:logs
+pnpm docker:ps
+
+# Apps
+pnpm --filter @price-monitor/web dev
+pnpm --filter @price-monitor/worker dev
+
+# Database
+pnpm --filter @price-monitor/db push
+pnpm --filter @price-monitor/db studio
+
+# Code quality
+pnpm lint
 ```
-
-**Docker Services:**
-```bash
-docker ps                                 # List running containers
-docker logs price-monitoring-agent-postgres-1  # PostgreSQL logs
-docker logs price-monitoring-agent-redis-1     # Redis logs
-```
-
-**Production:**
-```bash
-# Merge to main → auto-deploys to production
-git checkout dev
-git pull origin dev
-gh pr create --base main --head dev
-```
-
-## Environment Variables
-
-See `docs/production-env.md` for complete documentation.
-
-**Required:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
-- `AI_PROVIDER` - AI provider (openai | google | anthropic)
-- `ANTHROPIC_API_KEY` - Anthropic API key
-- `RESEND_API_KEY` - Email service API key
-
-**Worker-specific:**
-- `ENABLE_SCHEDULER` - Enable BullMQ Repeatable Jobs (only ONE worker)
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Complete developer guide
-- **[specs/implementation-3/](specs/implementation-3/)** - Implementation specifications
-- **[docs/production-env.md](docs/production-env.md)** - Environment variables reference
-
-## Implementation Status
-
-**Current:** Implementation 3 (Simplified Local Dev + Production)
-
-- ✅ Core functionality complete
-- 🚧 Phase 1: Local Development Simplification - In Progress
-- 📋 Phase 2: Production Deployment - Planned
-
-See [specs/implementation-3/task-overview.md](specs/implementation-3/task-overview.md) for detailed roadmap.
 
 ## License
 
