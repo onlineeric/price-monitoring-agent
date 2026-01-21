@@ -10,7 +10,7 @@
 
 ## What
 
-Create a `docker-compose.yml` file in the project root that defines PostgreSQL 15 and Redis 7 services for local development, replacing the Multipass VM setup.
+Create a `docker-compose.yml` file in the project root that defines PostgreSQL 18 and Redis 8 services for local development, replacing the Multipass VM setup.
 
 ---
 
@@ -37,7 +37,7 @@ Create `docker-compose.yml` in project root with the following requirements:
 
 **Environment Variables:**
 - `POSTGRES_USER=postgres`
-- `POSTGRES_PASSWORD=password`
+- `POSTGRES_PASSWORD=postgres`
 - `POSTGRES_DB=priceMonitor`
 
 **Ports:**
@@ -208,6 +208,22 @@ docker-compose down
 
 ---
 
+## Implementation Notes
+
+### Worker Service Enhancement
+
+The docker-compose.yml file includes an optional `worker` service beyond the base PostgreSQL and Redis requirements. This service:
+- Builds and runs the background worker application
+- Connects to the local PostgreSQL and Redis services
+- Useful for fully containerized local development
+- Not required for the base task, but included as a development convenience
+
+For local development, you can choose to either:
+1. Run worker in Docker: `docker-compose up -d` (starts all services including worker)
+2. Run worker locally: `pnpm --filter @price-monitor/worker dev` (while postgres/redis run in Docker)
+
+---
+
 ## Notes
 
 ### Why Alpine Images?
@@ -302,7 +318,7 @@ services:
     container_name: price-monitor-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: priceMonitor
     ports:
       - "5432:5432"

@@ -1,21 +1,39 @@
+version: '3.8'
+
 services:
   # PostgreSQL database (local alternative to Neon)
   postgres:
     image: postgres:18-alpine
+    container_name: price-monitor-postgres
     environment:
-      POSTGRES_DB: pricemonitor
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: priceMonitor
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   # Redis (local alternative to Upstash)
   redis:
     image: redis:8-alpine
+    container_name: price-monitor-redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
   # Worker application
   worker:
@@ -24,7 +42,7 @@ services:
       dockerfile: apps/worker/Dockerfile
     environment:
       # Database
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricemonitor
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/priceMonitor
       # Redis
       REDIS_URL: redis://redis:6379
       # AI Provider (use your actual keys)
@@ -50,4 +68,7 @@ services:
   # This is faster and simpler than Docker. Web app will connect to this local Redis/Postgres.
 
 volumes:
-  postgres_data:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
