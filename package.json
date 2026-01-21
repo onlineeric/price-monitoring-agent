@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "dev:web": "pnpm --filter @price-monitor/web dev",
+    "dev:worker": "pnpm --filter @price-monitor/worker dev",
     "test": "echo \"Error: no test specified\" && exit 1",
     "redeploy:coolify": "node scripts/redeploy-local.js",
     "lint": "pnpm --filter @price-monitor/web lint",

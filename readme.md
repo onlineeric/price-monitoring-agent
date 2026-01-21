@@ -94,12 +94,32 @@ Developer → GitHub → GitHub Actions
    pnpm install
    ```
 
-2. Start PostgreSQL + Redis (Docker)
+2. Install Playwright browser and system dependencies (one-time setup)
+
+   **For Linux/WSL2:**
+   ```bash
+   # Install Chromium browser
+   pnpm --filter @price-monitor/worker exec playwright install chromium
+
+   # Install system dependencies (requires sudo)
+   pnpm --filter @price-monitor/worker exec playwright install-deps
+   ```
+
+   **For Windows:**
+   ```powershell
+   # Install Chromium browser
+   pnpm --filter @price-monitor/worker exec playwright install chromium
+
+   # System dependencies are usually already available on Windows
+   # If you encounter errors, install Visual C++ Redistributable
+   ```
+
+3. Start PostgreSQL + Redis (Docker)
    ```bash
    pnpm docker:up
    ```
 
-3. Configure environment variables
+4. Configure environment variables
    ```bash
    cp .env.example .env
    ```
@@ -110,12 +130,12 @@ Developer → GitHub → GitHub Actions
 
    `DATABASE_URL` and `REDIS_URL` are already set for localhost in `.env.example`.
 
-4. Create/update database schema
+5. Create/update database schema
    ```bash
    pnpm --filter @price-monitor/db push
    ```
 
-5. Start the app (two terminals)
+6. Start the app (two terminals)
 
    Terminal 1 (web):
    ```bash
@@ -127,11 +147,11 @@ Developer → GitHub → GitHub Actions
    pnpm --filter @price-monitor/worker dev
    ```
 
-6. Open the dashboard
+7. Open the dashboard
 
    http://localhost:3000
 
-7. Stop services when done
+8. Stop services when done
    ```bash
    pnpm docker:down
    ```
