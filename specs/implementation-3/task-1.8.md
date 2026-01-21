@@ -42,24 +42,19 @@ Add these scripts to the root `package.json` in the `scripts` section:
 **Purpose:** Stop and remove containers (preserves volumes)
 **Usage:** `pnpm docker:down`
 
-#### 3. docker:clean
-**Command:** `docker-compose down -v`
-**Purpose:** Stop containers and remove volumes (fresh start)
-**Usage:** `pnpm docker:clean`
-
-#### 4. docker:logs
+#### 3. docker:logs
 **Command:** `docker-compose logs -f`
 **Purpose:** Follow logs from both services
 **Usage:** `pnpm docker:logs`
 
 ### Additional Helpful Scripts (Optional)
 
-#### 5. docker:restart
+#### 4. docker:restart
 **Command:** `docker-compose restart`
 **Purpose:** Restart services without removing containers
 **Usage:** `pnpm docker:restart`
 
-#### 6. docker:ps
+#### 5. docker:ps
 **Command:** `docker-compose ps`
 **Purpose:** Show running services
 **Usage:** `pnpm docker:ps`
