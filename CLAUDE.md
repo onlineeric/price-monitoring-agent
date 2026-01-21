@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Price Monitor AI Agent - monitors product prices from URLs, stores price history, and sends digest emails with trend analysis. Uses 2-tier extraction: HTML parsing → Playwright + AI fallback.
 
-**Implementation Status:** Implementation 2 (Self-hosted Micro-PaaS)
-**Spec-Driven Development:** See `specs/implementation-2/` for task specs
+**Implementation Status:** Implementation 3 (Simplified Local Dev + Production)
+**Spec-Driven Development:** See `specs/implementation-3/` for task specs
 
 ## Tech Stack
 
@@ -23,9 +23,9 @@ Price Monitor AI Agent - monitors product prices from URLs, stores price history
 - **Authentication**: Public access (no authentication for demo purposes)
 
 ### Data & Messaging
-- **Database**: PostgreSQL 15 → **Coolify (Container)**
+- **Database**: PostgreSQL 18 → **docker-compose (Local)** / **Coolify (Production)**
 - **ORM**: **Drizzle ORM** (Serverless & Edge ready)
-- **Redis**: **Redis 7** → **Coolify (Container)**
+- **Redis**: **Redis 8** → **docker-compose (Local)** / **Coolify (Production)**
 - **Queue**: **BullMQ** (uses Redis)
 
 ### Extraction & AI
@@ -39,7 +39,7 @@ Price Monitor AI Agent - monitors product prices from URLs, stores price history
 - **Templates**: **React Email**
 
 ### Infrastructure
-- **Local Dev**: Coolify on Multipass VM (Ubuntu 22.04)
+- **Local Dev**: docker-compose on WSL2 Ubuntu
 - **Production**: Coolify on DigitalOcean Droplet (Sydney region)
 - **Container Registry**: GitHub Container Registry (GHCR)
 - **CICD**: GitHub Actions
@@ -56,8 +56,9 @@ packages/
   db/        # Shared Drizzle schema and database client
 specs/       # Architecture docs and task specs
   implementation-1/  # Original serverless approach (archived)
-  implementation-2/  # Current self-hosted approach
-scripts/     # Utility scripts (redeploy-local, etc.)
+  implementation-2/  # VM-based approach (archived)
+  implementation-3/  # Current simplified approach
+scripts/     # Utility scripts
 ```
 
 ---
@@ -67,6 +68,8 @@ scripts/     # Utility scripts (redeploy-local, etc.)
 ### Development
 ```bash
 pnpm install                                  # Install all dependencies
+pnpm docker:up                                # Start PostgreSQL & Redis (docker-compose)
+pnpm docker:down                              # Stop services
 pnpm --filter @price-monitor/web dev          # Next.js dev server (port 3000)
 pnpm --filter @price-monitor/worker dev       # Worker with hot reload
 pnpm --filter @price-monitor/web build        # Production build
@@ -80,17 +83,17 @@ pnpm --filter @price-monitor/db push          # Push schema to DB
 pnpm --filter @price-monitor/db studio        # Open Drizzle Studio
 ```
 
-### Local VM (Multipass)
+### Docker Services
 ```bash
-multipass list                                # List VMs
-multipass info coolify-local                  # Get VM IP and details
-multipass shell coolify-local                 # SSH into VM
-multipass start/stop coolify-local            # Start/stop VM
+docker ps                                     # List running containers
+docker logs price-monitoring-agent-postgres-1 # View PostgreSQL logs
+docker logs price-monitoring-agent-redis-1    # View Redis logs
+docker exec -it price-monitoring-agent-postgres-1 psql -U postgres -d priceMonitor  # Connect to DB
+docker exec -it price-monitoring-agent-redis-1 redis-cli  # Connect to Redis
 ```
 
 ### Deployment
 ```bash
-pnpm redeploy:local                           # Redeploy to local Coolify
 # Production: Merge to main → Auto-deploy via GitHub Actions
 ```
 
@@ -98,18 +101,19 @@ pnpm redeploy:local                           # Redeploy to local Coolify
 
 ## Environment Configuration
 
-### Local Development (VM Services)
+### Local Development
 
-When developing locally with code on host machine:
+Local development uses docker-compose for PostgreSQL and Redis:
 
-1. **Start VM Services** (tasks 1.1-1.10):
-   - PostgreSQL and Redis running in Coolify on local VM
-   - Get VM IP: `multipass info coolify-local`
+1. **Start Services:**
+   ```bash
+   pnpm docker:up  # Starts PostgreSQL & Redis containers
+   ```
 
 2. **Configure `.env`:**
    ```env
-   DATABASE_URL="postgresql://postgres:password@<VM_IP>:5432/priceMonitor"
-   REDIS_URL="redis://<VM_IP>:6379"
+   DATABASE_URL="postgresql://postgres:password@localhost:5432/priceMonitor"
+   REDIS_URL="redis://localhost:6379"
    AI_PROVIDER="anthropic"
    ANTHROPIC_API_KEY="your-key"
    RESEND_API_KEY="your-key"
@@ -121,21 +125,6 @@ When developing locally with code on host machine:
    ```bash
    pnpm --filter @price-monitor/web dev      # Port 3000
    pnpm --filter @price-monitor/worker dev   # Background
-   ```
-
-### Containerized Deployment (Local VM)
-
-When deploying via Coolify on local VM:
-
-1. **Environment Variables** set in Coolify dashboard for each app
-2. **Database URLs** use Coolify internal DNS:
-   ```
-   postgresql://postgres:password@price-monitor-postgres:5432/priceMonitor
-   redis://price-monitor-redis:6379
-   ```
-3. **Scheduler Enabled** for ONE worker instance:
-   ```env
-   ENABLE_SCHEDULER="true"
    ```
 
 ### Production Deployment
@@ -155,19 +144,14 @@ Production environment (DigitalOcean):
 
 ## Development Workflow
 
-### Environment 1: Local Development
-We first do fast iteration with hot reload:
-1. Ensure local VM services running (PostgreSQL, Redis in Coolify)
-2. Update `.env` with VM IP: `DATABASE_URL="postgresql://...@<VM_IP>:5432/..."`
-3. Run: `pnpm --filter @price-monitor/web dev` and `pnpm --filter @price-monitor/worker dev`
+### Local Development
+Fast iteration with hot reload:
+1. Start services: `pnpm docker:up`
+2. Run apps: `pnpm --filter @price-monitor/web dev` and `pnpm --filter @price-monitor/worker dev`
+3. Develop with hot reload
+4. Stop services: `pnpm docker:down`
 
-### Environment 2: Test Containerized Locally
-When merge into `dev` branch and ready for local deployment testing:
-1. Push to `dev` branch → GitHub Actions builds `:dev` images
-2. Run `pnpm redeploy:local` to deploy to local Coolify
-3. Test at `http://<vm-ip>:8000` to verify the deployment
-
-### Environment 3: Production Deployment
+### Production Deployment
 1. Create PR from `dev` to `main` or merge `dev` into `main`
 2. GitHub Actions auto-builds `:latest` images
 3. Coolify webhooks trigger production auto-deployment on DigitalOcean
@@ -178,12 +162,12 @@ When merge into `dev` branch and ready for local deployment testing:
 ## Architecture
 
 ### Infrastructure Stack
-| Component | Local VM | Production |
-|-----------|----------|------------|
-| **Orchestration** | Coolify (Multipass) | Coolify (DigitalOcean Sydney) |
-| **PostgreSQL/Redis** | Containers on VM | Containers on Droplet |
-| **Web/Worker** | GHCR `:dev` images | GHCR `:latest` images |
-| **CICD** | Manual/CLI redeploy | Auto-deploy on `main` merge |
+| Component | Local Development | Production |
+|-----------|-------------------|------------|
+| **Orchestration** | docker-compose | Coolify (DigitalOcean Sydney) |
+| **PostgreSQL/Redis** | docker-compose containers | Containers on Droplet |
+| **Web/Worker** | Hot reload (pnpm dev) | GHCR `:latest` images |
+| **CICD** | N/A | Auto-deploy on `main` merge |
 
 ### Key Endpoints
 - `POST /api/debug/trigger` - Enqueue price check: `{ url: string }`
@@ -202,12 +186,11 @@ When merge into `dev` branch and ready for local deployment testing:
 
 ---
 
-## Scheduling (Implementation 2 Change)
+## Scheduling
 
-**Old:** Vercel Cron → `/api/cron/check-all` endpoint → Enqueue jobs
-**New:** Worker-managed BullMQ Repeatable Jobs (reads from DB, polls every 5 mins)
+Worker-managed BullMQ Repeatable Jobs (reads from DB, polls every 5 mins)
 
-**Benefits:** No external cron, no cold starts, scheduler controlled by `ENABLE_SCHEDULER=true` env var (set on ONE worker only)
+**Benefits:** No external cron, no cold starts, scheduler controlled by `ENABLE_SCHEDULER=true` env var (set on ONE worker only in production)
 
 ---
 
@@ -272,17 +255,21 @@ NODE_ENV="production"
 ```
 
 **Local vs Production:**
-- Local: VM IP-based URLs, `:dev` tags, manual redeploy
+- Local: localhost URLs, hot reload via pnpm dev
 - Production: Coolify internal DNS, `:latest` tags, auto-deploy on merge
 
 ---
 
 ## Troubleshooting
 
-### Local VM
-- **VM won't start:** `multipass start coolify-local`
-- **Can't access Coolify:** Get IP with `multipass info coolify-local`, access `http://<vm-ip>:8000`
-- **DB connection failed:** Check containers in Coolify, verify `.env` URLs, test with `pnpm --filter @price-monitor/db push`
+### Local Development
+- **Services won't start:** Run `pnpm docker:up`, check Docker Desktop is running
+- **Connection refused:** Verify `.env` has `localhost` URLs (not VM IP)
+- **DB connection failed:**
+  - Check containers: `docker ps | grep price-monitoring`
+  - View logs: `docker logs price-monitoring-agent-postgres-1`
+  - Test connection: `pnpm --filter @price-monitor/db push`
+- **Port already in use:** Stop existing containers: `pnpm docker:down`
 
 ### Production
 - **Deployment failed:** Check GitHub Actions logs → Coolify logs → env vars
@@ -300,7 +287,7 @@ NODE_ENV="production"
 ## Important Notes
 
 ### Spec-Driven Development
-- Task specs in `specs/implementation-2/`
+- Task specs in `specs/implementation-3/`
 - Update specs first, then code
 
 ### Git Workflow
@@ -308,6 +295,7 @@ NODE_ENV="production"
 - Branch strategy: `feature/*` → `dev` → `main`
 
 ### Implementation Status
-- **Phase 1:** Local VM + CICD - In Progress
+
+- **Phase 1:** Local Development Simplification - In Progress
 - **Phase 2:** Production Deployment - Planned
-- See `specs/implementation-2/task-overview.md` for roadmap
+- See `specs/implementation-3/task-overview.md` for roadmap
