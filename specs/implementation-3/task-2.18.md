@@ -89,7 +89,7 @@ Document all test results, any issues found, performance observations, and overa
 - Note any errors, warnings, or unexpected behavior
 - Record performance metrics (load times, extraction speed)
 - List any features not working as expected
-- Document any differences from local VM
+- Document any differences from local development environment
 - Note resource usage (CPU, memory, disk)
 - Capture any security concerns
 

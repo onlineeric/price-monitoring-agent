@@ -1,21 +1,25 @@
 #!/usr/bin/env node
 
 /**
- * Redeploy Script for Local Coolify
+ * Redeploy Script for Coolify
  *
- * Triggers redeployment of web and worker apps on local VM.
+ * Triggers redeployment of web and worker apps on a Coolify instance.
  *
  * Usage:
- *   COOLIFY_API_TOKEN=xxx COOLIFY_WEB_APP_UUID=xxx COOLIFY_WORKER_APP_UUID=xxx pnpm redeploy:local
+ *   COOLIFY_URL=https://<coolify-host>:8000 \
+ *   COOLIFY_API_TOKEN=xxx \
+ *   COOLIFY_WEB_APP_UUID=xxx \
+ *   COOLIFY_WORKER_APP_UUID=xxx \
+ *   pnpm redeploy:coolify
  *
  * Or set in .env:
- *   COOLIFY_URL="http://<VM_IP>:8000"
+ *   COOLIFY_URL="https://<coolify-host>:8000"
  *   COOLIFY_API_TOKEN=""
  *   COOLIFY_WEB_APP_UUID=""
  *   COOLIFY_WORKER_APP_UUID=""
  *
- * Get API token from Coolify: Settings → API Tokens
- * Get app UUIDs from Coolify: Application → Settings → General
+ * Get API token from Coolify: Settings -> API Tokens
+ * Get app UUIDs from Coolify: Application -> Settings -> General
  */
 
 // Load environment variables from .env
@@ -28,7 +32,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const COOLIFY_URL = process.env.COOLIFY_URL || 'http://192.168.64.2:8000'; // Default VM IP
+const COOLIFY_URL = process.env.COOLIFY_URL;
 const API_TOKEN = process.env.COOLIFY_API_TOKEN;
 const WEB_APP_UUID = process.env.COOLIFY_WEB_APP_UUID;
 const WORKER_APP_UUID = process.env.COOLIFY_WORKER_APP_UUID;
@@ -64,7 +68,7 @@ async function redeployApp(appName, appUuid) {
 }
 
 async function main() {
-  console.log('🔄 Local Coolify Redeploy Script\n');
+  console.log('🔄 Coolify Redeploy Script\n');
 
   // Validate environment variables
   if (!API_TOKEN) {
@@ -82,6 +86,12 @@ async function main() {
   if (!WORKER_APP_UUID) {
     console.error('❌ COOLIFY_WORKER_APP_UUID not set');
     console.error('   Get UUID from Coolify: Worker App → Settings → General');
+    process.exit(1);
+  }
+
+  if (!COOLIFY_URL) {
+    console.error('❌ COOLIFY_URL not set');
+    console.error('   Example: https://<coolify-host>:8000');
     process.exit(1);
   }
 

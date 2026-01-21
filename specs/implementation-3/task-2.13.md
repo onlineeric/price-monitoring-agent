@@ -8,7 +8,7 @@
 
 ## What
 
-Review all code changes from AI tasks 2.9-2.12, run linting and builds, test with local VM, then commit to `dev` branch, create PR, and merge to `main`.
+Review all code changes from AI tasks 2.9-2.12, run linting and builds, test locally with Docker Compose services (`pnpm docker:up`), then commit to `dev` branch, create PR, and merge to `main`.
 
 ---
 

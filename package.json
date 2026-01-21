@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "redeploy:local": "node scripts/redeploy-local.js",
+    "redeploy:coolify": "node scripts/redeploy-local.js",
     "lint": "pnpm --filter @price-monitor/web lint",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

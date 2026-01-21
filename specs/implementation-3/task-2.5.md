@@ -14,7 +14,7 @@ Install Coolify on the production Droplet using the official installation script
 
 ## Objective
 
-Install Coolify to provide the same container orchestration platform used on local VM, but now for production. This enables:
+Install Coolify to provide the container orchestration platform used for production deployment. This enables:
 - Container management
 - Database provisioning
 - Application deployment

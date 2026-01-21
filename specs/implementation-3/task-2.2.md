@@ -22,8 +22,8 @@ This Droplet serves as the production server for all services:
 
 **Specifications:**
 - **Region:** Sydney (SYD1) - low latency for AU/NZ usage
-- **OS:** Ubuntu 22.04 LTS - matches local VM
-- **Size:** 4GB RAM, 2 vCPUs, 80GB SSD - matches local VM specs
+- **OS:** Ubuntu 22.04 LTS
+- **Size:** 4GB RAM, 2 vCPUs, 80GB SSD
 - **SSH Key:** Added for secure access
 
 ---

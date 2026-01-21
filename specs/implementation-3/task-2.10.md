@@ -14,7 +14,7 @@ Update CLAUDE.md and README.md to document production deployment workflow, envir
 
 ## Context
 
-Phase 1 documentation covers local VM setup. Now we need to add:
+Phase 1 documentation covers local development setup (Docker Compose + host-run apps). Now we need to add:
 - Production deployment process
 - Environment differences (local vs production)
 - Auto-deployment workflow
@@ -42,7 +42,7 @@ Add/update the following sections:
 ### Deployment Process
 
 **Automatic Deployment (Recommended):**
-1. Develop and test on `dev` branch with local VM
+1. Develop and test on `dev` branch locally (Docker Compose services)
 2. Create PR from `dev` to `main`
 3. Review and merge PR
 4. GitHub Actions automatically:
@@ -84,15 +84,15 @@ NODE_ENV="production"
 
 ### Production vs Local Differences
 
-| Aspect | Local VM | Production |
-|--------|----------|------------|
-| **Location** | Multipass VM on dev machine | DigitalOcean Droplet (Sydney) |
-| **Access** | `http://<vm-ip>:8000` | `http://<droplet-ip>:8000` |
-| **Database URLs** | VM IP-based | Coolify internal DNS |
-| **Deployment** | Manual trigger or CLI script | Automatic on `main` merge |
-| **Images** | `:dev` tag | `:latest` tag |
-| **SSL** | No (HTTP only) | Optional (can add domain + SSL) |
-| **Cost** | Free (local resources) | ~$24/month |
+| Aspect | Local Development | Production |
+|--------|-------------------|------------|
+| **Location** | Developer machine (apps run on host) | DigitalOcean Droplet (Sydney) |
+| **Access** | Web: `http://localhost:3000` | Web: `http://<production-ip>` |
+| **Services** | Postgres/Redis via Docker Compose | Postgres/Redis via Coolify-managed containers |
+| **Database URLs** | `localhost` ports | Coolify internal DNS |
+| **Deployment** | `pnpm dev` + `pnpm docker:up` | Automatic on `main` merge |
+| **Images** | N/A (not containerized locally) | `:latest` tag |
+| **SSL** | No (HTTP only) | Optional (domain + SSL) |
 
 ### Monitoring
 
@@ -118,22 +118,20 @@ Add comprehensive troubleshooting guide:
 ```markdown
 ## Troubleshooting
 
-### Local VM Issues
+### Local Development Issues (Docker Compose)
 
-**VM won't start:**
-```bash
-multipass list  # Check VM status
-multipass start coolify-local
-```
+**Docker services won't start:**
+- Verify Docker is running: `docker ps`
+- Start services: `pnpm docker:up`
+- Check logs: `pnpm docker:logs`
 
-**Can't access Coolify dashboard:**
-- Verify VM IP: `multipass info coolify-local`
-- Check firewall: VM should allow port 8000
-- Try: `http://<vm-ip>:8000`
+**Port conflicts (5432 / 6379):**
+- Check what's using the port: `sudo lsof -i :5432` / `sudo lsof -i :6379`
+- Stop the conflicting service or change ports in `docker-compose.yml`
 
 **Database connection failed:**
-- Verify containers running in Coolify
-- Check connection string in `.env`
+- Verify `.env` uses `localhost` URLs
+- Verify containers are healthy: `docker ps`
 - Test: `pnpm --filter @price-monitor/db push`
 
 ### Production Issues
@@ -214,11 +212,11 @@ Developer → GitHub (code)
 
 **Environment 1: Local Development**
 - Code runs on host machine (`pnpm dev`)
-- Connects to services in Multipass VM
+- Connects to PostgreSQL/Redis via Docker Compose on localhost
 - Fast iteration with hot reload
 
 **Environment 2: Test Containerized Locally**
-- Full containerized deployment in Multipass VM
+- (Optional) Full containerized deployment in a staging environment (not covered in Implementation 3 Phase 1)
 - Tests deployment process before production
 - Uses `:dev` images from GHCR
 
@@ -229,12 +227,10 @@ Developer → GitHub (code)
 
 ### Deployment Workflow
 
-1. **Develop:** Work on `dev` branch, test with local VM
-2. **Build:** Push to `dev` → GitHub Actions builds `:dev` images
-3. **Test:** Deploy `:dev` images to local VM, verify functionality
-4. **Release:** Create PR `dev` → `main`, review, merge
-5. **Deploy:** GitHub Actions builds `:latest`, triggers production deployment
-6. **Verify:** Check production logs, test live application
+1. **Develop:** Work on `dev` branch locally (`pnpm docker:up` + `pnpm dev`)
+2. **Release:** Create PR `dev` → `main`, review, merge
+3. **Deploy:** GitHub Actions builds `:latest`, triggers production deployment
+4. **Verify:** Check production logs, test live application
 
 ### Production Access
 

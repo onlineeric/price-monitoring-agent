@@ -43,8 +43,8 @@ cat CLAUDE.md | grep "192.168"
 
 **README.md:**
 ```bash
-cat README.md | grep -i multipass
-cat README.md | grep -i coolify
+cat readme.md | grep -i multipass
+cat readme.md | grep -i coolify
 ```
 
 **Expected:** No matches for local setup section.
