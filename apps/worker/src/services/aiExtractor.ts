@@ -19,6 +19,10 @@ const ProductDataSchema = z.object({
     .string()
     .nullable()
     .describe("The currency code (USD, EUR, GBP, NZD, AUD, etc.)"),
+  imageUrl: z
+    .string()
+    .nullable()
+    .describe("The main product image URL (full URL with https://, not relative path)"),
 });
 
 /**
@@ -177,9 +181,13 @@ export async function aiExtract(url: string, html: string): Promise<ScraperResul
     const { object } = await generateObject({
       model: getModel(provider),
       schema: ProductDataSchema,
-      prompt: `Extract product information from this HTML. Find the product title, current price (as a number without currency symbol), and currency code.
+      prompt: `Extract product information from this HTML. Find the product title, current price (as a number without currency symbol), currency code, and main product image URL.
 
-If there are multiple prices, extract the main/current selling price (not the original or crossed-out price).
+Instructions:
+- If there are multiple prices, extract the main/current selling price (not the original or crossed-out price)
+- For imageUrl, extract the main product image URL (look for <img> tags with src or data-src attributes)
+- The imageUrl should be a complete URL starting with https:// (not a relative path like /images/product.jpg)
+- If you find a relative image path, you'll need to construct the full URL
 
 HTML content:
 ${preparedHtml}`,
@@ -208,7 +216,7 @@ ${preparedHtml}`,
         title: object.title,
         price: priceInCents,
         currency: object.currency,
-        imageUrl: null, // AI extraction doesn't get images for now
+        imageUrl: object.imageUrl,
       },
       method: "ai",
     };

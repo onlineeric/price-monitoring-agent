@@ -209,9 +209,10 @@ function isForceAIEnabled(): boolean {
 
 /**
  * Check if selector extraction was successful
+ * Requires BOTH title and price to be present
  */
 function hasValidData(title: string | null, price: number | null): boolean {
-  return title !== null || price !== null;
+  return title !== null && price !== null;
 }
 
 /**
