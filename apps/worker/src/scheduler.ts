@@ -141,39 +141,28 @@ export class DigestScheduler {
    */
   private async fetchScheduleSettings(): Promise<EmailScheduleSettings | null> {
     try {
-      // Fetch individual settings from database
-      const frequencySetting = await db
+      // Fetch email_schedule setting from database (stored as JSON)
+      const scheduleSetting = await db
         .select()
         .from(settings)
-        .where(eq(settings.key, 'emailSchedule.frequency'))
+        .where(eq(settings.key, 'email_schedule'))
         .limit(1);
 
-      const hourSetting = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.key, 'emailSchedule.hour'))
-        .limit(1);
-
-      const dayOfWeekSetting = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.key, 'emailSchedule.dayOfWeek'))
-        .limit(1);
-
-      // Check if required settings exist
-      if (!frequencySetting[0] || !hourSetting[0]) {
+      // Check if setting exists
+      if (!scheduleSetting[0]) {
         return null;
       }
 
-      const frequency = frequencySetting[0].value as 'daily' | 'weekly';
-      const hour = Number.parseInt(hourSetting[0].value);
-      const dayOfWeek = dayOfWeekSetting[0] ? Number.parseInt(dayOfWeekSetting[0].value) : undefined;
+      // Parse JSON value
+      const schedule = JSON.parse(scheduleSetting[0].value) as EmailScheduleSettings;
 
-      // Conditionally include dayOfWeek to satisfy exactOptionalPropertyTypes
-      if (dayOfWeek !== undefined) {
-        return { frequency, hour, dayOfWeek };
+      // Validate required fields
+      if (!schedule.frequency || schedule.hour === undefined) {
+        console.error('❌ Invalid email_schedule format:', scheduleSetting[0].value);
+        return null;
       }
-      return { frequency, hour };
+
+      return schedule;
     } catch (error) {
       console.error('❌ Error fetching schedule settings:', error);
       return null;

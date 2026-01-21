@@ -14,6 +14,7 @@
 export interface EmailScheduleSettings {
   frequency: 'daily' | 'weekly';
   hour: number; // 0-23
+  minute?: number; // 0-59, defaults to 0 if not specified
   dayOfWeek?: number; // 1-7 (1 = Monday, 7 = Sunday)
 }
 
@@ -21,15 +22,19 @@ export interface EmailScheduleSettings {
  * Convert email schedule settings to cron pattern
  */
 export function settingsToCronPattern(settings: EmailScheduleSettings): string {
-  const { frequency, hour, dayOfWeek } = settings;
+  const { frequency, hour, minute = 0, dayOfWeek } = settings;
 
   // Validate hour
   if (hour < 0 || hour > 23) {
     throw new Error(`Invalid hour: ${hour}. Must be between 0 and 23.`);
   }
 
+  // Validate minute
+  if (minute < 0 || minute > 59) {
+    throw new Error(`Invalid minute: ${minute}. Must be between 0 and 59.`);
+  }
+
   // Cron pattern: minute hour day-of-month month day-of-week
-  const minute = 0; // Always run at the top of the hour
 
   if (frequency === 'daily') {
     // Daily at specified hour

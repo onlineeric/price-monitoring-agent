@@ -7,6 +7,7 @@ export interface EmailSchedule {
   frequency: "daily" | "weekly";
   dayOfWeek?: number; // 1-7 (1=Monday, 7=Sunday), only for weekly
   hour: number; // 0-23
+  minute?: number; // 0-59, defaults to 0 if not specified
 }
 
 /**

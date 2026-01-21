@@ -16,7 +16,8 @@
       "Bash(git show:*)",
       "Bash(git status:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(kill:*)"
     ]
   }
 }
