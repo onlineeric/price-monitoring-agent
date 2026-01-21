@@ -10,6 +10,18 @@ function isForceAIEnabled(): boolean {
 }
 
 /**
+ * Check if scraper result has all required data fields
+ */
+function hasCompleteData(result: ScraperResult): boolean {
+  if (!result.success || !result.data) {
+    return false;
+  }
+
+  const { price, currency, imageUrl } = result.data;
+  return price !== null && currency !== null && imageUrl !== null;
+}
+
+/**
  * Main scraper function that orchestrates the extraction pipeline
  *
  * Implements a tiered fallback strategy:
@@ -39,13 +51,19 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
   console.log(`[Scraper] Trying HTML fetcher for: ${url}`);
   const htmlResult = await fetchAndParse(url);
 
-  if (htmlResult.success) {
-    console.log(`[Scraper] HTML fetcher succeeded`);
+  // Check if HTML fetcher got complete data (not just success flag)
+  if (htmlResult.success && hasCompleteData(htmlResult)) {
+    console.log(`[Scraper] HTML fetcher succeeded with complete data`);
     return htmlResult;
   }
 
   // Tier 2: Fall back to Playwright (robust + smart path)
-  console.log(`[Scraper] HTML failed (${htmlResult.error}), trying Playwright for: ${url}`);
+  if (htmlResult.success) {
+    console.log(`[Scraper] HTML succeeded but data incomplete, trying Playwright for: ${url}`);
+  } else {
+    console.log(`[Scraper] HTML failed (${htmlResult.error}), trying Playwright for: ${url}`);
+  }
+
   const playwrightResult = await playwrightFetch(url);
 
   if (playwrightResult.success) {

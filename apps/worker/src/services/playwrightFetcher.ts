@@ -211,8 +211,8 @@ function isForceAIEnabled(): boolean {
  * Check if selector extraction was successful
  * Requires BOTH title and price to be present
  */
-function hasValidData(title: string | null, price: number | null): boolean {
-  return title !== null && price !== null;
+function hasValidData(title: string | null, price: number | null, imageUrl: string | null): boolean {
+  return title !== null && price !== null && imageUrl !== null;
 }
 
 /**
@@ -259,7 +259,7 @@ export async function playwrightFetch(
     // Extract data using selectors
     console.log(`[Playwright] Attempting selector-based extraction...`);
     const rawData = await extractDataWithSelectors(page);
-    console.log(`[Playwright] Selector results - title: ${rawData.title ? 'found' : 'null'}, priceText: ${rawData.priceText ? 'found' : 'null'}`);
+    console.log(`[Playwright] Selector results - title: ${rawData.title ? 'found' : 'null'}, priceText: ${rawData.priceText ? 'found' : 'null'}, imageUrl: ${rawData.imageUrl ? 'found' : 'null'}`);
 
     // Parse price from extracted text
     let price: number | null = null;
@@ -276,7 +276,7 @@ export async function playwrightFetch(
     }
 
     // Check if selectors successfully extracted data
-    if (!hasValidData(rawData.title, price)) {
+    if (!hasValidData(rawData.title, price, rawData.imageUrl)) {
       console.log(`[Playwright] Selectors failed to extract data, trying AI with rendered HTML...`);
       await page.close();
       page = null;

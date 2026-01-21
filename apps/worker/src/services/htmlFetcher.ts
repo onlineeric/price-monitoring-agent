@@ -139,11 +139,17 @@ export async function fetchAndParse(
     // Extract product data
     const data = extractProductData($, url);
 
-    // Check if we got meaningful data
-    if (!data.title && !data.price) {
+    // Check if we got all required fields (price, currency, imageUrl are mandatory)
+    // Title is optional but nice to have
+    if (!data.price || !data.currency || !data.imageUrl) {
+      const missing = [];
+      if (!data.price) missing.push("price");
+      if (!data.currency) missing.push("currency");
+      if (!data.imageUrl) missing.push("imageUrl");
+
       return {
         success: false,
-        error: "Could not extract product data - no title or price found",
+        error: `Could not extract required fields: ${missing.join(", ")}`,
         method: "html",
       };
     }

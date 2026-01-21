@@ -140,44 +140,84 @@ export default async function priceCheckJob(
   }
 
   if (!result.data) {
-    console.log(`[${jobId}] No data extracted`);
-    return result;
+    const errorMessage = "No data extracted from scraper";
+    console.error(`[${jobId}] ${errorMessage}`);
+
+    // Log failure if we have productId
+    if (productId) {
+      try {
+        await updateProductFailure(productId);
+        await logRun({
+          productId,
+          status: "FAILED",
+          errorMessage
+        });
+      } catch (err) {
+        console.warn(`[${jobId}] Failed to log failure:`, err);
+      }
+    }
+
+    throw new Error(errorMessage);
   }
 
+  // Validate all required fields are present
+  if (result.data.price === null || result.data.currency === null || result.data.imageUrl === null) {
+    const missing = [];
+    if (result.data.price === null) missing.push("price");
+    if (result.data.currency === null) missing.push("currency");
+    if (result.data.imageUrl === null) missing.push("imageUrl");
+
+    const errorMessage = `Incomplete data: missing ${missing.join(", ")}`;
+    console.error(`[${jobId}] ${errorMessage}`);
+
+    // Log failure if we have productId
+    if (productId) {
+      try {
+        await updateProductFailure(productId);
+        await logRun({
+          productId,
+          status: "FAILED",
+          errorMessage
+        });
+      } catch (err) {
+        console.warn(`[${jobId}] Failed to log failure:`, err);
+      }
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  // All required fields present, save the data
   console.log(`[${jobId}] Scrape successful:`, result.data);
 
-  // Save price data if available
-  if (result.data.price !== null && result.data.currency !== null) {
-    try {
-      await savePriceData(
-        targetUrl,
-        result.data.title,
-        result.data.price,
-        result.data.currency,
-        result.data.imageUrl,
-        jobId
-      );
-    } catch (dbError) {
-      const errorMessage = formatErrorMessage(dbError);
-      console.error(`[${jobId}] Failed to save: ${errorMessage}`);
+  try {
+    await savePriceData(
+      targetUrl,
+      result.data.title,
+      result.data.price,
+      result.data.currency,
+      result.data.imageUrl,
+      jobId
+    );
+  } catch (dbError) {
+    const errorMessage = formatErrorMessage(dbError);
+    console.error(`[${jobId}] Failed to save: ${errorMessage}`);
 
-      // Try to log failure to run_logs
-      // We might have a productId from legacy flow, or we might have created one in savePriceData before it failed
-      if (productId) {
-        try {
-          await updateProductFailure(productId);
-        } catch (err) {
-          console.warn(`[${jobId}] Failed to update failure timestamp:`, err);
-        }
+    // Try to log failure to run_logs
+    if (productId) {
+      try {
+        await updateProductFailure(productId);
         await logRun({
           productId,
           status: "FAILED",
           errorMessage: `Database error: ${errorMessage}`
         });
+      } catch (err) {
+        console.warn(`[${jobId}] Failed to log failure:`, err);
       }
     }
-  } else {
-    console.log(`[${jobId}] No price data to save`);
+
+    throw dbError; // Re-throw to fail the job
   }
 
   return result;
