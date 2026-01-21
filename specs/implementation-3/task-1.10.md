@@ -10,14 +10,14 @@
 
 ## What
 
-Update `CLAUDE.md` to replace Implementation 2's Multipass VM workflow with Implementation 3's docker-compose setup, ensuring the AI guidance document accurately reflects the new local development architecture.
+Update `CLAUDE.md` to replace Implementation 2's Multipass VM workflow with Implementation 3's Docker Compose (v2 `docker compose`) setup, ensuring the AI guidance document accurately reflects the new local development architecture.
 
 ---
 
 ## Objective
 
 Update the project guide so future Claude sessions understand:
-- Local services run via docker-compose (not VM)
+- Local services run via Docker Compose (v2 `docker compose`, not `docker-compose`) (not VM)
 - Environment variables use localhost URLs
 - Commands use `pnpm docker:*` scripts
 - Production deployment remains unchanged (Coolify)
@@ -48,14 +48,13 @@ Update the project guide so future Claude sessions understand:
 
 #### 3. Commands Section
 
-**Add docker-compose commands** after "Development" section:
+**Add Docker Compose commands** after "Development" section:
 
 ```markdown
 ### Docker Services (Local Development)
 ```bash
 pnpm docker:up        # Start PostgreSQL and Redis
-pnpm docker:down      # Stop services
-pnpm docker:clean     # Stop services and remove volumes
+pnpm docker:down      # Stop servicess
 pnpm docker:logs      # View service logs
 ```
 
@@ -72,7 +71,7 @@ pnpm docker:logs      # View service logs
 
 ### Local Development
 
-Development on host machine with docker-compose services:
+Development on host machine with Docker Compose services:
 
 1. **Start Services:**
    ```bash
@@ -168,7 +167,7 @@ Fast iteration with hot reload:
 
 | Component | Local Dev | Production |
 |-----------|-----------|------------|
-| **Orchestration** | docker-compose | Coolify (DigitalOcean Sydney) |
+| **Orchestration** | Docker Compose | Coolify (DigitalOcean Sydney) |
 | **PostgreSQL/Redis** | Docker containers | Containers on Droplet |
 | **Web/Worker** | pnpm dev | GHCR `:latest` images |
 | **CICD** | N/A | Auto-deploy on `main` merge |
@@ -200,7 +199,7 @@ Fast iteration with hot reload:
 - **Implementation 1:** Serverless (Vercel) - Archived
 - **Implementation 2:** Self-hosted with Local VM - Completed
 - **Implementation 3:** Simplified Local Dev - Current
-  - Phase 1: Local docker-compose setup - Current
+  - Phase 1: Local Docker Compose setup - Current
   - Phase 2: Production deployment - Planned
 ```
 
@@ -221,7 +220,7 @@ Fast iteration with hot reload:
 | Project Overview | Update | Mention Implementation 3 |
 | Commands | Add | docker:* scripts |
 | Environment Config | Rewrite | localhost URLs, remove VM |
-| Development Workflow | Rewrite | docker-compose setup |
+| Development Workflow | Rewrite | Docker Compose setup |
 | Architecture | Update | 2 environments instead of 3 |
 | Troubleshooting | Update | Docker issues, remove VM |
 | Implementation Status | Update | Add Impl-3 status |
@@ -241,7 +240,7 @@ Fast iteration with hot reload:
 
 - [ ] CLAUDE.md updated with Implementation 3 workflow
 - [ ] All VM references removed from current instructions
-- [ ] docker-compose commands documented
+- [ ] Docker Compose commands documented
 - [ ] Environment configuration uses localhost
 - [ ] Development workflow simplified
 - [ ] Troubleshooting updated for Docker
@@ -292,7 +291,7 @@ grep "^##" CLAUDE.md
 
 - [x] CLAUDE.md reflects Implementation 3 architecture
 - [x] Multipass/VM removed from current workflow
-- [x] docker-compose commands documented
+- [x] Docker Compose commands documented
 - [x] Environment variables use localhost
 - [x] Development workflow is clear and concise
 - [x] Troubleshooting covers Docker issues
@@ -308,7 +307,7 @@ grep "^##" CLAUDE.md
 
 **Good approach:**
 ```markdown
-Implementation 3 uses docker-compose for local services (replaces the Multipass VM from Implementation 2).
+Implementation 3 uses Docker Compose for local services (replaces the Multipass VM from Implementation 2).
 ```
 
 **Bad approach:**
@@ -361,9 +360,9 @@ Start services: `pnpm docker:up`
 
 ### Conflicting Information
 
-**Symptom:** One section says VM, another says docker-compose
+**Symptom:** One section says VM, another says Docker Compose
 
-**Solution:** Standardize on docker-compose for "Local Development", preserve VM mentions only in:
+**Solution:** Standardize on Docker Compose for "Local Development", preserve VM mentions only in:
 - Implementation history
 - Migration guides
 - Comparisons

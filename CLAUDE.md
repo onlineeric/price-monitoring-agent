@@ -23,9 +23,9 @@ Price Monitor AI Agent - monitors product prices from URLs, stores price history
 - **Authentication**: Public access (no authentication for demo purposes)
 
 ### Data & Messaging
-- **Database**: PostgreSQL 18 → **docker-compose (Local)** / **Coolify (Production)**
+- **Database**: PostgreSQL 18 → **Docker Compose (Local)** / **Coolify (Production)**
 - **ORM**: **Drizzle ORM** (Serverless & Edge ready)
-- **Redis**: **Redis 8** → **docker-compose (Local)** / **Coolify (Production)**
+- **Redis**: **Redis 8** → **Docker Compose (Local)** / **Coolify (Production)**
 - **Queue**: **BullMQ** (uses Redis)
 
 ### Extraction & AI
@@ -39,7 +39,7 @@ Price Monitor AI Agent - monitors product prices from URLs, stores price history
 - **Templates**: **React Email**
 
 ### Infrastructure
-- **Local Dev**: docker-compose on WSL2 Ubuntu
+- **Local Dev**: Docker Compose (v2 `docker compose`) on WSL2 Ubuntu
 - **Production**: Coolify on DigitalOcean Droplet (Sydney region)
 - **Container Registry**: GitHub Container Registry (GHCR)
 - **CICD**: GitHub Actions
@@ -68,7 +68,7 @@ scripts/     # Utility scripts
 ### Development
 ```bash
 pnpm install                                  # Install all dependencies
-pnpm docker:up                                # Start PostgreSQL & Redis (docker-compose)
+pnpm docker:up                                # Start PostgreSQL & Redis (Docker Compose)
 pnpm docker:down                              # Stop services
 pnpm --filter @price-monitor/web dev          # Next.js dev server (port 3000)
 pnpm --filter @price-monitor/worker dev       # Worker with hot reload
@@ -103,7 +103,7 @@ docker exec -it price-monitoring-agent-redis-1 redis-cli  # Connect to Redis
 
 ### Local Development
 
-Local development uses docker-compose for PostgreSQL and Redis:
+Local development uses Docker Compose (v2 `docker compose`) for PostgreSQL and Redis:
 
 1. **Start Services:**
    ```bash
@@ -164,8 +164,8 @@ Fast iteration with hot reload:
 ### Infrastructure Stack
 | Component | Local Development | Production |
 |-----------|-------------------|------------|
-| **Orchestration** | docker-compose | Coolify (DigitalOcean Sydney) |
-| **PostgreSQL/Redis** | docker-compose containers | Containers on Droplet |
+| **Orchestration** | Docker Compose | Coolify (DigitalOcean Sydney) |
+| **PostgreSQL/Redis** | Docker Compose containers | Containers on Droplet |
 | **Web/Worker** | Hot reload (pnpm dev) | GHCR `:latest` images |
 | **CICD** | N/A | Auto-deploy on `main` merge |
 
