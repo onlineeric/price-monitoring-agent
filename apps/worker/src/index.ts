@@ -1,6 +1,7 @@
 import { Queue } from "bullmq";
-import "./queue/worker.js";
+import worker from "./queue/worker.js";
 import { closeBrowser } from "./services/scraper.js";
+import { closeFlowProducer } from "./jobs/sendDigest.js";
 import { connection, QUEUE_NAME } from "./config.js";
 import { DigestScheduler } from "./scheduler.js";
 
@@ -31,13 +32,28 @@ if (ENABLE_SCHEDULER) {
 }
 
 // Graceful shutdown handlers
+let isShuttingDown = false;
+
 async function shutdown(signal: string) {
+  // Prevent duplicate shutdown calls
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+
   console.log(`\n${signal} received. Shutting down gracefully...`);
 
   // Stop scheduler if running
   if (scheduler) {
     await scheduler.stop();
   }
+
+  // Close worker
+  console.log("⏹️  Closing worker...");
+  await worker.close();
+
+  // Close flow producer
+  await closeFlowProducer();
 
   // Close browser
   await closeBrowser();

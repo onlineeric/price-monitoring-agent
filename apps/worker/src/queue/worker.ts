@@ -1,7 +1,7 @@
 import { Worker, Job } from "bullmq";
 import { connection, QUEUE_NAME } from "../config.js";
 import priceCheckJob from "../jobs/priceCheck.js";
-import { sendDigestJob, onDigestFlowComplete, closeFlowProducer } from '../jobs/sendDigest.js';
+import { sendDigestJob, onDigestFlowComplete } from '../jobs/sendDigest.js';
 
 // Job processor function
 async function processJob(job: Job) {
@@ -35,16 +35,5 @@ worker.on("completed", (job) => {
 worker.on("failed", (job, err) => {
   console.error(`[${job?.id}] Failed: ${err.message}`);
 });
-
-// Graceful shutdown
-async function shutdown() {
-  console.log('Shutting down worker...');
-  await worker.close();
-  await closeFlowProducer();
-  process.exit(0);
-}
-
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
 
 export default worker;
