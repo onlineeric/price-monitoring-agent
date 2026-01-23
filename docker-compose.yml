@@ -2,15 +2,15 @@ version: '3.8'
 
 services:
   # PostgreSQL database (local alternative to Neon)
-  postgres:
+  postgres:   # service name, use in DATABASE_URL as hostname, e.g., postgresql://user:pass@postgres:5432/dbname
     image: postgres:18-alpine
-    container_name: price-monitor-postgres
+    # container_name: price-monitor-postgres  # Don't set container_name to allow multiple instances
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: priceMonitor
-    ports:
-      - "5432:5432"
+    # ports:  # port mapping not needed unless you want to access DB from host, multiple instances may conflict
+    #   - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -21,11 +21,11 @@ services:
     restart: unless-stopped
 
   # Redis (local alternative to Upstash)
-  redis:
+  redis:  # service name, use in REDIS_URL as hostname, e.g., redis://redis:6379
     image: redis:8-alpine
-    container_name: price-monitor-redis
-    ports:
-      - "6379:6379"
+    # container_name: price-monitor-redis  # Don't set container_name to allow multiple instances
+    # ports:  # port mapping not needed unless you want to access Redis from host, multiple instances may conflict
+    #   - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -41,9 +41,9 @@ services:
       context: .
       dockerfile: apps/worker/Dockerfile
     environment:
-      # Database
+      # Database - using local Postgres service name as host: postgresql://user:pw@host:5432/priceMonitor
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/priceMonitor
-      # Redis
+      # Redis - using local Redis service name as host: redis://host:6379
       REDIS_URL: redis://redis:6379
       # AI Provider (use your actual keys)
       AI_PROVIDER: ${AI_PROVIDER:-anthropic}
