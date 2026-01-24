@@ -17,7 +17,10 @@
       "Bash(git status:*)",
       "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh repo view:*)"
     ]
   }
 }

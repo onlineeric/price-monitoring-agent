@@ -29,11 +29,21 @@ const worker = new Worker(QUEUE_NAME, processJob, { connection });
 
 // Event listeners
 worker.on("completed", (job) => {
-  console.log(`[${job.id}] Completed`);
+  console.log(`[JOB COMPLETED] ${job.name} (${job.id})`);
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`[${job?.id}] Failed: ${err.message}`);
+  console.error("[JOB FAILED]", {
+    jobId: job?.id,
+    jobName: job?.name,
+    error: err.message,
+    // Only include stack in development
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
+
+worker.on("active", (job) => {
+  console.log(`[JOB ACTIVE] ${job.name} (${job.id})`);
 });
 
 export default worker;

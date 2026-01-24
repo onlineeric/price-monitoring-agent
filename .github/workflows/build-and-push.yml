@@ -1,7 +1,8 @@
 name: Build and Push Docker Images
 
-# Trigger on push to main or dev branches
-# Only build when relevant files change (not just docs)
+# Trigger on push to main or dev branches                                                                     
+# - main: Build :latest + deploy to production                                                                
+# - dev:  Build :dev (CI test only, not deployed anywhere)                                                    
 on:
   push:
     branches:
@@ -71,5 +72,58 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Note: Production webhook triggers will be added in Phase 2 (task 2.9)
-      # For now, Coolify deployments are triggered manually or via CLI script
+      # ===================================
+      # Production Auto-Deployment
+      # ===================================
+      # These steps only run on 'main' branch
+      # They trigger Coolify to pull latest images and redeploy
+      # Webhook URLs are configured in GitHub Secrets:
+      #   - COOLIFY_WEBHOOK_WEB_PROD
+      #   - COOLIFY_WEBHOOK_WORKER_PROD
+      # Get these URLs from production Coolify (tasks 2.14-2.15)
+      #
+      # GitHub Secrets Required (set these in repository settings):
+      #
+      # 1. Navigate to: Repository → Settings → Secrets and variables → Actions
+      # 2. Click "New repository secret"
+      # 3. Add the following secrets:
+      #
+      #    Name: COOLIFY_WEBHOOK_WEB_PROD
+      #    Value: <webhook URL from production Coolify web app>
+      #
+      #    Name: COOLIFY_WEBHOOK_WORKER_PROD
+      #    Value: <webhook URL from production Coolify worker app>
+      #
+      # How to get webhook URLs:
+      #    - Production Coolify → Application → Settings → Webhooks
+      #    - Copy the webhook URL for each app
+
+      # Step 7: Trigger Production Deployment (Web)
+      - name: Trigger Production Deployment (Web)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" ]; then
+            echo "Triggering Coolify webhook for web app..."
+            curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" \
+              --fail --silent --show-error \
+              --max-time 30 \
+              && echo "✅ Web deployment triggered successfully" \
+              || echo "⚠️ Web webhook failed (non-blocking)"
+          else
+            echo "⚠️ COOLIFY_WEBHOOK_WEB_PROD secret not set, skipping webhook"
+          fi
+
+      # Step 8: Trigger Production Deployment (Worker)
+      - name: Trigger Production Deployment (Worker)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" ]; then
+            echo "Triggering Coolify webhook for worker app..."
+            curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" \
+              --fail --silent --show-error \
+              --max-time 30 \
+              && echo "✅ Worker deployment triggered successfully" \
+              || echo "⚠️ Worker webhook failed (non-blocking)"
+          else
+            echo "⚠️ COOLIFY_WEBHOOK_WORKER_PROD secret not set, skipping webhook"
+          fi

@@ -8,7 +8,7 @@
 
 ## What
 
-Create a PostgreSQL 15 database container in production Coolify with persistent storage.
+Create a PostgreSQL 18 database container in production Coolify with persistent storage.
 
 ---
 
@@ -43,7 +43,7 @@ postgresql://postgres:<password>@price-monitor-postgres-prod:5432/priceMonitor
 ## Expected Results
 
 **Success Criteria:**
-- PostgreSQL 15 container created in production Coolify
+- PostgreSQL 18 container created in production Coolify
 - Container name: `price-monitor-postgres-prod` (or similar)
 - Database: `priceMonitor`
 - Username: `postgres`

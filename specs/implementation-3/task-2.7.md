@@ -8,7 +8,7 @@
 
 ## What
 
-Create a Redis 7 container in production Coolify with persistent storage.
+Create a Redis 8 container in production Coolify with persistent storage.
 
 ---
 
@@ -39,7 +39,7 @@ redis://price-monitor-redis-prod:6379
 ## Expected Results
 
 **Success Criteria:**
-- Redis 7 container created in production Coolify
+- Redis 8 container created in production Coolify
 - Container name: `price-monitor-redis-prod` (or similar)
 - Port 6379 internal only (NOT exposed to public)
 - Persistent volume configured

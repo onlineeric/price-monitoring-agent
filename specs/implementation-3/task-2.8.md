@@ -8,7 +8,7 @@
 
 ## What
 
-Verify that PostgreSQL and Redis containers are running correctly and accessible within the Coolify internal network.
+Verify that PostgreSQL and Redis resources are running correctly in Coolify and note the internal endpoints that the app containers will use.
 
 ---
 
@@ -24,33 +24,40 @@ Validate database connectivity before deploying applications to ensure:
 
 ## How to Do
 
-SSH into the Droplet and use Docker commands to access the database containers directly. For PostgreSQL, connect using psql client. For Redis, use redis-cli to ping the server. Document the test results.
+Open the Coolify dashboard and verify health status for the PostgreSQL and Redis resources. Use Coolify logs/status to confirm both services are started and stable, then document the internal hostnames/ports for application configuration.
 
-**Test Commands:**
-```bash
-# PostgreSQL
-docker exec -it <postgres-container-id> psql -U postgres -d priceMonitor
-
-# Redis
-docker exec -it <redis-container-id> redis-cli ping
-```
-
-Get container IDs from: `docker ps`
+**Dashboard Checklist:**
+1. Coolify dashboard -> Project/Environment where Postgres + Redis are deployed.
+2. Open the **PostgreSQL** resource/service:
+   - Status shows `Running` (or `Healthy` if healthchecks are enabled)
+   - No restart loop (restart count not increasing)
+   - Logs contain a readiness message like: `database system is ready to accept connections`
+3. Open the **Redis** resource/service:
+   - Status shows `Running` (or `Healthy` if healthchecks are enabled)
+   - No restart loop
+   - Logs contain a readiness message like: `Ready to accept connections`
+4. In Coolify, find and record the **internal endpoints** (service hostname + port) for both resources:
+   - Postgres: internal hostname + port `5432`
+   - Redis: internal hostname + port `6379`
+5. Document the production env var values you will set on web/worker:
+   - `DATABASE_URL=postgresql://postgres:<password>@<postgres-internal-host>:5432/priceMonitor`
+   - `REDIS_URL=redis://<redis-internal-host>:6379`
 
 ---
 
 ## Expected Results
 
 **Success Criteria:**
-- PostgreSQL container accessible via docker exec
-- Can connect to priceMonitor database
-- Redis container accessible via docker exec
-- Redis responds to PING with PONG
-- Internal URLs documented for application configuration
-- No connection errors
+- PostgreSQL resource/service shows `Running`/`Healthy` in Coolify
+- Redis resource/service shows `Running`/`Healthy` in Coolify
+- Logs indicate both services are ready (no crash/restart loops)
+- Internal hostnames/ports documented for application configuration
+- No obvious connection/auth/startup errors in logs
 
 **How to Verify:**
-- PostgreSQL: psql command connects, shows `priceMonitor=#` prompt
-- Redis: `redis-cli ping` returns `PONG`
-- Both containers show in `docker ps` output
-- Container logs show no errors
+- PostgreSQL: Coolify status is `Running`/`Healthy`, logs show ready/accepting connections
+- Redis: Coolify status is `Running`/`Healthy`, logs show ready/accepting connections
+- Both resources show as running in Coolify resources list
+- Logs show no repeated failures/auth errors
+
+> Note: This dashboard-only approach validates that the services are up and stable. If the web/worker later reports connection errors, follow up with an interactive connectivity test (e.g., exec into a container with `psql`/`redis-cli`) to confirm internal networking end-to-end.
