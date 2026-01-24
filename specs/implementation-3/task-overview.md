@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Version:** 2.0
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-01-24
 
 ---
 
@@ -134,23 +134,19 @@ This document provides a comprehensive breakdown of all tasks required to comple
 - **2.5** Install Coolify on Droplet
 - **2.6** Configure Coolify Dashboard
 - **2.7** Create Project in Coolify
+- **2.8** Deploy PostgreSQL and Redis in Production
 
-**Services Deployment (Manual)**
-- **2.8** Deploy PostgreSQL in Production
-- **2.9** Deploy Redis in Production
+**Documentation & CI/CD Preparation (AI)**
+- **2.9** Update GitHub Actions for Production Webhook
+- **2.10** Update Documentation for Production
+- **2.11** Document Production Environment Variables
+- **2.12** Final Configuration Updates
 
-**CI/CD Setup**
-- **2.10** Update Documentation for Production (AI)
-- **2.11** Create GitHub Actions Workflows (AI)
-- **2.12** Configure GitHub Secrets (Manual)
-- **2.13** Test GitHub Actions Build (Manual)
-
-**Application Deployment (Manual)**
+**Application Deployment & Verification (Manual)**
+- **2.13** Configure GitHub Secrets
 - **2.14** Configure Web App in Production Coolify
 - **2.15** Configure Worker App in Production Coolify
 - **2.16** Configure Environment Variables in Production
-
-**Operations & Verification (Manual)**
 - **2.17** Set Up Deployment Webhooks
 - **2.18** End-to-End Production Testing
 
@@ -186,8 +182,9 @@ This document provides a comprehensive breakdown of all tasks required to comple
 
 **Phase 2:**
 - Coolify installation (2.5) blocks all deployments
-- Database services (2.8-2.9) required for applications (2.14-2.16)
-- CI/CD pipeline (2.13) must work before application deployment
+- Database services (2.8) required for applications (2.14-2.16)
+- AI tasks (2.9-2.12) can run in parallel after 2.8
+- GitHub Secrets (2.13) must be configured before application deployment
 
 ---
 
@@ -248,18 +245,23 @@ Phase 1 Complete (Task 1.15)
                           └─> Task 2.5 (Install Coolify)
                                 └─> Task 2.6 (Configure Coolify)
                                       └─> Task 2.7 (Create Project)
-                                            ├─> Task 2.8 (Deploy PostgreSQL) ─┐
-                                            ├─> Task 2.9 (Deploy Redis) ──────┤
-                                            ├─> Task 2.10 (Update Docs) ───┐  │
-                                            │     └─> Task 2.11 (GitHub Actions) │
-                                            │           └─> Task 2.12 (Secrets) │
-                                            │                 └─> Task 2.13 (Test Build) ─┐
-                                            │                                               │
-                                            └─> Task 2.14 (Web App) <──────────────────────┴──┘
-                                                  └─> Task 2.15 (Worker)
-                                                        └─> Task 2.16 (Env Variables)
-                                                              └─> Task 2.17 (Webhooks)
-                                                                    └─> Task 2.18 (E2E Testing)
+                                            └─> Task 2.8 (Deploy PostgreSQL & Redis)
+                                                  │
+    ┌─────────────────────────────────────────────┘
+    │
+    ├─> Task 2.9 (GitHub Actions Webhook) ──┐
+    ├─> Task 2.10 (Update Docs) ────────────┤ [AI Tasks - Can run in parallel]
+    ├─> Task 2.11 (Env Vars Doc) ───────────┤
+    └─> Task 2.12 (Final Config) ───────────┘
+                                            │
+    ┌───────────────────────────────────────┘
+    │
+    └─> Task 2.13 (GitHub Secrets)
+          └─> Task 2.14 (Web App)
+                └─> Task 2.15 (Worker)
+                      └─> Task 2.16 (Env Variables)
+                            └─> Task 2.17 (Webhooks)
+                                  └─> Task 2.18 (E2E Testing)
 ```
 
 ---
