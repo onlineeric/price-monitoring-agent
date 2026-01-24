@@ -1,34 +1,3 @@
-# Task 2.11: Document Production Environment Variables
-
-**Type:** AI Generation
-**Performer:** AI
-**Phase:** 2 - Production Deployment
-
----
-
-## Objective
-
-Create comprehensive documentation for all environment variables required in production, with examples, descriptions, and a checklist format for easy verification.
-
----
-
-## Context
-
-Production deployment requires careful environment variable configuration. A dedicated document helps ensure:
-- No variables are forgotten
-- Values are correctly formatted
-- Security best practices are followed
-- Easy reference during setup
-
----
-
-## File to Create
-
-**Location:** `docs/production-env.md`
-
-**Structure:**
-
-```markdown
 # Production Environment Variables
 
 This document lists all environment variables required for production deployment of the Price Monitor AI Agent.
@@ -166,11 +135,11 @@ claude-haiku-4-5
 
 #### OPENAI_MODEL (Optional)
 
-**Recommended Value:** `gpt-5-mini`
+**Recommended Value:** `gpt-4o-mini`
 
 #### GOOGLE_MODEL (Optional)
 
-**Recommended Value:** `gemini-2.5-flash`
+**Recommended Value:** `gemini-2.0-flash`
 
 ---
 
@@ -205,7 +174,7 @@ re_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 **Description:** Enable BullMQ Repeatable Jobs for scheduled digest emails
 
-**⚠️ CRITICAL:** Only ONE worker instance should have this set to `true`
+**CRITICAL:** Only ONE worker instance should have this set to `true`
 
 **Values:**
 - `true` - Enable scheduler (production worker only)
@@ -354,7 +323,7 @@ Use this checklist when configuring production environment:
 ### AI extraction not working
 
 **Check:** API keys and provider
-- Verify API_PROVIDER matches key (e.g., `anthropic` + ANTHROPIC_API_KEY)
+- Verify AI_PROVIDER matches key (e.g., `anthropic` + ANTHROPIC_API_KEY)
 - Check API key is valid (not expired or revoked)
 - Verify API key has credits/quota remaining
 
@@ -370,41 +339,3 @@ Use this checklist when configuring production environment:
 **Check:** ENABLE_SCHEDULER
 - Should be `true` on only ONE worker instance
 - If multiple workers, set to `false` on all but one
-```
-
----
-
-## Deliverables
-
-**File:** `docs/production-env.md`
-
-Contains:
-1. Complete list of all environment variables
-2. Description and format for each
-3. How to obtain API keys
-4. Where to set each variable
-5. Checklist for verification
-6. Security best practices
-7. Troubleshooting guide
-
----
-
-## Success Criteria
-
-- [x] `docs/production-env.md` created
-- [x] All required variables documented
-- [x] Each variable has description, format, and example
-- [x] Includes how to obtain API keys
-- [x] Checklist format for easy verification
-- [x] Security best practices included
-- [x] Troubleshooting section added
-- [x] Clear instructions for setting in Coolify
-
----
-
-## Notes
-
-- This document is a critical reference during production setup
-- User will refer to this in tasks 2.14-2.15
-- Keep it comprehensive but easy to scan
-- Include examples for clarity

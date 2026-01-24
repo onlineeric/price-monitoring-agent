@@ -122,14 +122,14 @@ While the AI cannot create GitHub Secrets, add comments documenting how to set t
 
 ## Implementation Checklist
 
-- [ ] Add webhook trigger steps after image push
-- [ ] Steps only run on `main` branch (use `if:` condition)
-- [ ] Call `COOLIFY_WEBHOOK_WEB_PROD` secret
-- [ ] Call `COOLIFY_WEBHOOK_WORKER_PROD` secret
-- [ ] Make webhook calls non-blocking (don't fail workflow on error)
-- [ ] Add clear comments explaining webhook purpose
-- [ ] Document how to set up GitHub Secrets
-- [ ] Test condition ensures dev branch doesn't trigger webhooks
+- [x] Add webhook trigger steps after image push
+- [x] Steps only run on `main` branch (use `if:` condition)
+- [x] Call `COOLIFY_WEBHOOK_WEB_PROD` secret
+- [x] Call `COOLIFY_WEBHOOK_WORKER_PROD` secret
+- [x] Make webhook calls non-blocking (don't fail workflow on error)
+- [x] Add clear comments explaining webhook purpose
+- [x] Document how to set up GitHub Secrets
+- [x] Test condition ensures dev branch doesn't trigger webhooks
 
 ---
 
@@ -176,15 +176,15 @@ After implementation, verify the changes:
 
 ## Success Criteria
 
-- [ ] `.github/workflows/build-and-push.yml` updated
-- [ ] Webhook trigger steps added after image push
-- [ ] Steps only run on `main` branch
-- [ ] Uses correct GitHub Secrets for webhook URLs
-- [ ] Non-blocking error handling (won't fail workflow)
-- [ ] Clear comments explain webhook functionality
-- [ ] Documents how to set up required GitHub Secrets
-- [ ] Documents how to get webhook URLs from Coolify
-- [ ] Workflow syntax is valid YAML
+- [x] `.github/workflows/build-and-push.yml` updated
+- [x] Webhook trigger steps added after image push
+- [x] Steps only run on `main` branch
+- [x] Uses correct GitHub Secrets for webhook URLs
+- [x] Non-blocking error handling (won't fail workflow)
+- [x] Clear comments explain webhook functionality
+- [x] Documents how to set up required GitHub Secrets
+- [x] Documents how to get webhook URLs from Coolify
+- [x] Workflow syntax is valid YAML
 
 ---
 

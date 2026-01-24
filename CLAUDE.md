@@ -239,48 +239,155 @@ Queue: `price-monitor-queue`, Job data: `{ url: string }`, Redis shared between 
 
 ## Production Deployment
 
-**Platform:** DigitalOcean Droplet (Sydney), Coolify orchestration, GHCR `:latest` images
+### Infrastructure
 
-**Auto-Deploy:** Merge to `main` → GitHub Actions builds → Triggers Coolify webhooks → Redeploys
+**Platform:** DigitalOcean Droplet (Sydney region)
+**Orchestration:** Coolify (self-hosted)
+**Containers:** Pulled from GHCR (`:latest` tag)
 
-**Environment (Coolify dashboard):**
+### Deployment Process
+
+**Automatic Deployment (Recommended):**
+1. Develop and test on `dev` branch locally (Docker Compose services)
+2. Create PR from `dev` to `main`
+3. Review and merge PR
+4. GitHub Actions automatically:
+   - Builds `:latest` images
+   - Pushes to GHCR
+   - Triggers Coolify webhooks
+   - Coolify pulls and redeploys
+
+**Manual Deployment (if needed):**
+1. Access production Coolify: `http://<droplet-ip>:8000`
+2. Navigate to application
+3. Click "Redeploy"
+
+### Environment Configuration
+
+**Production Apps Environment Variables:**
+Set in Coolify dashboard for each app:
+
 ```env
-DATABASE_URL="postgresql://postgres:...@price-monitor-postgres-prod:5432/priceMonitor"  # Internal DNS
+# Database (Coolify internal DNS)
+DATABASE_URL="postgresql://postgres:<password>@price-monitor-postgres-prod:5432/priceMonitor"
+
+# Redis (Coolify internal DNS)
 REDIS_URL="redis://price-monitor-redis-prod:6379"
+
+# AI Provider
 AI_PROVIDER="anthropic"
-ANTHROPIC_API_KEY="..."
-RESEND_API_KEY="..."
-ENABLE_SCHEDULER="true"  # ONLY on ONE worker
+ANTHROPIC_API_KEY="<your-key>"
+
+# Email
+RESEND_API_KEY="<your-key>"
+
+# Worker Scheduler (IMPORTANT: Only ONE worker should have this)
+ENABLE_SCHEDULER="true"
+
+# Environment
 NODE_ENV="production"
 ```
 
-**Local vs Production:**
-- Local: localhost URLs, hot reload via pnpm dev
-- Production: Coolify internal DNS, `:latest` tags, auto-deploy on merge
+### Production vs Local Differences
+
+| Aspect | Local Development | Production |
+|--------|-------------------|------------|
+| **Location** | Developer machine (apps run on host) | DigitalOcean Droplet (Sydney) |
+| **Access** | Web: `http://localhost:3000` | Web: `http://<production-ip>` |
+| **Services** | Postgres/Redis via Docker Compose | Postgres/Redis via Coolify-managed containers |
+| **Database URLs** | `localhost` ports | Coolify internal DNS |
+| **Deployment** | `pnpm dev` + `pnpm docker:up` | Automatic on `main` merge |
+| **Images** | N/A (not containerized locally) | `:latest` tag |
+| **SSL** | No (HTTP only) | Optional (domain + SSL) |
+
+### Monitoring
+
+**Logs:**
+- Production Coolify → Application → Logs tab
+- Real-time log streaming
+- Filter by severity
+
+**Resource Usage:**
+- Coolify dashboard shows CPU, memory, disk usage
+- Monitor for spikes or issues
+
+**Health Checks:**
+- Web app: Access production URL, verify dashboard loads
+- Worker: Check logs for "Connected to Redis" message
+- Database: Query record count to verify data
 
 ---
 
 ## Troubleshooting
 
-### Local Development
-- **Services won't start:** Run `pnpm docker:up`, check Docker Desktop is running
-- **Connection refused:** Verify `.env` has `localhost` URLs (not VM IP)
-- **DB connection failed:**
-  - Check containers: `docker ps | grep price-monitoring`
-  - View logs: `docker logs price-monitoring-agent-postgres-1`
-  - Test connection: `pnpm --filter @price-monitor/db push`
-- **Port already in use:** Stop existing containers: `pnpm docker:down`
+### Local Development Issues (Docker Compose)
 
-### Production
-- **Deployment failed:** Check GitHub Actions logs → Coolify logs → env vars
-- **App won't start:** Check Coolify logs, verify env vars, check DB connectivity, verify `:latest` tag
-- **Worker not processing:** Check worker logs, verify Redis connection, check `ENABLE_SCHEDULER`
-- **Scheduled emails not sending:** Verify `ENABLE_SCHEDULER=true`, check worker logs for "Scheduler started", verify RESEND_API_KEY
+**Docker services won't start:**
+- Verify Docker is running: `docker ps`
+- Start services: `pnpm docker:up`
+- Check logs: `docker logs price-monitoring-agent-postgres-1`
 
-### CICD
-- **GitHub Actions failing:** Check workflow syntax, test Docker builds locally, verify GHCR auth
-- **Webhooks not triggering:** Verify GitHub Secrets set, check webhook URLs, test with curl
-- **Images not updating:** Verify push to GHCR, check tag, manually redeploy in Coolify
+**Port conflicts (5432 / 6379):**
+- Check what's using the port: `sudo lsof -i :5432` or `sudo lsof -i :6379`
+- Stop the conflicting service or change ports in `docker-compose.yml`
+
+**Database connection failed:**
+- Verify `.env` uses `localhost` URLs (not old VM IP)
+- Verify containers are healthy: `docker ps`
+- Test connection: `pnpm --filter @price-monitor/db push`
+
+**Connection refused:**
+- Check containers are running: `docker ps | grep price-monitoring`
+- View container logs: `docker logs price-monitoring-agent-postgres-1`
+
+### Production Issues
+
+**Deployment failed:**
+1. Check GitHub Actions logs for build errors
+2. Verify Docker image built successfully
+3. Check Coolify deployment logs
+4. Verify environment variables are set correctly
+
+**Application won't start:**
+1. Check logs in Coolify dashboard
+2. Verify all environment variables are set
+3. Check database connectivity (internal DNS names)
+4. Verify image tag is correct (`:latest`)
+
+**Worker not processing jobs:**
+1. Check worker logs for errors
+2. Verify Redis connection is working
+3. Check `ENABLE_SCHEDULER` setting
+4. Verify BullMQ connection in logs
+
+**Scheduled emails not sending:**
+1. Check worker logs for "Scheduler started" message
+2. Verify `ENABLE_SCHEDULER=true` on ONE worker only
+3. Check email schedule settings in database
+4. Verify RESEND_API_KEY is set correctly
+5. Check worker logs for cron pattern registration
+
+### CICD Issues
+
+**GitHub Actions failing:**
+1. Check workflow file syntax (YAML validation)
+2. Verify Docker builds work locally
+3. Check GHCR authentication (GITHUB_TOKEN)
+4. Review Actions logs for specific error messages
+
+**Webhooks not triggering:**
+1. Verify GitHub Secrets are set:
+   - `COOLIFY_WEBHOOK_WEB_PROD`
+   - `COOLIFY_WEBHOOK_WORKER_PROD`
+2. Check webhook URLs are correct (from Coolify)
+3. Test webhook manually with curl
+4. Check Coolify logs for webhook received
+
+**Images not updating in production:**
+1. Verify image was pushed to GHCR successfully
+2. Check image tag is correct (`:latest`)
+3. Manually trigger redeploy in Coolify
+4. Clear image cache if needed
 
 ---
 
@@ -296,6 +403,7 @@ NODE_ENV="production"
 
 ### Implementation Status
 
-- **Phase 1:** Local Development Simplification - In Progress
-- **Phase 2:** Production Deployment - Planned
+- **Phase 1:** Local Development Simplification - Complete
+- **Phase 2:** Production Deployment - In Progress
 - See `specs/implementation-3/task-overview.md` for roadmap
+- See `docs/production-env.md` for production environment variables guide
