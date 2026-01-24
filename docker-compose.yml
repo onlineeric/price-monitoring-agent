@@ -9,8 +9,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: priceMonitor
-    # ports:  # port mapping not needed unless you want to access DB from host, multiple instances may conflict
-    #   - "5432:5432"
+    ports:  # port mapping needed on localhost for local development
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +24,8 @@ services:
   redis:  # service name, use in REDIS_URL as hostname, e.g., redis://redis:6379
     image: redis:8-alpine
     # container_name: price-monitor-redis  # Don't set container_name to allow multiple instances
-    # ports:  # port mapping not needed unless you want to access Redis from host, multiple instances may conflict
-    #   - "6379:6379"
+    ports:  # port mapping needed on localhost for local development
+      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
