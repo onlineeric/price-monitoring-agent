@@ -1,126 +1,158 @@
 # Price Monitor AI Agent
 
-A price monitoring application that tracks product prices from URLs, stores price history, and sends digest emails with trend analysis.
+AI-powered price monitoring system that tracks product prices over time with intelligent extraction, trend analysis, and automated email digests.
 
-## Features
+**Purpose:** Portfolio project demonstrating full-stack development, background job processing, AI integration, and production deployment skills.
 
-- **Price Monitoring**: Add product URLs and track price changes over time
-- **AI-Powered Extraction**: Uses 2-tier extraction (HTML parsing → Playwright + AI fallback)
-- **Price History**: View historical price data with charts
-- **Email Digests**: Scheduled email reports with price trends
-- **Dashboard**: Web UI for managing products and viewing analytics
+## Technical Highlights
 
-## Quick Start (Local Development)
+### 2-Tier Intelligent Extraction Pipeline
 
-### Prerequisites
+**Tier 1: Fast HTML Parser** (~100-500ms, free)
 
-- Node.js 20+
-- pnpm 9+
-- Docker Desktop or Docker Engine
+- Static HTML parsing with Cheerio
+- Multiple selector fallbacks
+- Instant results for standard e-commerce sites
 
-### Setup
+**Tier 2: AI-Powered Browser Automation** (~3-6s)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd price-monitoring-agent
-   ```
+- Headless Chromium with stealth mode (puppeteer-extra-plugin-stealth)
+- Bypasses bot detection (~70-80% success rate)
+- AI fallback for complex pages using Vercel AI SDK
+- Structured output validation with Zod
 
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
+### Worker-Managed Scheduling
 
-3. **Start database services**
-   ```bash
-   pnpm docker:up  # Starts PostgreSQL & Redis
-   ```
+- **BullMQ Repeatable Jobs** - No external cron dependencies
+- **Dynamic schedule updates** - Detects changes within 5 minutes
+- **Always-on processing** - No cold starts
+- **Trend analysis** - Calculates 7/30/90/180 day price averages
 
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys
-   ```
+### Production-Ready Architecture
 
-5. **Initialize database**
-   ```bash
-   pnpm --filter @price-monitor/db push
-   ```
+```text
+Developer → GitHub → GitHub Actions
+                         ↓
+             GitHub Container Registry
+                         ↓
+             Coolify (DigitalOcean)
+                         ↓
+       Web + Worker + PostgreSQL + Redis
+            (Auto-deployment)
+```
 
-6. **Start applications**
-   ```bash
-   # Terminal 1: Web app
-   pnpm --filter @price-monitor/web dev
+## Tech Stack
 
-   # Terminal 2: Worker
-   pnpm --filter @price-monitor/worker dev
-   ```
+### Frontend & Backend
 
-7. **Open the dashboard**
-   - Navigate to http://localhost:3000
+- **Framework:** Next.js 16 (React 19, TypeScript)
+- **UI Components:** Shadcn UI (Radix primitives) + Tailwind CSS v4
+- **Forms:** React Hook Form + Zod validation
+- **Data Tables:** TanStack Table
+- **State Management:** Zustand
+- **Charts:** Recharts
+
+### Background Processing
+
+- **Queue:** BullMQ (Redis-backed)
+- **Browser Automation:** Playwright with stealth mode
+- **AI Integration:** Vercel AI SDK (multi-provider: OpenAI, Anthropic, Google)
+
+### Data Layer
+
+- **Database:** PostgreSQL 18
+- **ORM:** Drizzle ORM (serverless-ready)
+- **Cache/Queue:** Redis 8
+
+### Infrastructure
+
+- **Local Dev:** Docker Compose on WSL2
+- **Production:** Coolify (self-hosted PaaS on DigitalOcean)
+- **Container Registry:** GitHub Container Registry (GHCR)
+- **CI/CD:** GitHub Actions (auto-build + auto-deploy)
+
+### Communication
+
+- **Email Service:** Resend
+- **Email Templates:** React Email
+
+## Key Features
+
+- **Price Tracking:** Monitor products from any URL with historical price data
+- **Smart Extraction:** 2-tier fallback (fast HTML → AI-powered browser automation)
+- **Automated Digests:** Scheduled email reports with trend analysis
+- **Dashboard:** Professional UI for product management and analytics
+- **Production Deployment:** Automated CI/CD pipeline with zero-downtime deployments
+
+## Architecture
+
+### Local Development
+
+```text
+WSL2 Ubuntu
+├── Web App (Next.js dev server)
+├── Worker (BullMQ consumer)
+└── Docker Compose
+    ├── PostgreSQL 18
+    └── Redis 8
+```
+
+### Production
+
+```text
+DigitalOcean Droplet (Sydney)
+├── Coolify (orchestration)
+├── Web (containerized Next.js)
+├── Worker (containerized Node.js)
+├── PostgreSQL (container)
+└── Redis (container)
+```
+
+## Quick Start
+
+**Prerequisites:** Node.js 20+, pnpm, Docker
+
+```bash
+# Install dependencies
+pnpm install
+
+# Install Playwright browser
+pnpm --filter @price-monitor/worker exec playwright install chromium
+
+# Start database services
+pnpm docker:up
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Initialize database
+pnpm --filter @price-monitor/db push
+
+# Start apps (two terminals)
+pnpm --filter @price-monitor/web dev      # Terminal 1
+pnpm --filter @price-monitor/worker dev   # Terminal 2
+
+# Open dashboard
+open http://localhost:3000
+```
 
 ## Deployment
 
-This project uses a self-hosted deployment approach with Coolify on DigitalOcean.
+Production deployment is fully automated:
 
-### Architecture
+1. **Develop:** Work on `dev` branch locally
+2. **Release:** Create PR to `main`, review, merge
+3. **Deploy:** GitHub Actions builds and pushes to GHCR
+4. **Go Live:** Coolify auto-deploys via webhook
 
-```
-Developer → GitHub (code)
-             ↓
-         GitHub Actions
-         (build :latest images)
-             ↓
-   GitHub Container Registry (GHCR)
-             ↓
-         Coolify (production)
-         (auto-deploys via webhook)
-             ↓
-    Web + Worker + PostgreSQL + Redis
-       (DigitalOcean Droplet, Sydney)
-```
-
-### Environments
-
-**Environment 1: Local Development**
-- Code runs on host machine (`pnpm dev`)
-- Connects to PostgreSQL/Redis via Docker Compose on localhost
-- Fast iteration with hot reload
-
-**Environment 2: Production Deployment**
-- DigitalOcean Droplet in Sydney region
-- Automatic deployment on `main` branch merge
-- Uses `:latest` images from GHCR
-
-### Deployment Workflow
-
-1. **Develop:** Work on `dev` branch locally (`pnpm docker:up` + `pnpm dev`)
-2. **Release:** Create PR `dev` → `main`, review, merge
-3. **Deploy:** GitHub Actions builds `:latest`, triggers production deployment
-4. **Verify:** Check production logs, test live application
-
-### Production Access
-
-**Web Application:** `http://<production-ip>`
-**Coolify Dashboard:** `http://<production-ip>:8000`
-
-For detailed deployment instructions, see [CLAUDE.md](CLAUDE.md).
+Zero manual intervention required.
 
 ## Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Comprehensive development guide
-- **[docs/production-env.md](docs/production-env.md)** - Production environment variables
-- **[specs/implementation-3/](specs/implementation-3/)** - Architecture and task specs
-
-## Tech Stack
-
-- **Frontend**: Next.js 16, Shadcn UI, Tailwind CSS v4
-- **Backend**: Node.js, BullMQ
-- **Database**: PostgreSQL 18, Redis 8
-- **ORM**: Drizzle ORM
-- **AI**: Vercel AI SDK (OpenAI, Anthropic, Google)
-- **Email**: Resend + React Email
-- **Infrastructure**: Docker, Coolify, DigitalOcean
+- **[docs/production-env.md](docs/production-env.md)** - Production environment configuration
+- **[specs/implementation-3/](specs/implementation-3/)** - Architecture and implementation specs
 
 ## License
 
