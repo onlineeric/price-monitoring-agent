@@ -1,6 +1,7 @@
 "use client";
 
 import { Settings } from "lucide-react";
+import { version } from "@/lib/version";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -248,6 +249,7 @@ export function LayoutControls() {
               Restore Defaults
             </Button>
           </div>
+          <div className="text-center text-muted-foreground text-xs">v{version}</div>
         </div>
       </PopoverContent>
     </Popover>
