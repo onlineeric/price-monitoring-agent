@@ -27,7 +27,15 @@ Create production worker app configuration with:
 
 ## How to Do
 
-In production Coolify dashboard, create new application using Docker Image type. Set image to `worker:latest` from GHCR. Configure all environment variables from production-env.md checklist (including `ENABLE_SCHEDULER=true`). No port mapping needed. Get webhook URL and save as GitHub Secret `COOLIFY_WEBHOOK_WORKER_PROD`. Don't deploy yet.
+In production Coolify dashboard, create new application using Docker Image type. Set image to `worker:latest` from GHCR. 
+
+Configure all environment variables from production-env.md checklist (including `ENABLE_SCHEDULER=true`). 
+
+Get webhook URL and save as GitHub Secret `COOLIFY_WEBHOOK_WORKER_PROD`. 
+
+Don't deploy yet.
+
+No port mapping needed, no public port (background service).
 
 **Image:** `ghcr.io/<username>/<repo>/worker:latest`
 

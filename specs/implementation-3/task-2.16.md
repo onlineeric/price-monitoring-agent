@@ -28,7 +28,12 @@ This is the production launch. It validates:
 
 ## How to Do
 
-In production Coolify dashboard, deploy the web application first. Monitor deployment logs. Once running, deploy the worker application. Monitor its logs for successful startup. Push database schema to production if needed. Access the production web UI to verify it loads. Check both application logs for errors.
+- In production Coolify dashboard, deploy the web application first.
+- Monitor deployment logs. 
+- Once running, deploy the worker application. 
+- Monitor its logs for successful startup. 
+- Push database schema to production if needed. 
+- Access the production web UI to verify it loads. Check both application logs for errors.
 
 **Database Schema:**
 If first deployment, push schema:
