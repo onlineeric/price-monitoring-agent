@@ -73,7 +73,14 @@ export function ProductTableView({ products }: ProductTableViewProps) {
         return (
           <div className="max-w-[300px]">
             <p className="truncate font-medium">{name || "Detecting Product Name..."}</p>
-            <p className="truncate text-muted-foreground text-xs">{hostname}</p>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="truncate text-muted-foreground text-xs hover:underline"
+            >
+              {hostname}
+            </a>
           </div>
         );
       },

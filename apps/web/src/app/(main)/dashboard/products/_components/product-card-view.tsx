@@ -61,9 +61,14 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                     <CardTitle className="line-clamp-2 text-lg">
                       {product.name || "Detecting Product Name..."}
                     </CardTitle>
-                    <CardDescription className="mt-1 line-clamp-1 text-xs">
+                    <a
+                      href={product.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 line-clamp-1 text-muted-foreground text-xs hover:underline"
+                    >
                       {new URL(product.url).hostname}
-                    </CardDescription>
+                    </a>
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant={product.active ? "default" : "secondary"} className="text-xs">
