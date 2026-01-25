@@ -26,7 +26,7 @@ export async function sendDigestEmail(
   try {
     const generatedAt = new Date();
 
-    const emailFrom = (process.env.NODE_ENV === "development" ? "[dev]" : "") + 
+    const emailFrom = (process.env.NODE_ENV === "development" ? "[dev] " : "") + 
         (process.env.EMAIL_FROM || "Price Monitor <onboarding@resend.dev>");
 
     const { data, error } = await resend.emails.send({

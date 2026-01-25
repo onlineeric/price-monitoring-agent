@@ -68,7 +68,12 @@ export function ProductTableView({ products }: ProductTableViewProps) {
       cell: ({ row }) => {
         const name = row.getValue("name") as string;
         const url = row.original.url;
-        const hostname = new URL(url).hostname;
+        let hostname: string;
+        try {
+          hostname = new URL(url).hostname;
+        } catch {
+          hostname = url;
+        }
 
         return (
           <div className="max-w-[300px]">

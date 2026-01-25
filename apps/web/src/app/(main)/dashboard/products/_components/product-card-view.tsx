@@ -67,7 +67,13 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                       rel="noopener noreferrer"
                       className="mt-1 line-clamp-1 text-muted-foreground text-xs hover:underline"
                     >
-                      {new URL(product.url).hostname}
+                      {(() => {
+                        try {
+                          return new URL(product.url).hostname;
+                        } catch {
+                          return product.url;
+                        }
+                      })()}
                     </a>
                   </div>
                   <div className="flex items-center gap-1">
