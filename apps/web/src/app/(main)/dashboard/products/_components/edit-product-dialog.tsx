@@ -88,7 +88,7 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="overflow-hidden sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>Update product details. URL cannot be changed.</DialogDescription>
@@ -107,7 +107,7 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-sm">{product.name || "Detecting Product Name..."}</p>
-            <p className="truncate text-muted-foreground text-xs">{product.url}</p>
+            <p className="break-all text-muted-foreground text-xs">{product.url}</p>
           </div>
         </div>
 

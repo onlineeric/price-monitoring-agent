@@ -27,7 +27,17 @@ Create production web app configuration with:
 
 ## How to Do
 
-In production Coolify dashboard, create new application using Docker Image type. Set image to `web:latest` from GHCR. Configure all environment variables from production-env.md checklist. Set up domain or use Coolify-generated URL. Get the webhook URL from application settings and save it as GitHub Secret `COOLIFY_WEBHOOK_WEB_PROD`. Don't deploy yet (deployment in task 2.16).
+In production Coolify dashboard, create new application using Docker Image type. Set image to `web:latest` from GHCR. 
+
+Configure all environment variables from production-env.md checklist. 
+
+Set up domain or use Coolify-generated URL. 
+
+Get the webhook URL from application settings and save it as GitHub Secret `COOLIFY_WEBHOOK_WEB_PROD`. 
+
+Don't deploy yet (deployment in task 2.16).
+
+Port mapping: `3000:80`, public port 80.
 
 **Image:** `ghcr.io/<username>/<repo>/web:latest`
 
