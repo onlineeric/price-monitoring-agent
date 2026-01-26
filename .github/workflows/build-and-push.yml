@@ -102,28 +102,30 @@ jobs:
       - name: Trigger Production Deployment (Web)
         if: github.ref == 'refs/heads/main'
         run: |
-          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" ]; then
+          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" ] && [ -n "${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" ]; then
             echo "Triggering Coolify webhook for web app..."
             curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" \
               --fail --silent --show-error \
               --max-time 30 \
               && echo "✅ Web deployment triggered successfully" \
               || echo "⚠️ Web webhook failed (non-blocking)"
           else
-            echo "⚠️ COOLIFY_WEBHOOK_WEB_PROD secret not set, skipping webhook"
+            echo "⚠️ COOLIFY_WEBHOOK_WEB_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
           fi
 
       # Step 8: Trigger Production Deployment (Worker)
       - name: Trigger Production Deployment (Worker)
         if: github.ref == 'refs/heads/main'
         run: |
-          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" ]; then
+          if [ -n "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" ] && [ -n "${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" ]; then
             echo "Triggering Coolify webhook for worker app..."
             curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" \
               --fail --silent --show-error \
               --max-time 30 \
               && echo "✅ Worker deployment triggered successfully" \
               || echo "⚠️ Worker webhook failed (non-blocking)"
           else
-            echo "⚠️ COOLIFY_WEBHOOK_WORKER_PROD secret not set, skipping webhook"
+            echo "⚠️ COOLIFY_WEBHOOK_WORKER_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
           fi
