@@ -25,7 +25,8 @@
       "Bash(timeout 10 pnpm dev:web:*)",
       "Bash(git fetch:*)",
       "Bash(pnpm --filter @price-monitor/worker build:*)",
-      "Bash(pnpm --filter @price-monitor/web build:*)"
+      "Bash(pnpm --filter @price-monitor/web build:*)",
+      "Bash(pnpm lint:*)"
     ]
   }
 }

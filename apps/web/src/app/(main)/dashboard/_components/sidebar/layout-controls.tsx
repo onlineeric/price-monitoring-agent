@@ -44,7 +44,10 @@ export function LayoutControls() {
 
   useEffect(() => {
     fetch("/api/worker/health")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Not OK");
+        return res.json();
+      })
       .then((data) => setWorkerVersion(data.version ?? null))
       .catch(() => setWorkerVersion(null));
   }, []);

@@ -7,16 +7,7 @@ const pkg = require("../package.json") as { version: string };
 const PORT = Number.parseInt(process.env.WORKER_PORT || "3001", 10);
 
 const server = createServer((req, res) => {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Content-Type", "application/json");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
 
   if (req.url === "/health" && req.method === "GET") {
     res.writeHead(200);
@@ -36,6 +27,10 @@ export function startServer() {
 
 export function stopServer(): Promise<void> {
   return new Promise((resolve) => {
+    if (!server.listening) {
+      resolve();
+      return;
+    }
     server.close(() => {
       console.log("[SERVER] Health server closed");
       resolve();
