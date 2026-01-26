@@ -7,7 +7,8 @@
 # for browser automation. This is a known limitation of Playwright in containerized environments.
 
 # Use official Playwright base image (includes Chromium and all dependencies)
-FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+# IMPORTANT: This version MUST match the playwright version in package.json
+FROM mcr.microsoft.com/playwright:v1.57.0-jammy
 
 WORKDIR /app
 

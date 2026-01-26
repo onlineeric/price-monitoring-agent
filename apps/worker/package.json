@@ -36,7 +36,7 @@
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.8.2",
-    "playwright": "^1.57.0",
+    "playwright": "1.57.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.2.3",
