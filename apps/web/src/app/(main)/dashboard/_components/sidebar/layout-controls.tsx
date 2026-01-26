@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Settings } from "lucide-react";
-import { version } from "@/lib/version";
+import { webVersion } from "@/lib/version";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,15 @@ export function LayoutControls() {
   const setSidebarCollapsible = usePreferencesStore((s) => s.setSidebarCollapsible);
   const font = usePreferencesStore((s) => s.font);
   const setFont = usePreferencesStore((s) => s.setFont);
+
+  const [workerVersion, setWorkerVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/worker/health")
+      .then((res) => res.json())
+      .then((data) => setWorkerVersion(data.version ?? null))
+      .catch(() => setWorkerVersion(null));
+  }, []);
 
   const onThemePresetChange = async (preset: ThemePreset) => {
     applyThemePreset(preset);
@@ -249,7 +259,10 @@ export function LayoutControls() {
               Restore Defaults
             </Button>
           </div>
-          <div className="text-center text-muted-foreground text-xs">v{version}</div>
+          <div className="text-center text-muted-foreground text-xs">
+            <div>web: v{webVersion}</div>
+            <div>worker: {workerVersion ? `v${workerVersion}` : "offline"}</div>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

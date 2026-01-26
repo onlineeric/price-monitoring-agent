@@ -5,6 +5,7 @@ import { closeFlowProducer } from "./jobs/sendDigest.js";
 import { connection, QUEUE_NAME } from "./config.js";
 import { DigestScheduler } from "./scheduler.js";
 import { validateAndExit } from "./utils/validateEnv.js";
+import { startServer, stopServer } from "./server.js";
 
 // ===================================
 // Worker Startup
@@ -46,6 +47,11 @@ if (ENABLE_SCHEDULER) {
 }
 
 // ===================================
+// Health Server
+// ===================================
+startServer();
+
+// ===================================
 // Graceful Shutdown
 // ===================================
 let isShuttingDown = false;
@@ -76,6 +82,10 @@ async function shutdown(signal: string) {
   // Close browser
   console.log("[WORKER] Closing browser...");
   await closeBrowser();
+
+  // Stop health server
+  console.log("[WORKER] Stopping health server...");
+  await stopServer();
 
   console.log("[WORKER] Shutdown complete. Exiting.");
   process.exit(0);
