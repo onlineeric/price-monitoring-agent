@@ -22,7 +22,8 @@
       "Bash(gh pr diff:*)",
       "Bash(gh repo view:*)",
       "Bash(git rev-parse:*)",
-      "Bash(timeout 10 pnpm dev:web:*)"
+      "Bash(timeout 10 pnpm dev:web:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }
