@@ -94,9 +94,13 @@ jobs:
       #    Name: COOLIFY_WEBHOOK_WORKER_PROD
       #    Value: <webhook URL from production Coolify worker app>
       #
-      # How to get webhook URLs:
+      #    Name: COOLIFY_WEBHOOK_TOKEN_PROD
+      #    Value: <authentication token for Coolify webhooks>
+      #
+      # How to get webhook URLs and token:
       #    - Production Coolify → Application → Settings → Webhooks
       #    - Copy the webhook URL for each app
+      #    - Copy the authentication token (if required by your Coolify setup)
 
       # Step 7: Trigger Production Deployment (Web)
       - name: Trigger Production Deployment (Web)
@@ -104,12 +108,17 @@ jobs:
         run: |
           if [ -n "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" ] && [ -n "${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" ]; then
             echo "Triggering Coolify webhook for web app..."
-            curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" \
+            HTTP_CODE=$(curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WEB_PROD }}" \
               -H "Authorization: Bearer ${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" \
-              --fail --silent --show-error \
+              --silent \
               --max-time 30 \
-              && echo "✅ Web deployment triggered successfully" \
-              || echo "⚠️ Web webhook failed (non-blocking)"
+              --write-out "%{http_code}" \
+              --output /dev/null)
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "✅ Web deployment triggered successfully (HTTP $HTTP_CODE)"
+            else
+              echo "⚠️ Web webhook failed with HTTP $HTTP_CODE (non-blocking)"
+            fi
           else
             echo "⚠️ COOLIFY_WEBHOOK_WEB_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
           fi
@@ -120,12 +129,17 @@ jobs:
         run: |
           if [ -n "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" ] && [ -n "${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" ]; then
             echo "Triggering Coolify webhook for worker app..."
-            curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" \
+            HTTP_CODE=$(curl -X POST "${{ secrets.COOLIFY_WEBHOOK_WORKER_PROD }}" \
               -H "Authorization: Bearer ${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" \
-              --fail --silent --show-error \
+              --silent \
               --max-time 30 \
-              && echo "✅ Worker deployment triggered successfully" \
-              || echo "⚠️ Worker webhook failed (non-blocking)"
+              --write-out "%{http_code}" \
+              --output /dev/null)
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "✅ Worker deployment triggered successfully (HTTP $HTTP_CODE)"
+            else
+              echo "⚠️ Worker webhook failed with HTTP $HTTP_CODE (non-blocking)"
+            fi
           else
             echo "⚠️ COOLIFY_WEBHOOK_WORKER_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
           fi
