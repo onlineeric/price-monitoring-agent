@@ -25,15 +25,13 @@ interface DOMStabilityConfig {
   quietWindowMs: number;
   checkIntervalMs: number;
   htmlDeltaThreshold: number;
-  fallbackWaitMs: number;
 }
 
 const DOM_STABILITY_CONFIG: DOMStabilityConfig = {
-  maxWaitMs: 8000,
-  quietWindowMs: 500,
+  maxWaitMs: parseInt(process.env.PLAYWRIGHT_MAX_WAIT_MS || "15000", 10),
+  quietWindowMs: parseInt(process.env.PLAYWRIGHT_QUIET_WINDOW_MS || "1500", 10),
   checkIntervalMs: 200,
   htmlDeltaThreshold: 200,
-  fallbackWaitMs: 2000,
 };
 
 /**
@@ -148,11 +146,10 @@ async function waitForDOMStability(
     await page.waitForTimeout(config.checkIntervalMs);
   }
 
-  // Fallback if stability never reached
+  // Stability never reached within maxWaitMs, proceed anyway
   console.log(
-    `[Playwright] DOM did not stabilize, applying fallback wait of ${config.fallbackWaitMs}ms`
+    `[Playwright] DOM did not stabilize within ${config.maxWaitMs}ms, proceeding with current content`
   );
-  await page.waitForTimeout(config.fallbackWaitMs);
 }
 
 /**
