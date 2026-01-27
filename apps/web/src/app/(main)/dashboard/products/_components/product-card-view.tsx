@@ -5,7 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, Pencil, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { MoreVertical, Pencil, RefreshCw, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import { MiniPriceChart } from "./mini-price-chart";
 import type { ProductWithStats } from "./products-view";
+import { useCheckPrice } from "./use-check-price";
 
 interface ProductCardViewProps {
   products: ProductWithStats[];
@@ -31,6 +32,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { handleCheckPrice, checkingPriceId } = useCheckPrice();
 
   const formatPrice = (cents: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
@@ -87,6 +89,13 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleCheckPrice(product.id)}
+                          disabled={checkingPriceId === product.id}
+                        >
+                          <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
+                          {checkingPriceId === product.id ? "Checking..." : "Check price now"}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setEditingProduct(product);

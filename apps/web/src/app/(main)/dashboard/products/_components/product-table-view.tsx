@@ -7,7 +7,7 @@ import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
 import { getCoreRowModel, getSortedRowModel, type SortingState, useReactTable } from "@tanstack/react-table";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -23,6 +23,7 @@ import {
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import type { ProductWithStats } from "./products-view";
+import { useCheckPrice } from "./use-check-price";
 
 interface ProductTableViewProps {
   products: ProductWithStats[];
@@ -34,6 +35,7 @@ export function ProductTableView({ products }: ProductTableViewProps) {
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const { handleCheckPrice, checkingPriceId } = useCheckPrice();
 
   const formatPrice = (cents: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
@@ -140,6 +142,13 @@ export function ProductTableView({ products }: ProductTableViewProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleCheckPrice(product.id)}
+                disabled={checkingPriceId === product.id}
+              >
+                <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
+                {checkingPriceId === product.id ? "Checking..." : "Check price now"}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   setEditingProduct(product);

@@ -26,7 +26,12 @@
       "Bash(git fetch:*)",
       "Bash(pnpm --filter @price-monitor/worker build:*)",
       "Bash(pnpm --filter @price-monitor/web build:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm ls:*)",
+      "Bash(node -p:*)",
+      "Bash(pnpm --filter @price-monitor/worker list:*)",
+      "Bash(npm view:*)"
     ]
   }
 }

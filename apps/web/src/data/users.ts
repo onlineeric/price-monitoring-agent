@@ -1,10 +1,10 @@
 export const users = [
   {
     id: "1",
-    name: "Arham Khan",
-    username: "Aarhamkhnz",
-    email: "hello@arhamkhnz.com",
-    avatar: "https://avatars.githubusercontent.com/u/43849669",
+    name: "Eric Cheng",
+    username: "online.eric",
+    email: "online.eric@gmail.com",
+    avatar: "https://avatars.githubusercontent.com/u/38462780?v=4",
     role: "administrator",
   },
   {
