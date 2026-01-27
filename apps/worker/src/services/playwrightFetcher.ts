@@ -205,6 +205,22 @@ function isForceAIEnabled(): boolean {
 }
 
 /**
+ * Check if debug logging is enabled
+ */
+function isDebugEnabled(): boolean {
+  return process.env.DEBUG_LOG === "true";
+}
+
+/**
+ * Log debug message if debug mode is enabled
+ */
+function debugLog(message: string): void {
+  if (isDebugEnabled()) {
+    console.log(`[debug] ${message}`);
+  }
+}
+
+/**
  * Check if selector extraction was successful
  * Requires BOTH title and price to be present
  */
@@ -232,10 +248,26 @@ export async function playwrightFetch(
 
     // Navigate to URL
     console.log(`[Playwright] Navigating to: ${url}`);
-    await page.goto(url, {
+    const response = await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: mergedConfig.timeout,
     });
+
+    // Debug: Log response details
+    if (response) {
+      debugLog(`Response status: ${response.status()}`);
+      debugLog(`Response URL (after redirects): ${response.url()}`);
+      const headers = response.headers();
+      debugLog(`Response headers: ${JSON.stringify({
+        'content-type': headers['content-type'],
+        'server': headers['server'],
+        'cf-ray': headers['cf-ray'],
+        'cf-cache-status': headers['cf-cache-status'],
+        'x-frame-options': headers['x-frame-options'],
+      })}`);
+    } else {
+      debugLog(`Response is null (navigation may have failed)`);
+    }
 
     // Wait for DOM to stabilize
     await waitForDOMStability(page);
@@ -243,6 +275,20 @@ export async function playwrightFetch(
     // Get fully-rendered HTML
     const renderedHtml = await page.content();
     console.log(`[Playwright] Final HTML size: ${renderedHtml.length} chars`);
+
+    // Debug: Log HTML preview for small responses (likely bot detection)
+    if (renderedHtml.length < 2000) {
+      debugLog(`HTML content (full - small response): ${renderedHtml}`);
+    } else {
+      debugLog(`HTML preview (first 500 chars): ${renderedHtml.substring(0, 500)}`);
+      debugLog(`HTML preview (last 500 chars): ${renderedHtml.substring(renderedHtml.length - 500)}`);
+    }
+
+    // Debug: Log page title and current URL
+    const pageTitle = await page.title();
+    const currentUrl = page.url();
+    debugLog(`Page title: ${pageTitle}`);
+    debugLog(`Current URL: ${currentUrl}`);
 
     // Check if force AI mode is enabled
     const forceAI = isForceAIEnabled();
@@ -294,6 +340,10 @@ export async function playwrightFetch(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    debugLog(`Error caught: ${errorMessage}`);
+    if (error instanceof Error && error.stack) {
+      debugLog(`Error stack: ${error.stack}`);
+    }
 
     // Handle specific error types
     if (errorMessage.includes("Timeout") || errorMessage.includes("timeout")) {
