@@ -2,12 +2,18 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { db, products } from "@price-monitor/db";
 import { eq } from "drizzle-orm";
+import { validate as isValidUuid } from "uuid";
 
 import { priceQueue } from "@/lib/queue";
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+
+    // Validate UUID format
+    if (!isValidUuid(id)) {
+      return NextResponse.json({ success: false, error: "Invalid product ID" }, { status: 400 });
+    }
 
     // Look up product by ID
     const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);

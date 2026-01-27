@@ -3,13 +3,11 @@
 import { useState } from "react";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { getCoreRowModel, getSortedRowModel, type SortingState, useReactTable } from "@tanstack/react-table";
 import { formatDistanceToNow } from "date-fns";
 import { MoreHorizontal, Pencil, RefreshCw, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -25,46 +23,19 @@ import {
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import type { ProductWithStats } from "./products-view";
+import { useCheckPrice } from "./use-check-price";
 
 interface ProductTableViewProps {
   products: ProductWithStats[];
 }
 
 export function ProductTableView({ products }: ProductTableViewProps) {
-  const router = useRouter();
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [checkingPriceId, setCheckingPriceId] = useState<string | null>(null);
-
-  const handleCheckPrice = async (product: ProductWithStats) => {
-    setCheckingPriceId(product.id);
-    try {
-      const response = await fetch(`/api/products/${product.id}/check-price`, {
-        method: "POST",
-      });
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success("Price check started", {
-          description: "The price will be updated shortly.",
-        });
-        router.refresh();
-      } else {
-        toast.error("Failed to check price", {
-          description: data.error || "An unexpected error occurred",
-        });
-      }
-    } catch {
-      toast.error("Failed to check price", {
-        description: "Network error. Please try again.",
-      });
-    } finally {
-      setCheckingPriceId(null);
-    }
-  };
+  const { handleCheckPrice, checkingPriceId } = useCheckPrice();
 
   const formatPrice = (cents: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
@@ -172,7 +143,7 @@ export function ProductTableView({ products }: ProductTableViewProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => handleCheckPrice(product)}
+                onClick={() => handleCheckPrice(product.id)}
                 disabled={checkingPriceId === product.id}
               >
                 <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
