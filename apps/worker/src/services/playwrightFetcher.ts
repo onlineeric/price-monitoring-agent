@@ -43,6 +43,18 @@ interface ExtractedData {
   imageUrl: string | null;
 }
 
+// Resource types to block for bandwidth reduction (proxy cost optimization)
+// Safe to block: image URLs are extracted from DOM attributes, not image binaries
+const BLOCKED_RESOURCE_TYPES = [
+  "image",
+  "font",
+  "media",
+  "stylesheet",
+  "websocket",
+  "manifest",
+  "other",
+];
+
 // Selectors for extracting product data
 const SELECTORS = {
   title: [
@@ -241,6 +253,15 @@ export async function playwrightFetch(
   try {
     const browser = await getBrowser();
     page = await browser.newPage();
+
+    // Block unnecessary resources to reduce bandwidth (proxy cost optimization)
+    await page.route("**/*", (route) => {
+      const resourceType = route.request().resourceType();
+      if (BLOCKED_RESOURCE_TYPES.includes(resourceType)) {
+        return route.abort();
+      }
+      return route.continue();
+    });
 
     // Configure page
     await page.setExtraHTTPHeaders({ "User-Agent": mergedConfig.userAgent });
