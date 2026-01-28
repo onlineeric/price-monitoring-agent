@@ -20,6 +20,7 @@ AI-powered price monitoring system that tracks product prices over time with int
 - Bypasses bot detection (~70-80% success rate)
 - AI fallback for complex pages using Vercel AI SDK
 - Structured output validation with Zod
+- Multi-provider support (OpenAI, Anthropic, Google)
 
 ### Worker-Managed Scheduling
 
@@ -28,7 +29,7 @@ AI-powered price monitoring system that tracks product prices over time with int
 - **Always-on processing** - No cold starts
 - **Trend analysis** - Calculates 7/30/90/180 day price averages
 
-### Production-Ready Architecture
+### Production-Ready CI/CD
 
 ```text
 Developer → GitHub → GitHub Actions
@@ -40,6 +41,8 @@ Developer → GitHub → GitHub Actions
        Web + Worker + PostgreSQL + Redis
             (Auto-deployment)
 ```
+
+Fully automated deployment pipeline from code push to production with zero manual intervention.
 
 ## Tech Stack
 
@@ -67,7 +70,7 @@ Developer → GitHub → GitHub Actions
 ### Infrastructure
 
 - **Local Dev:** Docker Compose on WSL2
-- **Production:** Coolify (self-hosted PaaS on DigitalOcean)
+- **Production:** Coolify (self-hosted PaaS on DigitalOcean Sydney)
 - **Container Registry:** GitHub Container Registry (GHCR)
 - **CI/CD:** GitHub Actions (auto-build + auto-deploy)
 
@@ -78,11 +81,11 @@ Developer → GitHub → GitHub Actions
 
 ## Key Features
 
-- **Price Tracking:** Monitor products from any URL with historical price data
-- **Smart Extraction:** 2-tier fallback (fast HTML → AI-powered browser automation)
-- **Automated Digests:** Scheduled email reports with trend analysis
-- **Dashboard:** Professional UI for product management and analytics
-- **Production Deployment:** Automated CI/CD pipeline with zero-downtime deployments
+- **Price Tracking** - Monitor products from any URL with historical price data
+- **Smart Extraction** - 2-tier fallback system (fast HTML → AI-powered browser automation)
+- **Automated Digests** - Scheduled email reports with trend analysis (7/30/90/180 day averages)
+- **Professional Dashboard** - Modern UI for product management and price analytics
+- **Production Deployment** - Automated CI/CD pipeline with zero-downtime deployments
 
 ## Architecture
 
@@ -90,12 +93,14 @@ Developer → GitHub → GitHub Actions
 
 ```text
 WSL2 Ubuntu
-├── Web App (Next.js dev server)
-├── Worker (BullMQ consumer)
+├── Web App (Next.js dev server, port 3000)
+├── Worker (BullMQ consumer, hot reload)
 └── Docker Compose
     ├── PostgreSQL 18
     └── Redis 8
 ```
+
+Simple docker-compose setup for rapid local development with hot reload.
 
 ### Production
 
@@ -107,6 +112,8 @@ DigitalOcean Droplet (Sydney)
 ├── PostgreSQL (container)
 └── Redis (container)
 ```
+
+Self-hosted PaaS deployment with automated updates via GitHub Actions webhooks.
 
 ## Quick Start
 
@@ -124,35 +131,58 @@ pnpm docker:up
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API keys (ANTHROPIC_API_KEY, RESEND_API_KEY)
 
 # Initialize database
 pnpm --filter @price-monitor/db push
 
 # Start apps (two terminals)
-pnpm --filter @price-monitor/web dev      # Terminal 1
-pnpm --filter @price-monitor/worker dev   # Terminal 2
-
-# Open dashboard
-open http://localhost:3000
+pnpm --filter @price-monitor/web dev      # Terminal 1 (http://localhost:3000)
+pnpm --filter @price-monitor/worker dev   # Terminal 2 (background worker)
 ```
+
+Visit `http://localhost:3000` to access the dashboard.
 
 ## Deployment
 
 Production deployment is fully automated:
 
-1. **Develop:** Work on `dev` branch locally
-2. **Release:** Create PR to `main`, review, merge
-3. **Deploy:** GitHub Actions builds and pushes to GHCR
-4. **Go Live:** Coolify auto-deploys via webhook
+1. **Develop** - Work on feature branches, merge to `dev` for testing
+2. **Release** - Create PR from `dev` to `main`, review, and merge
+3. **Build** - GitHub Actions automatically builds Docker images
+4. **Push** - Images pushed to GitHub Container Registry (GHCR)
+5. **Deploy** - Coolify webhook triggers auto-deployment to production
 
-Zero manual intervention required.
+Zero manual intervention required. Push to `main` and your code is live.
+
+## Project Structure
+
+```text
+apps/
+  web/       # Next.js application (dashboard + API endpoints)
+  worker/    # BullMQ consumer (extraction, email, scheduling)
+packages/
+  db/        # Shared Drizzle schema and database client
+specs/       # Architecture documentation
+scripts/     # Utility scripts
+```
 
 ## Documentation
 
-- **[CLAUDE.md](CLAUDE.md)** - Comprehensive development guide
+- **[CLAUDE.md](CLAUDE.md)** - Development guide and reference
 - **[docs/production-env.md](docs/production-env.md)** - Production environment configuration
-- **[specs/implementation-3/](specs/implementation-3/)** - Architecture and implementation specs
+- **[specs/implementation-3/](specs/implementation-3/)** - Architecture and implementation specifications
+
+## Skills Demonstrated
+
+- **Full-Stack Development** - Next.js, TypeScript, React, API design
+- **Background Jobs** - BullMQ queue system with worker-managed scheduling
+- **AI Integration** - Multi-provider AI SDK with structured output validation
+- **Browser Automation** - Playwright with stealth mode for bot detection bypass
+- **Database Design** - PostgreSQL with Drizzle ORM, efficient schema design
+- **DevOps** - Docker, Docker Compose, self-hosted PaaS deployment
+- **CI/CD** - GitHub Actions, automated builds and deployments
+- **Production Operations** - Monitoring, logging, zero-downtime deployments
 
 ## License
 
