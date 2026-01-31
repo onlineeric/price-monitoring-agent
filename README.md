@@ -4,6 +4,8 @@ AI-powered price monitoring system that tracks product prices over time with int
 
 **Purpose:** Portfolio project demonstrating full-stack development, background job processing, AI integration, and production deployment skills.
 
+**Live Demo:** https://price-monitor.onlineeric.net/dashboard
+
 ## Technical Highlights
 
 ### 2-Tier Intelligent Extraction Pipeline
@@ -47,6 +49,8 @@ Fully automated deployment pipeline from code push to production with zero manua
 ## Tech Stack
 
 ### Frontend & Backend
+
+Built on [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard), an MIT-licensed Next.js admin template.
 
 - **Framework:** Next.js 16 (React 19, TypeScript)
 - **UI Components:** Shadcn UI (Radix primitives) + Tailwind CSS v4
@@ -183,7 +187,3 @@ scripts/     # Utility scripts
 - **DevOps** - Docker, Docker Compose, self-hosted PaaS deployment
 - **CI/CD** - GitHub Actions, automated builds and deployments
 - **Production Operations** - Monitoring, logging, zero-downtime deployments
-
-## License
-
-MIT
