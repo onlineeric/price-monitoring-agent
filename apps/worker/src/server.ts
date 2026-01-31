@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
+import { db, sql } from "@price-monitor/db";
 import { connection } from "./config.js";
 
 const require = createRequire(import.meta.url);
@@ -7,16 +8,43 @@ const pkg = require("../package.json") as { version: string };
 
 const PORT = Number.parseInt(process.env.WORKER_PORT || "3001", 10);
 
-async function checkHealth(): Promise<{ status: string; error?: string }> {
+interface HealthResult {
+  status: string;
+  redis: string;
+  database: string;
+  error?: string;
+}
+
+async function checkHealth(): Promise<HealthResult> {
+  const result: HealthResult = {
+    status: "ok",
+    redis: "ok",
+    database: "ok",
+  };
+  const errors: string[] = [];
+
+  // Check Redis
   try {
     await connection.ping();
-    return { status: "ok" };
   } catch (error) {
-    return {
-      status: "error",
-      error: error instanceof Error ? error.message : "Redis connection failed",
-    };
+    result.redis = "error";
+    errors.push(`Redis: ${error instanceof Error ? error.message : "connection failed"}`);
   }
+
+  // Check Database
+  try {
+    await db.execute(sql`SELECT 1`);
+  } catch (error) {
+    result.database = "error";
+    errors.push(`Database: ${error instanceof Error ? error.message : "connection failed"}`);
+  }
+
+  if (errors.length > 0) {
+    result.status = "error";
+    result.error = errors.join("; ");
+  }
+
+  return result;
 }
 
 const server = createServer(async (req, res) => {
