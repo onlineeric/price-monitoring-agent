@@ -10,7 +10,7 @@ export interface ScraperResult {
     imageUrl: string | null;
   };
   error?: string;
-  method: "html" | "playwright" | "ai"; // Which tier was used
+  method: "html" | "playwright" | "ai" | "browserless"; // Which tier was used
 }
 
 /**
