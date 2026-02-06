@@ -161,11 +161,10 @@ export default async function priceCheckJob(
   }
 
   // Validate all required fields are present
-  if (result.data.price === null || result.data.currency === null || result.data.imageUrl === null) {
+  if (result.data.price === null || result.data.currency === null) {
     const missing = [];
     if (result.data.price === null) missing.push("price");
     if (result.data.currency === null) missing.push("currency");
-    if (result.data.imageUrl === null) missing.push("imageUrl");
 
     const errorMessage = `Incomplete data: missing ${missing.join(", ")}`;
     console.error(`[${jobId}] ${errorMessage}`);
