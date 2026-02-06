@@ -98,13 +98,14 @@ Built on [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-
 ```text
 WSL2 Ubuntu
 ├── Web App (Next.js dev server, port 3000)
-├── Worker (BullMQ consumer, hot reload)
+├── Worker (Docker background OR dev mode with hot reload)
 └── Docker Compose
     ├── PostgreSQL 18
-    └── Redis 8
+    ├── Redis 8
+    └── Worker (optional, auto-starts with Docker Desktop)
 ```
 
-Simple docker-compose setup for rapid local development with hot reload.
+Docker worker runs as a persistent background service. When developing, `pnpm dev:worker` automatically swaps to the dev worker and restores the Docker worker on exit.
 
 ### Production
 
@@ -140,9 +141,14 @@ cp .env.example .env
 # Initialize database
 pnpm --filter @price-monitor/db push
 
-# Start apps (two terminals)
-pnpm --filter @price-monitor/web dev      # Terminal 1 (http://localhost:3000)
-pnpm --filter @price-monitor/worker dev   # Terminal 2 (background worker)
+# Start background worker (one-time setup, auto-restarts with Docker Desktop)
+pnpm worker:up
+
+# Start web app
+pnpm --filter @price-monitor/web dev      # http://localhost:3000
+
+# For development: swap Docker worker with dev worker (auto-restores on Ctrl+C)
+pnpm dev:worker
 ```
 
 Visit `http://localhost:3000` to access the dashboard.
