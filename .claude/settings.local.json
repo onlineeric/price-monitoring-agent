@@ -32,7 +32,10 @@
       "Bash(node -p:*)",
       "Bash(pnpm --filter @price-monitor/worker list:*)",
       "Bash(npm view:*)",
-      "Bash(pnpm --filter @price-monitor/worker exec tsc:*)"
+      "Bash(pnpm --filter @price-monitor/worker exec tsc:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker ps:*)",
+      "Bash(python3:*)"
     ]
   }
 }

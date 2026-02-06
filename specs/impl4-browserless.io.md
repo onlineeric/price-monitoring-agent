@@ -119,7 +119,7 @@ mutation GetPageData {
   pageContent: html(
     clean: {
       removeNonTextNodes: false
-      removeAttributes: true
+      removeAttributes: false
       removeRegex: true
     }
   ) {
@@ -415,7 +415,7 @@ mutation GetPageData {
 | Option | Value | Reason |
 |--------|-------|--------|
 | `removeNonTextNodes` | `false` | Keep `<img>` tags for image URL extraction |
-| `removeAttributes` | `true` | Reduce HTML size, AI doesn't need class/id/style |
+| `removeAttributes` | `false` | Keep all attributes for better AI parsing |
 | `removeRegex` | `true` | Clean up noise |
 
 ---

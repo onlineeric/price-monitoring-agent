@@ -156,9 +156,11 @@ function extractMainContent($: cheerio.CheerioAPI): string {
 
 /**
  * Remove noise from HTML (scripts, styles, comments)
+ * Preserves JSON-LD structured data which contains useful product info
  */
 function cleanHtml($: cheerio.CheerioAPI): void {
-  $("script").remove();
+  // Remove executable JavaScript but keep JSON-LD structured data
+  $("script:not([type='application/ld+json'])").remove();
   $("style").remove();
   $("noscript").remove();
   $("iframe").remove();
@@ -233,7 +235,7 @@ export async function aiExtract(url: string, html: string): Promise<ScraperResul
       prompt: `Extract product information from this HTML. Find the product title, current price (as a number without currency symbol), currency code, and main product image URL.
 
 Instructions:
-- If there are multiple prices, extract the main/current selling price, or after discount price (not the original or crossed-out price, not unit price)
+- If there are multiple prices, extract the main/current selling price (not the original or crossed-out price, not unit price)
 - For imageUrl, extract the main product image URL (look for <img> tags with src or data-src attributes)
 - The imageUrl should be a complete URL starting with https:// (not a relative path like /images/product.jpg)
 - If you find a relative image path, you'll need to construct the full URL

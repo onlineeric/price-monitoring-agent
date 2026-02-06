@@ -160,15 +160,22 @@ export default async function priceCheckJob(
     throw new Error(errorMessage);
   }
 
-  // Validate all required fields are present
-  if (result.data.price === null || result.data.currency === null || result.data.imageUrl === null) {
-    const missing = [];
-    if (result.data.price === null) missing.push("price");
-    if (result.data.currency === null) missing.push("currency");
-    if (result.data.imageUrl === null) missing.push("imageUrl");
+  // Validate required fields (tier-aware validation)
+  // Price and currency are always required
+  const missing = [];
+  if (result.data.price === null) missing.push("price");
+  if (result.data.currency === null) missing.push("currency");
 
+  // For Tier 3 (browserless), imageUrl is optional
+  // For Tier 1 & 2 (html, playwright), imageUrl is required to ensure fallback works
+  const isTier3 = result.method === "browserless";
+  if (!isTier3 && result.data.imageUrl === null) {
+    missing.push("imageUrl");
+  }
+
+  if (missing.length > 0) {
     const errorMessage = `Incomplete data: missing ${missing.join(", ")}`;
-    console.error(`[${jobId}] ${errorMessage}`);
+    console.error(`[${jobId}] ${errorMessage} (method: ${result.method})`);
 
     // Log failure if we have productId
     if (productId) {
@@ -187,6 +194,11 @@ export default async function priceCheckJob(
     throw new Error(errorMessage);
   }
 
+  // Warn if Tier 3 succeeded but imageUrl is missing
+  if (isTier3 && result.data.imageUrl === null) {
+    console.warn(`[${jobId}] Warning: Tier 3 extraction succeeded but imageUrl is missing`);
+  }
+
   // All required fields present, save the data
   console.log(`[${jobId}] Scrape successful:`, result.data);
 
@@ -194,8 +206,8 @@ export default async function priceCheckJob(
     await savePriceData(
       targetUrl,
       result.data.title,
-      result.data.price,
-      result.data.currency,
+      result.data.price!,
+      result.data.currency!,
       result.data.imageUrl,
       jobId
     );

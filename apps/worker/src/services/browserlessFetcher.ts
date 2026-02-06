@@ -36,6 +36,8 @@ mutation GetPageData {
     height
     time
   }
+
+  # 1) First navigation
   goto(
     url: "${url}"
     waitUntil: load
@@ -43,10 +45,34 @@ mutation GetPageData {
   ) {
     status
   }
+
+  # 2) Resolve any Cloudflare anti-bot challenges with AI assistance
+  solve(type: cloudflare, timeout: 180000) {
+    found
+    solved
+    time
+    token
+  }
+
+  # Wait for the post-challenge navigation to complete
+  waitForNavigation(waitUntil: load, timeout: 180000) {
+    status
+  }
+  
+  # 3) Navigate again after solving
+  goto(
+    url: "${url}"
+    waitUntil: load
+    ,timeout: ${timeout}
+  ) {
+    status
+  }
+
+  # 4) Get the fully rendered HTML content, with cleaning options
   pageContent: html(
     clean: {
       removeNonTextNodes: false
-      removeAttributes: true
+      removeAttributes: false
       removeRegex: true
     }
   ) {
@@ -119,8 +145,17 @@ async function fetchHtmlWithBrowserQL(
   const timeout = getTimeout();
   const browserlessUrl = buildBrowserlessUrl();
 
+  // Calculate total timeout needed for all BrowserQL operations:
+  // - goto #1: timeout ms
+  // - solve: 180000ms (3 min)
+  // - waitForNavigation: 180000ms (3 min)
+  // - goto #2: timeout ms
+  // - Add 30s buffer for network/processing
+  const fetchTimeout = timeout + 180000 + 180000 + timeout + 30000 + 10000;
+
   console.log(`[BrowserQL] Fetching: ${targetUrl}`);
-  debugLog(`Timeout: ${timeout}ms`);
+  debugLog(`BrowserQL goto timeout: ${timeout}ms`);
+  debugLog(`Fetch timeout (total): ${fetchTimeout}ms (${(fetchTimeout / 1000).toFixed(1)}s)`);
   debugLog(`Endpoint: ${process.env.BROWSERLESS_ENDPOINT}`);
 
   try {
@@ -133,7 +168,7 @@ async function fetchHtmlWithBrowserQL(
         query: buildBQLQuery(targetUrl, timeout),
         operationName: "GetPageData",
       }),
-      signal: AbortSignal.timeout(timeout + 10000), // Extra buffer for network
+      signal: AbortSignal.timeout(fetchTimeout),
     });
 
     debugLog(`HTTP response status: ${response.status} ${response.statusText}`);
