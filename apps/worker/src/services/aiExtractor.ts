@@ -95,30 +95,72 @@ function getProvider(): AIProvider {
 /**
  * Maximum characters to send to AI model (to stay within token limits)
  */
-const MAX_HTML_LENGTH = 15000;
+const MAX_HTML_LENGTH = 150000;
+
+/**
+ * Check if debug logging is enabled
+ */
+function isDebugEnabled(): boolean {
+  return process.env.DEBUG_LOG === "true";
+}
+
+/**
+ * Log debug message if debug mode is enabled
+ */
+function debugLog(message: string): void {
+  if (isDebugEnabled()) {
+    console.log(`[debug] [AI Extractor] ${message}`);
+  }
+}
+
+/**
+ * Minimum content length threshold - if extracted content is below this,
+ * try a broader selector
+ */
+const MIN_CONTENT_LENGTH = 3000;
 
 /**
  * Extract main content area from HTML using semantic tags
+ * Falls back to broader selectors if content is too small
  */
 function extractMainContent($: cheerio.CheerioAPI): string {
   // Try semantic content areas in order of specificity
   const mainContent = $("main").html();
-  if (mainContent) return mainContent;
+  if (mainContent) {
+    debugLog(`Found <main> tag with ${mainContent.length} chars`);
+    // If main content is substantial, use it
+    if (mainContent.length >= MIN_CONTENT_LENGTH) {
+      return mainContent;
+    }
+    debugLog(`<main> content too small (${mainContent.length} < ${MIN_CONTENT_LENGTH}), trying broader selectors`);
+  }
 
   const articleContent = $("article").html();
-  if (articleContent) return articleContent;
+  if (articleContent) {
+    debugLog(`Found <article> tag with ${articleContent.length} chars`);
+    if (articleContent.length >= MIN_CONTENT_LENGTH) {
+      return articleContent;
+    }
+    debugLog(`<article> content too small, trying broader selectors`);
+  }
 
   const bodyContent = $("body").html();
-  if (bodyContent) return bodyContent;
+  if (bodyContent) {
+    debugLog(`Using <body> tag with ${bodyContent.length} chars`);
+    return bodyContent;
+  }
 
+  debugLog(`No body found, using full HTML`);
   return $.html();
 }
 
 /**
  * Remove noise from HTML (scripts, styles, comments)
+ * Preserves JSON-LD structured data which contains useful product info
  */
 function cleanHtml($: cheerio.CheerioAPI): void {
-  $("script").remove();
+  // Remove executable JavaScript but keep JSON-LD structured data
+  $("script:not([type='application/ld+json'])").remove();
   $("style").remove();
   $("noscript").remove();
   $("iframe").remove();
@@ -145,16 +187,43 @@ function truncateText(text: string, maxLength: number): string {
  * Prepare HTML for AI extraction by cleaning and truncating
  */
 function prepareHtmlForAI(html: string): string {
+  debugLog(`Input HTML length: ${html.length} chars`);
+
   const $ = cheerio.load(html);
 
   cleanHtml($);
+  const afterCleanLength = $.html().length;
+  debugLog(`After cleanHtml (removed scripts/styles): ${afterCleanLength} chars`);
 
   const mainContent = extractMainContent($);
+  debugLog(`After extractMainContent: ${mainContent.length} chars`);
+
   const normalized = normalizeWhitespace(mainContent);
+  debugLog(`After normalizeWhitespace: ${normalized.length} chars`);
+
   const truncated = truncateText(normalized, MAX_HTML_LENGTH);
+  debugLog(`After truncateText (max ${MAX_HTML_LENGTH}): ${truncated.length} chars`);
 
   return truncated;
 }
+
+/**
+ * AI extraction prompt - extracts title, price, currency, and main image URL from HTML
+ */
+function getExtractionPrompt(html: string): string {
+  return `Extract product information from this HTML. 
+Find the product title, current price (as a number without currency symbol), currency code, and main product image URL.
+
+Instructions:
+- If there are multiple prices, extract the main/current/discounted selling price, it is not the original price, not unit price nor crossed-out price.
+- For imageUrl, extract the main product image URL (look for <img> tags with src or data-src attributes)
+- The imageUrl should be a complete URL starting with https:// (not a relative path like /images/product.jpg)
+- If you find a relative image path, you'll need to construct the full URL
+
+HTML content:
+${html}`;
+}
+
 
 /**
  * AI-powered product data extraction using Vercel AI SDK
@@ -181,16 +250,7 @@ export async function aiExtract(url: string, html: string): Promise<ScraperResul
     const { object } = await generateObject({
       model: getModel(provider),
       schema: ProductDataSchema,
-      prompt: `Extract product information from this HTML. Find the product title, current price (as a number without currency symbol), currency code, and main product image URL.
-
-Instructions:
-- If there are multiple prices, extract the main/current selling price (not the original or crossed-out price)
-- For imageUrl, extract the main product image URL (look for <img> tags with src or data-src attributes)
-- The imageUrl should be a complete URL starting with https:// (not a relative path like /images/product.jpg)
-- If you find a relative image path, you'll need to construct the full URL
-
-HTML content:
-${preparedHtml}`,
+      prompt: getExtractionPrompt(preparedHtml),
     });
 
     console.log(`[AI Extractor] Response:`, object);
