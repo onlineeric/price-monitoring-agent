@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { ManualTriggerButton } from "./_components/manual-trigger-button";
+import { getProductOverview, ProductOverview } from "./_components/product-overview";
 
 async function getDashboardStats() {
   // Get total active products count
@@ -58,13 +59,12 @@ async function getDashboardStats() {
 }
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, productOverview] = await Promise.all([getDashboardStats(), getProductOverview()]);
 
-  // Format average price (assuming USD for display, adjust as needed)
-  const formatPrice = (cents: number) => {
+  const formatPrice = (cents: number, currency = "USD") => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency,
     }).format(cents / 100);
   };
 
@@ -199,6 +199,9 @@ export default async function DashboardPage() {
           <img src="https://img.shields.io/badge/-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white&style=for-the-badge" alt="GitHub Actions" />
         </div>
       </div>
+
+      {/* Product Overview Section */}
+      <ProductOverview products={productOverview} />
     </div>
   );
 }

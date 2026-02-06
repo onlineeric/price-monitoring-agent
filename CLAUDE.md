@@ -26,6 +26,8 @@ AI-powered price monitoring system that tracks product prices from URLs, stores 
 
 **Data:** PostgreSQL 18 (Drizzle ORM), Redis 8
 
+**Database Access Rule:** Always use Drizzle query builder API (`db.select()`, `db.insert()`, `db.query.*`, etc.) — never raw SQL via `db.execute()` unless unavoidable. Use `sql` template helpers only for expressions within the query builder (e.g., `COALESCE`).
+
 **Email:** Resend + React Email
 
 **Infrastructure:** Docker Compose (local), Coolify on DigitalOcean (production), GitHub Actions (CI/CD)

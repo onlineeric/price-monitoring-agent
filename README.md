@@ -68,7 +68,7 @@ Built on [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-
 ### Data Layer
 
 - **Database:** PostgreSQL 18
-- **ORM:** Drizzle ORM (serverless-ready)
+- **ORM:** Drizzle ORM (serverless-ready, query builder API — no raw SQL)
 - **Cache/Queue:** Redis 8
 
 ### Infrastructure
