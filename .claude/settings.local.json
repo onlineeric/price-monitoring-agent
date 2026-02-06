@@ -33,7 +33,8 @@
       "Bash(pnpm --filter @price-monitor/worker list:*)",
       "Bash(npm view:*)",
       "Bash(sudo lsof:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(chmod:*)"
     ]
   }
 }

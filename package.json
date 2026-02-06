@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev:web": "pnpm --filter @price-monitor/web dev",
-    "dev:worker": "pnpm --filter @price-monitor/worker dev",
+    "dev:worker": "bash scripts/dev-worker.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
     "redeploy:coolify": "node scripts/redeploy-local.js",
     "lint": "pnpm --filter @price-monitor/web lint",
@@ -14,7 +14,11 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:restart": "docker compose restart",
-    "docker:ps": "docker compose ps"
+    "docker:ps": "docker compose ps",
+    "worker:up": "docker compose --profile worker up -d --build worker",
+    "worker:down": "docker compose stop worker",
+    "worker:logs": "docker compose logs -f worker",
+    "worker:restart": "docker compose --profile worker restart worker"
   },
   "keywords": [],
   "author": "",
