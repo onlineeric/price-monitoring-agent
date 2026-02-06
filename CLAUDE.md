@@ -26,6 +26,8 @@ AI-powered price monitoring system that tracks product prices from URLs, stores 
 
 **Data:** PostgreSQL 18 (Drizzle ORM), Redis 8
 
+**Database Access Rule:** Always use Drizzle query builder API (`db.select()`, `db.insert()`, `db.query.*`, etc.) — never raw SQL via `db.execute()` unless unavoidable. Use `sql` template helpers only for expressions within the query builder (e.g., `COALESCE`).
+
 **Email:** Resend + React Email
 
 **Infrastructure:** Docker Compose (local), Coolify on DigitalOcean (production), GitHub Actions (CI/CD)
@@ -76,9 +78,19 @@ pnpm --filter @price-monitor/worker dev   # Terminal 2
 pnpm docker:up                            # Start PostgreSQL & Redis
 pnpm docker:down                          # Stop services
 pnpm --filter @price-monitor/web dev      # Next.js dev server
-pnpm --filter @price-monitor/worker dev   # Worker with hot reload
+pnpm dev:worker                           # Dev worker (auto-stops/restarts Docker worker)
 pnpm lint                                 # Lint with Biome
 ```
+
+### Background Docker Worker
+```bash
+pnpm worker:up                            # Start/rebuild background worker
+pnpm worker:down                          # Stop background worker
+pnpm worker:logs                          # View worker logs
+pnpm worker:restart                       # Restart background worker
+```
+
+The Docker worker uses `profiles: ["worker"]` so `pnpm docker:up` only starts PostgreSQL and Redis. The worker auto-restarts with Docker Desktop. `pnpm dev:worker` automatically stops the Docker worker, runs the dev worker, and restarts Docker worker on exit (Ctrl+C).
 
 ### Database
 ```bash
@@ -104,10 +116,11 @@ docker exec -it price-monitoring-agent-redis-1 redis-cli
 ```
 WSL Ubuntu
 ├── Web App (pnpm dev, port 3000)
-├── Worker (pnpm dev, background)
+├── Worker (Docker background OR pnpm dev for development)
 └── Docker Compose
     ├── PostgreSQL 18 (port 5432)
-    └── Redis 8 (port 6379)
+    ├── Redis 8 (port 6379)
+    └── Worker (profile: worker, auto-starts with Docker Desktop)
 ```
 
 **Environment:**

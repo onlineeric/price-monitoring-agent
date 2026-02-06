@@ -4,8 +4,10 @@ import { Activity, Clock, DollarSign, Package, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPrice } from "@/lib/format";
 
 import { ManualTriggerButton } from "./_components/manual-trigger-button";
+import { getProductOverview, ProductOverview } from "./_components/product-overview";
 
 async function getDashboardStats() {
   // Get total active products count
@@ -58,15 +60,7 @@ async function getDashboardStats() {
 }
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
-
-  // Format average price (assuming USD for display, adjust as needed)
-  const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(cents / 100);
-  };
+  const [stats, productOverview] = await Promise.all([getDashboardStats(), getProductOverview()]);
 
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">
@@ -158,19 +152,50 @@ export default async function DashboardPage() {
       <div className="rounded-lg border bg-card p-6">
         <h2 className="mb-2 font-semibold text-xl">About Price Monitor</h2>
         <p className="mb-4 text-muted-foreground">
-          This dashboard tracks product prices from any URL using a 2-tier extraction pipeline (HTML + Playwright with
-          AI fallback). Prices are stored in PostgreSQL, and email digests are sent via Resend on a configurable
-          schedule.
+          This AI-powered agent monitors product prices from any URL using a 2-tier extraction pipeline: fast HTML
+          parsing with an intelligent Playwright + AI fallback that understands page structure to extract prices
+          accurately. Price history is stored in PostgreSQL, and automated email digests with trend analysis are sent on
+          a configurable schedule.
         </p>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">Next.js 16</Badge>
-          <Badge variant="secondary">Playwright</Badge>
-          <Badge variant="secondary">AI Extraction</Badge>
-          <Badge variant="secondary">BullMQ</Badge>
-          <Badge variant="secondary">PostgreSQL</Badge>
-          <Badge variant="secondary">Resend</Badge>
+        <p className="mb-4 text-muted-foreground">
+          This project is a portfolio project demonstrating my full-stack development, AI Agent integration, background job processing and production deployment skills.
+        </p>
+        <h3 className="mb-2 font-semibold text-lg">Tech Stack & Source</h3>
+        <table className="mb-4 text-base text-muted-foreground">
+          <tbody>
+            <tr>
+              <td className="pr-3 py-0.5 text-right whitespace-nowrap">My GitHub profile:</td>
+              <td className="py-0.5">
+                <a href="https://github.com/onlineeric" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                  https://github.com/onlineeric
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td className="pr-3 py-0.5 text-right whitespace-nowrap">Git repository of this project:</td>
+              <td className="py-0.5">
+                <a href="https://github.com/onlineeric/price-monitoring-agent" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                  https://github.com/onlineeric/price-monitoring-agent
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="flex flex-wrap items-center gap-2">
+          <img src="https://img.shields.io/badge/-Next.js%2016-4A4A4A?logo=next.js&logoColor=white&style=for-the-badge" alt="Next.js 16" />
+          <img src="https://img.shields.io/badge/-TypeScript-007ACC?logo=typescript&logoColor=white&style=for-the-badge" alt="TypeScript" />
+          <img src="https://img.shields.io/badge/-Playwright-2EAD33?logo=playwright&logoColor=white&style=for-the-badge" alt="Playwright" />
+          <img src="https://img.shields.io/badge/-AI%20Agent-FF6F00?logo=openai&logoColor=white&style=for-the-badge" alt="AI Agent" />
+          <img src="https://img.shields.io/badge/-BullMQ-DC382C?logo=redis&logoColor=white&style=for-the-badge" alt="BullMQ" />
+          <img src="https://img.shields.io/badge/-PostgreSQL-4169E1?logo=postgresql&logoColor=white&style=for-the-badge" alt="PostgreSQL" />
+          <img src="https://img.shields.io/badge/-Resend-7C3AED?logo=resend&logoColor=white&style=for-the-badge" alt="Resend" />
+          <img src="https://img.shields.io/badge/-Docker-2496ED?logo=docker&logoColor=white&style=for-the-badge" alt="Docker" />
+          <img src="https://img.shields.io/badge/-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white&style=for-the-badge" alt="GitHub Actions" />
         </div>
       </div>
+
+      {/* Product Overview Section */}
+      <ProductOverview products={productOverview} />
     </div>
   );
 }
