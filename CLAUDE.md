@@ -136,7 +136,7 @@ NODE_ENV="development"
 ### Production
 ```
 DigitalOcean Droplet (Sydney)
-├── Coolify (orchestration)
+├── Coolify (orchestration, port 8000)
 ├── Web (GHCR :latest image)
 ├── Worker (GHCR :latest image)
 ├── PostgreSQL (container)
@@ -144,6 +144,8 @@ DigitalOcean Droplet (Sydney)
 ```
 
 **Deployment:** Push to `main` → GitHub Actions builds → GHCR → Coolify auto-deploys
+
+**Coolify Dashboard:** `http://<droplet-ip>:8000`
 
 **Environment:** Internal DNS (`price-monitor-postgres-prod`, `price-monitor-redis-prod`), `ENABLE_SCHEDULER=true` on ONE worker only
 
