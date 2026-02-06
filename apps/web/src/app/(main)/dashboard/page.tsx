@@ -1,9 +1,10 @@
 import { db, eq, gte, priceRecords, products, sql } from "@price-monitor/db";
 import { subDays } from "date-fns";
-import { Activity, Bot, Clock, Database, DollarSign, Globe, Mail, Package, Theater, TrendingUp, Workflow } from "lucide-react";
+import { Activity, Clock, DollarSign, Package, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPrice } from "@/lib/format";
 
 import { ManualTriggerButton } from "./_components/manual-trigger-button";
 import { getProductOverview, ProductOverview } from "./_components/product-overview";
@@ -60,13 +61,6 @@ async function getDashboardStats() {
 
 export default async function DashboardPage() {
   const [stats, productOverview] = await Promise.all([getDashboardStats(), getProductOverview()]);
-
-  const formatPrice = (cents: number, currency = "USD") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(cents / 100);
-  };
 
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">

@@ -1,7 +1,8 @@
 import { db, desc, eq, priceRecords, products } from "@price-monitor/db";
 import { Package } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+
+import { formatPrice } from "@/lib/format";
 
 export type ProductOverviewItem = {
   id: string;
@@ -13,34 +14,29 @@ export type ProductOverviewItem = {
 };
 
 export async function getProductOverview(): Promise<ProductOverviewItem[]> {
-  const result = await db.query.products.findMany({
-    where: eq(products.active, true),
-    columns: { id: true, name: true, imageUrl: true, url: true },
-    with: {
-      priceRecords: {
-        columns: { price: true, currency: true },
-        orderBy: [desc(priceRecords.scrapedAt)],
-        limit: 1,
-      },
-    },
-    limit: 120,
-  });
+  const latestPriceSq = db
+    .selectDistinctOn([priceRecords.productId], {
+      productId: priceRecords.productId,
+      price: priceRecords.price,
+      currency: priceRecords.currency,
+    })
+    .from(priceRecords)
+    .orderBy(priceRecords.productId, desc(priceRecords.scrapedAt))
+    .as("latestPrice");
 
-  return result.map((p) => ({
-    id: p.id,
-    name: p.name,
-    imageUrl: p.imageUrl,
-    url: p.url,
-    price: p.priceRecords[0]?.price ?? null,
-    currency: p.priceRecords[0]?.currency ?? null,
-  }));
-}
-
-function formatPrice(cents: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
+  return db
+    .select({
+      id: products.id,
+      name: products.name,
+      imageUrl: products.imageUrl,
+      url: products.url,
+      price: latestPriceSq.price,
+      currency: latestPriceSq.currency,
+    })
+    .from(products)
+    .leftJoin(latestPriceSq, eq(products.id, latestPriceSq.productId))
+    .where(eq(products.active, true))
+    .limit(120);
 }
 
 function getHostname(url: string) {
@@ -71,12 +67,9 @@ export function ProductOverview({ products }: { products: ProductOverviewItem[] 
             >
               <div className="mb-2 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
                 {product.imageUrl ? (
-                  <Image
+                  <img
                     src={product.imageUrl}
                     alt={product.name || "Product"}
-                    width={80}
-                    height={80}
-                    unoptimized
                     className="size-full object-contain"
                   />
                 ) : (
