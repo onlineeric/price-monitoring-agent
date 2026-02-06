@@ -117,7 +117,7 @@ function debugLog(message: string): void {
  * Minimum content length threshold - if extracted content is below this,
  * try a broader selector
  */
-const MIN_CONTENT_LENGTH = 5000;
+const MIN_CONTENT_LENGTH = 3000;
 
 /**
  * Extract main content area from HTML using semantic tags
@@ -211,7 +211,7 @@ function prepareHtmlForAI(html: string): string {
  * AI extraction prompt - extracts title, price, currency, and main image URL from HTML
  */
 function getExtractionPrompt(html: string): string {
-    return `Extract product information from this HTML. 
+  return `Extract product information from this HTML. 
 Find the product title, current price (as a number without currency symbol), currency code, and main product image URL.
 
 Instructions:
