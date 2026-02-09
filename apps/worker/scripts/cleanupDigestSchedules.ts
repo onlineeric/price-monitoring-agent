@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     const repeatableJobs = await queue.getRepeatableJobs();
     const digestJobs = repeatableJobs.filter((job) => job.name === jobName);
 
-    console.log(`[cleanup] Redis: ${redisUrl}`);
+    console.log(`[cleanup] Redis URL`);
     console.log(`[cleanup] Queue: ${queueName}`);
     console.log(`[cleanup] Target job name: ${jobName}`);
     console.log(`[cleanup] Found ${digestJobs.length} repeatable job(s)`);
