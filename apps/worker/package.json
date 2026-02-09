@@ -1,6 +1,6 @@
 {
   "name": "@price-monitor/worker",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "description": "",
   "main": "index.js",
@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
+    "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

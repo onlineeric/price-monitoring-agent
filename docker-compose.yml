@@ -57,6 +57,8 @@ services:
       FORCE_AI_EXTRACTION: ${FORCE_AI_EXTRACTION:-false}
       # Scheduler - enabled for background worker
       ENABLE_SCHEDULER: "true"
+      # Timezone used by BullMQ repeatable cron jobs
+      SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
       # Email
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM:-Price Monitor <onboarding@resend.dev>}

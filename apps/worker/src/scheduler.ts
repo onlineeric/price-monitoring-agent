@@ -18,15 +18,19 @@ import { settingsToCronPattern, cronPatternToDescription, type EmailScheduleSett
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const REPEATABLE_JOB_NAME = 'send-digest-scheduled';
+const REPEATABLE_JOB_KEY = 'digest-schedule-v1';
+const DEFAULT_TIMEZONE = 'UTC';
 
 export class DigestScheduler {
   private queue: Queue;
   private checkInterval: NodeJS.Timeout | null = null;
   private currentSchedule: EmailScheduleSettings | null = null;
   private currentJobKey: string | null = null;
+  private timezone: string;
 
-  constructor(queue: Queue) {
+  constructor(queue: Queue, timezone?: string) {
     this.queue = queue;
+    this.timezone = timezone?.trim() || DEFAULT_TIMEZONE;
   }
 
   /**
@@ -66,15 +70,18 @@ export class DigestScheduler {
       this.checkInterval = null;
     }
 
-    // Remove repeatable job
-    if (this.currentJobKey) {
-      try {
-        await this.queue.removeRepeatableByKey(this.currentJobKey);
-        console.log('✅ Removed repeatable job');
-      } catch (error) {
-        console.error('❌ Error removing repeatable job:', error);
+    // Remove repeatable jobs managed by this scheduler
+    try {
+      const removedCount = await this.removeAllDigestRepeatableJobs();
+      if (removedCount > 0) {
+        console.log(`✅ Removed ${removedCount} repeatable digest job(s)`);
       }
+    } catch (error) {
+      console.error('❌ Error removing repeatable jobs:', error);
     }
+
+    this.currentSchedule = null;
+    this.currentJobKey = null;
 
     console.log('✅ Digest scheduler stopped');
   }
@@ -92,12 +99,13 @@ export class DigestScheduler {
 
       if (!scheduleSettings) {
         console.log('⚠️  No email schedule configured in database');
-        // If there was a previous job, remove it
-        if (this.currentJobKey) {
-          await this.removeCurrentRepeatableJob();
-          this.currentSchedule = null;
-          this.currentJobKey = null;
+        // Remove any existing scheduled digest jobs
+        const removedCount = await this.removeAllDigestRepeatableJobs();
+        if (removedCount > 0) {
+          console.log(`🗑️  Removed ${removedCount} stale digest schedule(s)`);
         }
+        this.currentSchedule = null;
+        this.currentJobKey = null;
         return;
       }
 
@@ -111,25 +119,20 @@ export class DigestScheduler {
         this.currentSchedule.hour !== scheduleSettings.hour ||
         currentDayOfWeek !== newDayOfWeek;
 
-      if (!hasChanged) {
-        // Schedule hasn't changed, no action needed
-        return;
+      if (hasChanged) {
+        console.log('📝 Email schedule changed, reconciling repeatable jobs...');
       }
 
-      console.log('📝 Email schedule changed, updating repeatable job...');
-
-      // Remove old repeatable job if exists
-      if (this.currentJobKey) {
-        await this.removeCurrentRepeatableJob();
-      }
-
-      // Register new repeatable job
-      await this.registerRepeatableJob(scheduleSettings);
+      // Always reconcile repeatable jobs, even when schedule hasn't changed.
+      // This self-heals stale duplicate repeat jobs left in Redis.
+      const reconciled = await this.ensureSingleRepeatableJob(scheduleSettings);
 
       // Update cached schedule
       this.currentSchedule = scheduleSettings;
 
-      console.log('✅ Schedule updated successfully');
+      if (hasChanged || reconciled.removedCount > 0 || reconciled.created) {
+        console.log('✅ Schedule reconciled successfully');
+      }
     } catch (error) {
       console.error('❌ Error updating schedule:', error);
       throw error;
@@ -170,65 +173,114 @@ export class DigestScheduler {
   }
 
   /**
-   * Register a new repeatable job with BullMQ
+   * Keep exactly one valid repeatable job for digest scheduling.
    */
-  private async registerRepeatableJob(scheduleSettings: EmailScheduleSettings): Promise<void> {
-    try {
-      // Convert settings to cron pattern
-      const cronPattern = settingsToCronPattern(scheduleSettings);
-      const description = cronPatternToDescription(cronPattern);
+  private async ensureSingleRepeatableJob(
+    scheduleSettings: EmailScheduleSettings
+  ): Promise<{ removedCount: number; created: boolean }> {
+    const cronPattern = settingsToCronPattern(scheduleSettings);
+    const description = cronPatternToDescription(cronPattern);
 
-      console.log(`📅 Registering repeatable job: ${description}`);
-      console.log(`   Cron pattern: ${cronPattern}`);
+    const digestJobs = await this.getDigestRepeatableJobs();
+    const matchingJobs = digestJobs.filter(
+      (job) => job.pattern === cronPattern && this.normalizeTimezone(job.tz) === this.timezone
+    );
 
-      // Add repeatable job to queue
-      const job = await this.queue.add(
-        REPEATABLE_JOB_NAME,
-        {
-          type: 'scheduled',
-          triggeredAt: new Date().toISOString(),
-        },
-        {
-          repeat: {
-            pattern: cronPattern,
-          },
-          // Remove job data after completion to prevent memory buildup
-          removeOnComplete: {
-            count: 10, // Keep last 10 completed jobs
-          },
-          removeOnFail: {
-            count: 50, // Keep last 50 failed jobs for debugging
-          },
-        }
-      );
+    // Keep one matching job if present; remove everything else.
+    const jobToKeep = matchingJobs[0] || null;
+    const jobsToRemove = digestJobs.filter((job) => !jobToKeep || job.key !== jobToKeep.key);
 
-      // Store job key for later removal
-      if (job.opts.repeat) {
-        this.currentJobKey = job.opts.repeat.key || null;
+    let removedCount = 0;
+    for (const job of jobsToRemove) {
+      try {
+        await this.queue.removeRepeatableByKey(job.key);
+        removedCount += 1;
+      } catch (error) {
+        console.error(`❌ Error removing stale repeatable job (${job.key}):`, error);
       }
-
-      console.log(`✅ Repeatable job registered: ${description}`);
-    } catch (error) {
-      console.error('❌ Error registering repeatable job:', error);
-      throw error;
     }
+
+    if (removedCount > 0) {
+      console.log(`🗑️  Removed ${removedCount} stale repeatable digest job(s)`);
+    }
+
+    if (jobToKeep) {
+      this.currentJobKey = jobToKeep.key;
+      return { removedCount, created: false };
+    }
+
+    await this.registerRepeatableJob(scheduleSettings, cronPattern, description);
+    return { removedCount, created: true };
   }
 
   /**
-   * Remove current repeatable job
+   * Register a repeatable job with deterministic key and timezone.
    */
-  private async removeCurrentRepeatableJob(): Promise<void> {
-    if (!this.currentJobKey) {
-      return;
+  private async registerRepeatableJob(
+    _scheduleSettings: EmailScheduleSettings,
+    cronPattern: string,
+    description: string
+  ): Promise<void> {
+    console.log(`📅 Registering repeatable job: ${description}`);
+    console.log(`   Cron pattern: ${cronPattern}`);
+    console.log(`   Timezone: ${this.timezone}`);
+
+    await this.queue.add(
+      REPEATABLE_JOB_NAME,
+      {
+        type: 'scheduled',
+      },
+      {
+        repeat: {
+          pattern: cronPattern,
+          key: REPEATABLE_JOB_KEY,
+          tz: this.timezone,
+        },
+        // Remove job data after completion to prevent memory buildup
+        removeOnComplete: {
+          count: 10, // Keep last 10 completed jobs
+        },
+        removeOnFail: {
+          count: 50, // Keep last 50 failed jobs for debugging
+        },
+      }
+    );
+
+    // Refresh and cache the actual repeat key from Redis.
+    const digestJobs = await this.getDigestRepeatableJobs();
+    const createdJob = digestJobs.find(
+      (job) => job.pattern === cronPattern && this.normalizeTimezone(job.tz) === this.timezone
+    );
+    this.currentJobKey = createdJob?.key || null;
+
+    console.log(`✅ Repeatable job registered: ${description}`);
+  }
+
+  /**
+   * Remove all repeatable digest jobs from Redis.
+   */
+  private async removeAllDigestRepeatableJobs(): Promise<number> {
+    const digestJobs = await this.getDigestRepeatableJobs();
+
+    let removedCount = 0;
+    for (const job of digestJobs) {
+      try {
+        await this.queue.removeRepeatableByKey(job.key);
+        removedCount += 1;
+      } catch (error) {
+        console.error(`❌ Error removing repeatable job (${job.key}):`, error);
+      }
     }
 
-    try {
-      console.log('🗑️  Removing old repeatable job...');
-      await this.queue.removeRepeatableByKey(this.currentJobKey);
-      console.log('✅ Old repeatable job removed');
-    } catch (error) {
-      console.error('❌ Error removing old repeatable job:', error);
-      // Don't throw - continue with registration
-    }
+    return removedCount;
+  }
+
+  private async getDigestRepeatableJobs() {
+    const repeatableJobs = await this.queue.getRepeatableJobs();
+    return repeatableJobs.filter((job) => job.name === REPEATABLE_JOB_NAME);
+  }
+
+  private normalizeTimezone(timezone: string | null | undefined): string {
+    return timezone?.trim() || DEFAULT_TIMEZONE;
   }
 }
