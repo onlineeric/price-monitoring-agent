@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
+    "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

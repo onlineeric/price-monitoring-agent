@@ -29,7 +29,7 @@ cleanup() {
   echo ""
   if [ "$DOCKER_WORKER_WAS_RUNNING" = true ]; then
     echo "[dev-worker] Restarting background Docker worker..."
-    docker compose -f "$PROJECT_ROOT/docker-compose.yml" --profile worker up -d --build worker
+    docker compose -f "$PROJECT_ROOT/docker-compose.yml" --profile worker up -d worker
     echo "[dev-worker] Docker worker restarted."
   else
     echo "[dev-worker] Docker worker was not running before, skipping restart."

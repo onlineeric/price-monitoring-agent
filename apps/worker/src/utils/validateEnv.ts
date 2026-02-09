@@ -26,6 +26,7 @@ const OPTIONAL_ENV_VARS = [
   "OPENAI_MODEL",
   "GOOGLE_MODEL",
   "ENABLE_SCHEDULER",
+  "SCHEDULER_TIMEZONE",
   "NODE_ENV",
   "FORCE_AI_EXTRACTION",
 ] as const;
@@ -69,6 +70,10 @@ export function validateEnv(): EnvValidationResult {
   if (process.env.NODE_ENV === "production") {
     if (!process.env.ENABLE_SCHEDULER) {
       warnings.push("ENABLE_SCHEDULER not set in production. Scheduler will be disabled.");
+    }
+
+    if (!process.env.SCHEDULER_TIMEZONE) {
+      warnings.push("SCHEDULER_TIMEZONE not set in production. Defaulting to UTC.");
     }
   }
 

@@ -26,17 +26,19 @@ console.log("[WORKER] Listening for jobs on queue:", QUEUE_NAME);
 // Multiple scheduler instances would create duplicate scheduled jobs
 const ENABLE_SCHEDULER = process.env.ENABLE_SCHEDULER === "true";
 let scheduler: DigestScheduler | null = null;
+const schedulerTimezone = process.env.SCHEDULER_TIMEZONE || process.env.TZ || "UTC";
 
 if (ENABLE_SCHEDULER) {
   console.log("[SCHEDULER] Scheduler enabled (ENABLE_SCHEDULER=true)");
   console.log("[SCHEDULER] Initializing digest scheduler...");
+  console.log(`[SCHEDULER] Timezone: ${schedulerTimezone}`);
 
   // Create Queue instance for scheduler
   // Note: Worker already consumes jobs, this Queue is just for scheduling
   const queue = new Queue(QUEUE_NAME, { connection });
 
   // Initialize and start scheduler
-  scheduler = new DigestScheduler(queue);
+  scheduler = new DigestScheduler(queue, schedulerTimezone);
   scheduler.start().catch((error) => {
     console.error("[SCHEDULER] Failed to start scheduler:", error);
     process.exit(1);
