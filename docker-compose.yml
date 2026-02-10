@@ -42,6 +42,7 @@ services:
       context: .
       dockerfile: apps/worker/Dockerfile
     environment:
+      NODE_ENV: development
       # Database - using local Postgres service name as host: postgresql://user:pw@host:5432/priceMonitor
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/priceMonitor
       # Redis - using local Redis service name as host: redis://host:6379
