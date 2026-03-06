@@ -2,59 +2,138 @@
 
 ## Scope
 
-This contract defines the shared UI and API interaction for searching products from the dashboard shell and editing a selected product without navigating away from the current route.
+This contract documents the client-side interfaces and existing API interactions required to replace template search items with real products and launch the shared edit-product dialog from global search.
 
-## Search Trigger Contract
+## Existing API Contracts
 
-- The existing dashboard header `Search` control and `Cmd/Ctrl + J` shortcut remain the entry points for the global search dialog.
-- Opening the search dialog must work from any route rendered under the dashboard layout.
-- Triggering the search flow while the search dialog or search-launched edit dialog is already open must be idempotent.
+### `GET /api/products`
 
-## Search Result Contract
+- Purpose: Load product records for the global search dialog.
+- Response shape:
 
-- The search dialog must replace all template placeholder items with real products loaded from the application.
-- The search input must filter results by product `name` and `url`.
-- Matching results must be rendered in two sections:
-  - `Active Products`
-  - `Inactive Products`
-- If no products match the current input, the dialog must show a clear empty-result state.
-- If product loading fails, the dialog must show a recoverable error state rather than falling back to template content.
-
-## Edit Flow Contract
-
-- Selecting a product result must close the search dialog before opening the shared edit-product dialog.
-- The edit dialog opened from search must use the same title, fields, validation, submit behavior, cancel behavior, loading state, success toast, and error toast as the Products page edit flow.
-- Canceling or dismissing the edit dialog must end the flow and keep the user on the route where search started.
-- After a successful edit:
-  - If the current route is `/dashboard/products`, refresh the route once so updated product data is shown.
-  - If the current route is any other dashboard page, do not refresh the route.
-- After a successful or canceled edit launched from search, the search dialog must remain closed.
-
-## API Contract
-
-- Product search data continues to come from `GET /api/products`.
-- Shared edit submission continues to `PATCH /api/products/:id` with:
-
-```json
-{
-  "name": "Updated product name",
-  "active": true
-}
+```ts
+type GetProductsResponse = {
+  success: boolean;
+  products?: Array<{
+    id: string;
+    url: string;
+    name: string | null;
+    imageUrl: string | null;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
+    lastSuccessAt: string | null;
+    lastFailedAt: string | null;
+  }>;
+  error?: string;
+};
 ```
 
-- Existing HTTP outcomes remain in force:
-  - `200` returns the updated product
-  - `404` indicates the product is unavailable
-  - `500` indicates an update failure
+- Client expectations:
+  - Fetch once per dashboard-shell lifecycle or when explicitly revalidated by the controller.
+  - Normalize response data into search results sorted into active and inactive sections.
+  - On failure, keep the dialog usable and render a recoverable error state instead of placeholder template items.
 
-## Verification Contract
+### `PATCH /api/products/:id`
 
-- Automated coverage must prove:
-  - real product results replace template items
-  - filtering matches `name` and `url`
-  - active results render before inactive results
-  - duplicate trigger attempts do not stack dialogs
-  - selecting a product closes search before opening edit
-  - success refreshes only on `/dashboard/products`
-  - cancel and failure leave the user on the current route without refresh
-- Manual validation must confirm the full flow on `/dashboard/products` and at least one non-Products dashboard route.
+- Purpose: Save product edits from the shared dialog.
+- Request shape:
+
+```ts
+type PatchProductRequest = {
+  name: string;
+  active: boolean;
+};
+```
+
+- Response shape:
+
+```ts
+type PatchProductResponse = {
+  success: boolean;
+  product?: {
+    id: string;
+    url: string;
+    name: string | null;
+    imageUrl: string | null;
+    active: boolean;
+    updatedAt: string;
+  };
+  error?: string;
+};
+```
+
+- Client expectations:
+  - Use the same validation and error handling regardless of whether the dialog is launched from Products or global search.
+  - On success from global search:
+    - Close the edit dialog.
+    - Refresh only if `pathname === "/dashboard/products"`.
+    - Do not reopen search.
+  - On failure:
+    - Keep the dialog open.
+    - Preserve in-progress edits.
+    - Surface the standard error feedback.
+
+## Client Module Contracts
+
+### Global Search/Edit Provider
+
+```ts
+type GlobalProductSearchDialogSource = "header-search-button" | "header-search-shortcut";
+
+type OpenGlobalProductSearchOptions = {
+  source: GlobalProductSearchDialogSource;
+  trigger?: HTMLElement | null;
+};
+
+type GlobalProductSearchContextValue = {
+  openGlobalProductSearch: (options: OpenGlobalProductSearchOptions) => void;
+};
+```
+
+- Behavioral guarantees:
+  - Ignores duplicate open requests while search or edit overlays are already active.
+  - Restores focus to the originating trigger when the flow closes.
+  - Captures the originating pathname to decide whether post-save refresh is required.
+
+### Shared Edit Dialog Controller
+
+```ts
+type SharedEditProductDialogProps = {
+  product: {
+    id: string;
+    url: string;
+    name: string | null;
+    imageUrl: string | null;
+    active: boolean;
+  };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaveSuccess?: (updatedProduct: {
+    id: string;
+    name: string | null;
+    active: boolean;
+    updatedAt: string;
+  }) => void;
+};
+```
+
+- Behavioral guarantees:
+  - Uses the same schema and submit logic for all entry points.
+  - Leaves route refresh decisions to the caller/controller rather than hard-coding `router.refresh()` inside the presentational form.
+
+## UI State Contract
+
+- Search dialog states:
+  - `loading`
+  - `ready`
+  - `empty`
+  - `error`
+- Edit dialog states:
+  - `closed`
+  - `open`
+  - `submitting`
+  - `error-with-retry`
+- Overlay sequencing:
+  - Search selection must transition `search -> edit`.
+  - Search and edit must never be visible simultaneously.

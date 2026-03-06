@@ -1,41 +1,43 @@
 # Research: Global Product Search Edit Dialog
 
-## Decision 1: Host the search-to-edit flow in a dashboard-scoped provider alongside the existing quick-create provider
+## Decision 1: Load product results through the existing `/api/products` endpoint inside a dashboard-scoped provider
 
-- **Decision**: Add a dedicated dashboard-scoped client controller/provider that owns the global search dialog state, selected product state, and edit-dialog state, then mount its dialog host in the shared dashboard shell.
-- **Rationale**: The current `SearchDialog` already lives in `dashboard-client-shell.tsx`, and the existing `ProductCreateDialogProvider` proves the dashboard shell is the right place for route-preserving global overlays. A provider keeps the flow available from any dashboard route without routing through `/dashboard/products`.
-- **Alternatives considered**:
-  - Keep state local to `search-dialog.tsx` and instantiate the edit dialog there. Rejected because Products-page edit reuse would still remain fragmented, and state coordination between search and edit would become harder to test.
-  - Use query params or route navigation to open edit. Rejected because the feature explicitly needs overlay-style behavior that preserves the current page context.
+- Decision: Use a client-side provider mounted in the dashboard shell to fetch the existing product list from `GET /api/products`, normalize it into a lightweight search-result shape, and pass it to the search dialog.
+- Rationale: The current `SearchDialog` is client-only and already owns the open/close interaction. Fetching products in a dashboard-scoped provider keeps the feature available from any dashboard route, avoids new persistence work, and matches the existing pattern used by the product create dialog provider for global overlays.
+- Alternatives considered:
+  - Fetch inside `SearchDialog` on every open. Rejected because it duplicates orchestration concerns in the presentational dialog and increases repeated request churn.
+  - Build a new search-specific API route. Rejected because the existing products endpoint already exposes the required fields and no schema change is needed.
+  - Use server-rendered route data per page. Rejected because the feature must work consistently from any dashboard page, not only the Products route.
 
-## Decision 2: Extract the current Products-page edit behavior into one shared edit-product workflow
+## Decision 2: Extract edit dialog behavior into shared product-edit modules with caller-controlled completion
 
-- **Decision**: Refactor `EditProductDialog` into reusable edit-product modules with explicit callbacks for success, cancel, and open-state changes so both the Products page and the global search flow use the same validation, fetch, toast, and error handling.
-- **Rationale**: Today the card and table views each open the same dialog component, but the dialog itself is still coupled to unconditional `router.refresh()`. Sharing the edit workflow through a route-aware controller removes duplicated orchestration and aligns with the spec requirement that the Products page edit dialog become the common component.
-- **Alternatives considered**:
-  - Leave `EditProductDialog` mostly unchanged and special-case search behavior with extra props only in the search flow. Rejected because refresh and close behavior would remain route-coupled inside the dialog.
-  - Duplicate the edit form for search results. Rejected because it would immediately violate the consistency requirement and increase regression risk.
+- Decision: Split the current `EditProductDialog` into reusable pieces: shared form schema/types, a dialog component that accepts callbacks, and one or more controller wrappers so both Products-page actions and global search can reuse the same validation and submit behavior.
+- Rationale: The current dialog couples successful save directly to `router.refresh()`, which is correct for the Products page but incorrect for global search on non-Products routes. A shared module with injected success/close behavior preserves one edit experience while allowing route-aware completion.
+- Alternatives considered:
+  - Keep separate edit dialog implementations for Products and search. Rejected because it would duplicate validation, toast, request, and error handling.
+  - Add conditionals directly into the existing dialog based on pathname/source. Rejected because it would make the component harder to test and less reusable.
+  - Navigate to the Products page for editing. Rejected because the spec requires preserving the current page context.
 
-## Decision 3: Load real products through the existing `/api/products` contract and filter client-side by name and URL
+## Decision 3: Model the flow as one overlay state machine in the dashboard shell
 
-- **Decision**: Reuse `GET /api/products` to load products into the global search dialog and filter them client-side against `name` and `url`, then render grouped active and inactive sections.
-- **Rationale**: The repository already exposes a typed product list endpoint and the expected result size for a dashboard command palette is modest. Client-side filtering keeps the command dialog responsive, avoids new API surface area, and stays within the current no-schema-change constraint.
-- **Alternatives considered**:
-  - Add a dedicated search endpoint. Rejected because the feature requirements do not justify new server complexity or search-specific contracts yet.
-  - Reuse only Products-page server props by lifting them into layout state. Rejected because the search must work on any dashboard route, not just where product data is already loaded.
+- Decision: Represent the feature as a single dashboard-scoped controller with at most one active overlay state: `closed`, `search`, or `edit(selectedProductId)`.
+- Rationale: The spec explicitly forbids stacked dialogs and requires the search dialog to close before the edit dialog opens. A simple state machine prevents duplicate opens, makes keyboard/open triggers deterministic, and centralizes focus restoration.
+- Alternatives considered:
+  - Maintain separate booleans for search and edit dialogs. Rejected because it makes invalid stacked states easier to create.
+  - Let search own edit state locally. Rejected because the edit flow must outlive the search dialog and still preserve route-aware refresh rules.
 
-## Decision 4: Keep route-specific refresh logic in the global controller, not inside the edit form
+## Decision 4: Preserve responsiveness with in-dialog loading, empty, and recoverable error states
 
-- **Decision**: Mirror the quick-create pattern by letting the controller that opened the global flow decide whether to call `router.refresh()` after a successful edit based on `usePathname()`.
-- **Rationale**: The spec requires refresh only on `/dashboard/products`; all other routes must stay visually stable after edit completion. Centralizing that decision in a provider/controller keeps the form reusable and ensures the search flow and Products-page actions follow one explicit completion policy.
-- **Alternatives considered**:
-  - Always refresh after save. Rejected because it violates FR-011 and FR-012.
-  - Never refresh after save. Rejected because the Products page needs updated data immediately after edits.
+- Decision: Keep the search dialog open immediately, show a loading state while results are being fetched or filtered, show a dedicated empty state when no products exist or no matches remain, and show recoverable errors without route changes.
+- Rationale: This aligns with the clarification decisions, keeps the search overlay predictable, and avoids confusing transitions such as closing the dialog before data is ready.
+- Alternatives considered:
+  - Delay opening until data loads. Rejected because it makes the shortcut feel broken or laggy.
+  - Show an empty list while loading. Rejected because it conflates loading with empty-result behavior.
 
-## Decision 5: Cover the orchestration with focused Vitest tests plus manual route checks
+## Decision 5: Verify with provider-level interaction tests plus manual multi-route checks
 
-- **Decision**: Add React Testing Library coverage for the new provider/controller, search-result grouping/filtering, duplicate-open protection, search-close-before-edit behavior, and route-aware refresh outcomes, then manually validate on Products and non-Products pages.
-- **Rationale**: This feature changes a global, user-visible workflow in the shared dashboard shell. Focused client tests provide strong regression protection without requiring a new end-to-end framework.
-- **Alternatives considered**:
-  - Manual validation only. Rejected because the constitution requires risk-proportional automated coverage for user-visible business logic.
-  - Full E2E-only coverage. Rejected because the repository already has an effective Vitest/RTL setup for dashboard dialog providers and no established E2E workflow for this slice.
+- Decision: Add Vitest + React Testing Library coverage around the global provider/search/edit orchestration and keep manual validation focused on Products plus non-Products dashboard routes.
+- Rationale: The highest-risk logic is client orchestration: loading products, switching overlays, preventing duplicate opens, and refreshing only on `/dashboard/products`. Provider-level tests can cover that without expensive end-to-end setup.
+- Alternatives considered:
+  - Manual-only verification. Rejected because route-aware refresh and duplicate-open protection are easy to regress.
+  - Full browser E2E only. Rejected because the repository already has RTL-based dashboard tests and this feature does not require browser automation to validate core state transitions.
