@@ -14,6 +14,8 @@
 - Q: What should happen to the search dialog when a product is selected for editing? → A: Close search dialog, open edit dialog.
 - Q: What should happen after a successful edit launched from global search? → A: Close edit dialog and end flow.
 - Q: What should happen when the user cancels the edit launched from global search? → A: Close edit dialog and end flow.
+- Q: What should happen if saving changes fails in the edit dialog launched from global search? → A: Keep edit dialog open and allow retry.
+- Q: What should the search dialog show while product results are still loading? → A: Show loading state in dialog.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -66,10 +68,10 @@ As a dashboard user, I want the search and edit flow to behave like a global ove
 
 ### Edge Cases
 
-- What happens when the search dialog is opened before product results have finished loading?
+- If the search dialog is opened before product results have finished loading, the dialog remains open and shows a loading state in the results area until the relevant results are ready.
 - How does the system behave when the product list is empty and the user opens the search dialog?
 - What happens when a user selects a product that has been removed or changed before the edit dialog finishes opening?
-- How does the system respond if saving changes from the edit-product dialog fails after being launched from the search flow?
+- If saving changes from the edit-product dialog launched from search fails, the dialog remains open, preserves the current form state, shows the standard error feedback, and allows the user to retry.
 - What happens when the search dialog is triggered again while either the search dialog or edit-product dialog is already open?
 
 ## Requirements *(mandatory)*
@@ -83,9 +85,11 @@ As a dashboard user, I want the search and edit flow to behave like a global ove
 - **FR-004**: The system MUST show each matching product in a form that allows the user to select it from the search results.
 - **FR-004a**: The result list MUST be organized into two sections, with active products shown first and inactive products shown second.
 - **FR-005**: The system MUST provide a clear empty-result state when no products match the current search text.
+- **FR-005a**: If product results are still loading when the search dialog opens or the search query updates, the dialog MUST remain open and show a loading state in the results area until the relevant results are ready.
 - **FR-006**: When a user selects a product from search results, the system MUST open the same edit-product dialog experience that is currently available from the Products page.
 - **FR-006a**: When a user selects a product from search results, the search dialog MUST close before the edit-product dialog opens.
 - **FR-007**: The edit-product experience launched from search MUST use the same product fields, validation rules, save behavior, cancel behavior, and error behavior as the Products page edit flow.
+- **FR-007a**: If saving changes fails in the edit-product dialog launched from search, the system MUST keep the dialog open, preserve the user's in-progress edits, show the standard save error state, and allow retry.
 - **FR-008**: The edit-product dialog MUST be reusable from both the Products page and the global search flow so users receive one consistent edit experience.
 - **FR-009**: Launching product edit from the search dialog MUST keep the user on the route where the search started rather than navigating away as part of the standard flow.
 - **FR-010**: After the edit-product dialog closes, the system MUST return the user to the same page context from which the search was opened.

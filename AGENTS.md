@@ -273,6 +273,8 @@ sudo lsof -i :5432                                # Check port usage
 ## Active Technologies
 - TypeScript 5.9, React 19, Next.js 16 + Next.js App Router, React Hook Form, Zod, Sonner, Radix UI dialog primitives, Lucide React (001-quick-create-dialog)
 - Existing PostgreSQL product storage via current `/api/products` contract; no schema change (001-quick-create-dialog)
+- TypeScript 5.9, React 19, Next.js 16 + Next.js App Router, React Hook Form, Zod, Sonner, Radix UI dialog and command primitives, Lucide React, date-fns, TanStack Table (001-product-search-edit)
+- Existing PostgreSQL product records via Drizzle-backed `/api/products` and `/api/products/[id]` routes; no schema change (001-product-search-edit)
 
 ## Recent Changes
 - 001-quick-create-dialog: Added TypeScript 5.9, React 19, Next.js 16 + Next.js App Router, React Hook Form, Zod, Sonner, Radix UI dialog primitives, Lucide React
