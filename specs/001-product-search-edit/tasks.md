@@ -17,8 +17,8 @@
 
 **Purpose**: Establish shared product-search/edit module boundaries and test targets before implementation
 
-- [ ] T002 [P] Create the `product-search` component folder under `apps/web/src/app/(main)/dashboard/_components/product-search/` for provider, state, and result-item modules
-- [ ] T003 [P] Create the shared edit-product module folder under `apps/web/src/app/(main)/dashboard/products/_components/edit-product/` for reusable schema, hook, and dialog modules
+- [X] T002 [P] Create the `product-search` component folder under `apps/web/src/app/(main)/dashboard/_components/product-search/` for provider, state, and result-item modules
+- [X] T003 [P] Create the shared edit-product module folder under `apps/web/src/app/(main)/dashboard/products/_components/edit-product/` for reusable schema, hook, and dialog modules
 
 ---
 
@@ -28,12 +28,12 @@
 
 **⚠️ CRITICAL**: No user story work should start until this phase is complete
 
-- [ ] T004 [P] Extract the edit form schema and types into `apps/web/src/app/(main)/dashboard/products/_components/edit-product/edit-product-form-schema.ts`
-- [ ] T005 [P] Extract shared edit submit logic into `apps/web/src/app/(main)/dashboard/products/_components/edit-product/use-edit-product.ts`
-- [ ] T006 Create the reusable shared edit dialog component in `apps/web/src/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog.tsx`
-- [ ] T007 Update `apps/web/src/app/(main)/dashboard/products/_components/edit-product-dialog.tsx` to wrap the shared edit dialog with Products-page-specific refresh behavior
-- [ ] T008 Create the dashboard-scoped global search/edit provider in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
-- [ ] T009 Wire the provider into `apps/web/src/app/(main)/dashboard/_components/dashboard-client-shell.tsx` so the overlay flow is available from any dashboard route
+- [X] T004 [P] Extract the edit form schema and types into `apps/web/src/app/(main)/dashboard/products/_components/edit-product/edit-product-form-schema.ts`
+- [X] T005 [P] Extract shared edit submit logic into `apps/web/src/app/(main)/dashboard/products/_components/edit-product/use-edit-product.ts`
+- [X] T006 Create the reusable shared edit dialog component in `apps/web/src/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog.tsx`
+- [X] T007 Update `apps/web/src/app/(main)/dashboard/products/_components/edit-product-dialog.tsx` to wrap the shared edit dialog with Products-page-specific refresh behavior
+- [X] T008 Create the dashboard-scoped global search/edit provider in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
+- [X] T009 Wire the provider into `apps/web/src/app/(main)/dashboard/_components/dashboard-client-shell.tsx` so the overlay flow is available from any dashboard route
 
 **Checkpoint**: Shared edit and global overlay infrastructure are ready for story work
 
@@ -47,16 +47,16 @@
 
 ### Verification for User Story 1
 
-- [ ] T010 [P] [US1] Add provider/search dialog interaction coverage for loading, filtering, empty state, and active-first grouping in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
-- [ ] T011 [P] [US1] Add focused rendering coverage for product result rows in `apps/web/src/test/dashboard/global-product-search-results.test.tsx`
+- [X] T010 [P] [US1] Add provider/search dialog interaction coverage for loading, filtering, empty state, and active-first grouping in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
+- [X] T011 [P] [US1] Add focused rendering coverage for product result rows in `apps/web/src/test/dashboard/global-product-search-results.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Add product search result normalization types and helpers in `apps/web/src/app/(main)/dashboard/_components/product-search/product-search-model.ts`
-- [ ] T013 [P] [US1] Implement product loading and client-side query filtering in `apps/web/src/app/(main)/dashboard/_components/product-search/use-global-product-search.ts`
-- [ ] T014 [P] [US1] Implement grouped product result row rendering in `apps/web/src/app/(main)/dashboard/_components/product-search/product-search-result-item.tsx`
-- [ ] T015 [US1] Replace template command content with live product states in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx`
-- [ ] T016 [US1] Connect the header search button and `Cmd/Ctrl+J` shortcut to the provider-backed search flow in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx`
+- [X] T012 [P] [US1] Add product search result normalization types and helpers in `apps/web/src/app/(main)/dashboard/_components/product-search/product-search-model.ts`
+- [X] T013 [P] [US1] Implement product loading and client-side query filtering in `apps/web/src/app/(main)/dashboard/_components/product-search/use-global-product-search.ts`
+- [X] T014 [P] [US1] Implement grouped product result row rendering in `apps/web/src/app/(main)/dashboard/_components/product-search/product-search-result-item.tsx`
+- [X] T015 [US1] Replace template command content with live product states in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx`
+- [X] T016 [US1] Connect the header search button and `Cmd/Ctrl+J` shortcut to the provider-backed search flow in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable
 
@@ -70,16 +70,16 @@
 
 ### Verification for User Story 2
 
-- [ ] T017 [P] [US2] Add provider-level interaction coverage for search selection, overlay sequencing, cancel, save-failure retry, and unavailable-product recovery in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
-- [ ] T018 [P] [US2] Add shared edit dialog coverage for reused validation and submit behavior in `apps/web/src/test/dashboard/shared-edit-product-dialog.test.tsx`
+- [X] T017 [P] [US2] Add provider-level interaction coverage for search selection, overlay sequencing, cancel, save-failure retry, and unavailable-product recovery in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
+- [X] T018 [P] [US2] Add shared edit dialog coverage for reused validation and submit behavior in `apps/web/src/test/dashboard/shared-edit-product-dialog.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Add selected-product loading and unavailable-product recovery handling to `apps/web/src/app/(main)/dashboard/_components/product-search/use-global-product-search.ts`
-- [ ] T020 [P] [US2] Render the shared edit dialog from the global provider in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
-- [ ] T021 [US2] Connect search result selection events in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx` to provider-owned actions without duplicating overlay sequencing logic
-- [ ] T022 [US2] Replace direct `EditProductDialog` state management with the shared edit dialog wrapper in `apps/web/src/app/(main)/dashboard/products/_components/product-card-view.tsx`
-- [ ] T023 [US2] Replace direct `EditProductDialog` state management with the shared edit dialog wrapper in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx`
+- [X] T019 [P] [US2] Add selected-product loading and unavailable-product recovery handling to `apps/web/src/app/(main)/dashboard/_components/product-search/use-global-product-search.ts`
+- [X] T020 [P] [US2] Render the shared edit dialog from the global provider in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
+- [X] T021 [US2] Connect search result selection events in `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx` to provider-owned actions without duplicating overlay sequencing logic
+- [X] T022 [US2] Replace direct `EditProductDialog` state management with the shared edit dialog wrapper in `apps/web/src/app/(main)/dashboard/products/_components/product-card-view.tsx`
+- [X] T023 [US2] Replace direct `EditProductDialog` state management with the shared edit dialog wrapper in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx`
 
 **Checkpoint**: User Stories 1 and 2 both work independently
 
@@ -93,15 +93,15 @@
 
 ### Verification for User Story 3
 
-- [ ] T024 [P] [US3] Add route-aware refresh and duplicate-open coverage in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
-- [ ] T025 [P] [US3] Add Products-page edit dialog wrapper coverage for route-specific completion behavior in `apps/web/src/test/dashboard/edit-product-dialog.test.tsx`
+- [X] T024 [P] [US3] Add route-aware refresh and duplicate-open coverage in `apps/web/src/test/dashboard/global-product-search-dialog-provider.test.tsx`
+- [X] T025 [P] [US3] Add Products-page edit dialog wrapper coverage for route-specific completion behavior in `apps/web/src/test/dashboard/edit-product-dialog.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Add origin pathname, trigger focus restoration, and duplicate-open protection to `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
-- [ ] T027 [P] [US3] Add caller-controlled success handling and retry-safe error state to `apps/web/src/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog.tsx`
-- [ ] T028 [US3] Trigger `router.refresh()` only for `/dashboard/products` in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
-- [ ] T029 [US3] Ensure the search/edit flow closes cleanly without page refresh on cancel or non-Products save success in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
+- [X] T026 [P] [US3] Add origin pathname, trigger focus restoration, and duplicate-open protection to `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
+- [X] T027 [P] [US3] Add caller-controlled success handling and retry-safe error state to `apps/web/src/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog.tsx`
+- [X] T028 [US3] Trigger `router.refresh()` only for `/dashboard/products` in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
+- [X] T029 [US3] Ensure the search/edit flow closes cleanly without page refresh on cancel or non-Products save success in `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx`
 
 **Checkpoint**: All user stories are independently functional
 
@@ -111,9 +111,9 @@
 
 **Purpose**: Final validation and documentation updates that span the full feature
 
-- [ ] T030 [P] Update feature notes and verification commands in `specs/001-product-search-edit/quickstart.md`
-- [ ] T031 Record the dashboard verification command and expected outcome in `specs/001-product-search-edit/quickstart.md`
-- [ ] T032 [P] Review `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx` and `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx` for loading/error copy and focus accessibility polish
+- [X] T030 [P] Update feature notes and verification commands in `specs/001-product-search-edit/quickstart.md`
+- [X] T031 Record the dashboard verification command and expected outcome in `specs/001-product-search-edit/quickstart.md`
+- [X] T032 [P] Review `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx` and `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx` for loading/error copy and focus accessibility polish
 
 ---
 

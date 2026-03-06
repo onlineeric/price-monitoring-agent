@@ -34,6 +34,19 @@ pnpm --filter @price-monitor/web test -- --runInBand src/test/dashboard
    - Selecting a now-unavailable product shows a recoverable error and returns to a usable page context.
    - Duplicate-open attempts do not stack dialogs.
 
+## Latest Verification Snapshot
+
+- Executed on March 7, 2026:
+
+```bash
+pnpm --filter @price-monitor/web test -- --runInBand src/test/dashboard
+```
+
+- Expected outcome:
+  - `6` dashboard test files pass
+  - `18` dashboard tests pass
+  - Coverage includes shared edit reuse, search loading/filtering/grouping, route-aware refresh, duplicate-open protection, save retry behavior, and unavailable-product recovery
+
 ## Manual Verification
 
 ### Scenario 1: Search from a non-Products page
