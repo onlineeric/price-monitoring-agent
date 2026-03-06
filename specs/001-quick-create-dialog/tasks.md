@@ -22,9 +22,9 @@
 
 **Purpose**: Add the missing frontend test tooling and feature-specific verification entry points needed by this UI change.
 
-- [ ] T001 Add a web test script and Vitest, React Testing Library, and jsdom dependencies in `apps/web/package.json`
-- [ ] T002 [P] Create the shared web test runner configuration in `apps/web/vitest.config.ts`
-- [ ] T003 [P] Create the shared frontend test setup utilities in `apps/web/src/test/setup.ts`
+- [X] T001 Add a web test script and Vitest, React Testing Library, and jsdom dependencies in `apps/web/package.json`
+- [X] T002 [P] Create the shared web test runner configuration in `apps/web/vitest.config.ts`
+- [X] T003 [P] Create the shared frontend test setup utilities in `apps/web/src/test/setup.ts`
 
 ---
 
@@ -34,12 +34,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Extract the shared product-create schema and form types from the existing dialog into `apps/web/src/app/(main)/dashboard/products/_components/product-create-form-schema.ts`
-- [ ] T005 [P] Extract the reusable product-create form fields and submit button UI into `apps/web/src/app/(main)/dashboard/products/_components/product-create-form.tsx`
-- [ ] T006 Create a shared create-product submission hook for `/api/products` in `apps/web/src/app/(main)/dashboard/products/_components/use-create-product.ts`
-- [ ] T007 Create the dashboard-scoped product-create dialog controller and hook in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
-- [ ] T008 Create a dashboard client shell that mounts the shared dialog host in `apps/web/src/app/(main)/dashboard/_components/dashboard-client-shell.tsx`
-- [ ] T009 Wire the dashboard client shell into `apps/web/src/app/(main)/dashboard/layout.tsx`
+- [X] T004 Extract the shared product-create schema and form types from the existing dialog into `apps/web/src/app/(main)/dashboard/products/_components/product-create-form-schema.ts`
+- [X] T005 [P] Extract the reusable product-create form fields and submit button UI into `apps/web/src/app/(main)/dashboard/products/_components/product-create-form.tsx`
+- [X] T006 Create a shared create-product submission hook for `/api/products` in `apps/web/src/app/(main)/dashboard/products/_components/use-create-product.ts`
+- [X] T007 Create the dashboard-scoped product-create dialog controller and hook in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
+- [X] T008 Create a dashboard client shell that mounts the shared dialog host in `apps/web/src/app/(main)/dashboard/_components/dashboard-client-shell.tsx`
+- [X] T009 Wire the dashboard client shell into `apps/web/src/app/(main)/dashboard/layout.tsx`
 
 **Checkpoint**: Foundation ready; sidebar and Products page triggers can now share one dialog host and one submission path.
 
@@ -53,13 +53,13 @@
 
 ### Verification for User Story 1
 
-- [ ] T010 [P] [US1] Add controller and entry-point parity component tests in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.test.tsx`
+- [X] T010 [P] [US1] Add controller and entry-point parity component tests in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Refactor `Add Product` to use the shared open action in `apps/web/src/app/(main)/dashboard/products/_components/add-product-button.tsx`
-- [ ] T012 [P] [US1] Make the sidebar `Quick Create` action open the shared dialog in `apps/web/src/app/(main)/dashboard/_components/sidebar/nav-main.tsx`
-- [ ] T013 [US1] Refactor the dialog component to render from the shared controller in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
+- [X] T011 [P] [US1] Refactor `Add Product` to use the shared open action in `apps/web/src/app/(main)/dashboard/products/_components/add-product-button.tsx`
+- [X] T012 [P] [US1] Make the sidebar `Quick Create` action open the shared dialog in `apps/web/src/app/(main)/dashboard/_components/sidebar/nav-main.tsx`
+- [X] T013 [US1] Refactor the dialog component to render from the shared controller in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
 
 **Checkpoint**: User Story 1 is complete when both entry points open the same dialog host on the current dashboard route.
 
@@ -73,13 +73,13 @@
 
 ### Verification for User Story 2
 
-- [ ] T014 [P] [US2] Add submission outcome tests for valid, invalid, and failed requests in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.test.tsx`
+- [X] T014 [P] [US2] Add submission outcome tests for valid, invalid, and failed requests in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Rebuild the dialog around the shared schema, form component, and submit hook in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
-- [ ] T016 [US2] Normalize optional product names and preserve existing toast behavior in `apps/web/src/app/(main)/dashboard/products/_components/use-create-product.ts`
-- [ ] T017 [US2] Add route-aware success handling so refresh only occurs for the Products page in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
+- [X] T015 [P] [US2] Rebuild the dialog around the shared schema, form component, and submit hook in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
+- [X] T016 [US2] Normalize optional product names and preserve existing toast behavior in `apps/web/src/app/(main)/dashboard/products/_components/use-create-product.ts`
+- [X] T017 [US2] Add route-aware success handling so refresh only occurs for the Products page in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
 
 **Checkpoint**: User Story 2 is complete when sidebar-launched product creation behaves the same as the Products page flow and refresh behavior matches the route requirement.
 
@@ -93,12 +93,12 @@
 
 ### Verification for User Story 3
 
-- [ ] T018 [P] [US3] Add duplicate-open and focus-restoration tests in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.test.tsx`
+- [X] T018 [P] [US3] Add duplicate-open and focus-restoration tests in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Add duplicate-open guards, origin trigger tracking, and focus restoration in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
-- [ ] T020 [US3] Preserve cancel and dismiss behavior without mutating unrelated page state in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
+- [X] T019 [US3] Add duplicate-open guards, origin trigger tracking, and focus restoration in `apps/web/src/app/(main)/dashboard/_components/product-create/product-create-dialog-provider.tsx`
+- [X] T020 [US3] Preserve cancel and dismiss behavior without mutating unrelated page state in `apps/web/src/app/(main)/dashboard/products/_components/add-product-dialog.tsx`
 
 **Checkpoint**: User Story 3 is complete when repeated opens are ignored, the dialog closes cleanly, and focus returns to the initiating `Quick Create` control.
 
@@ -108,7 +108,7 @@
 
 **Purpose**: Finish documentation and run the end-to-end validation steps for the feature.
 
-- [ ] T021 [P] Update the implementation and manual validation notes in `specs/001-quick-create-dialog/quickstart.md`
+- [X] T021 [P] Update the implementation and manual validation notes in `specs/001-quick-create-dialog/quickstart.md`
 - [ ] T022 Execute the validation checklist in `specs/001-quick-create-dialog/quickstart.md`, including `/dashboard/products` plus at least two non-Products dashboard routes
 
 ---

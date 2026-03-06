@@ -42,7 +42,7 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
   const router = useRouter();
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema as unknown as Parameters<typeof zodResolver>[0]),
     defaultValues: {
       name: product.name || "",
       active: product.active,

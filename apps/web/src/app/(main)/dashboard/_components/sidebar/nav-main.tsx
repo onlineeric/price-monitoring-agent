@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
 
+import { useProductCreateDialog } from "@/app/(main)/dashboard/_components/product-create/product-create-dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -144,6 +145,7 @@ const NavItemCollapsed = ({
 export function NavMain({ items }: NavMainProps) {
   const path = usePathname();
   const { state, isMobile } = useSidebar();
+  const { openProductCreateDialog } = useProductCreateDialog();
 
   const isItemActive = (url: string, subItems?: NavMainItem["subItems"]) => {
     if (subItems?.length) {
@@ -165,6 +167,7 @@ export function NavMain({ items }: NavMainProps) {
               <SidebarMenuButton
                 tooltip="Quick Create"
                 className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                onClick={(event) => openProductCreateDialog("sidebar-quick-create", event.currentTarget)}
               >
                 <PlusCircleIcon />
                 <span>Quick Create</span>
