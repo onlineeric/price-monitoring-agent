@@ -67,11 +67,8 @@ export function ProductOverview({ products }: { products: ProductOverviewItem[] 
             >
               <div className="mb-2 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
                 {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name || "Product"}
-                    className="size-full object-contain"
-                  />
+                  // biome-ignore lint/performance/noImgElement: Product images are remote and not covered by Next image config.
+                  <img src={product.imageUrl} alt={product.name || "Product"} className="size-full object-contain" />
                 ) : (
                   <Package className="size-8 text-muted-foreground" />
                 )}

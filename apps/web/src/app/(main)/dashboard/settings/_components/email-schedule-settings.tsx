@@ -34,7 +34,7 @@ export function EmailScheduleSettings() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
   const form = useForm<EmailScheduleInput>({
-    resolver: zodResolver(emailScheduleSchema),
+    resolver: zodResolver(emailScheduleSchema as unknown as Parameters<typeof zodResolver>[0]),
     defaultValues: {
       frequency: "daily",
       hour: 9,
