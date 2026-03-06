@@ -1,6 +1,6 @@
 # Feature Specification: Global Quick Create Product Dialog
 
-**Feature Branch**: `001-quick-create-dialog`  
+**Feature Branch**: `002-quick-create-dialog`  
 **Created**: 2026-03-06  
 **Status**: Draft  
 **Input**: User description: "current web page left panel there is a Quick Create button, it has no effect. Implement the same function like Products page the "Add Product" button, when click on it, do the same thing which popup a dialog for Add Product. click on Quick Create button should popup the same dialog and do the same thing, no matter we are in whatever page. If necessary, we can auto route to the Products page first and then popup the dialog."

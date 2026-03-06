@@ -27,9 +27,11 @@ pnpm --filter @price-monitor/web test -- --runInBand src/test/dashboard
    - Global search dialog loads real products instead of template items.
    - Search filtering matches both product name and URL.
    - Active products render before inactive products.
+   - Opening search with zero products shows the dedicated no-products empty state.
    - Selecting a product closes search and opens the shared edit dialog.
    - Save success refreshes only on `/dashboard/products`.
    - Save failure leaves the dialog open with retry available.
+   - Selecting a now-unavailable product shows a recoverable error and returns to a usable page context.
    - Duplicate-open attempts do not stack dialogs.
 
 ## Manual Verification
@@ -66,4 +68,15 @@ pnpm --filter @price-monitor/web test -- --runInBand src/test/dashboard
 1. Open search with no matching query results.
 2. Confirm a clear empty-result state is shown.
 3. Test with zero products available in the environment if feasible.
-4. Confirm the dialog remains usable and does not render template placeholder items.
+4. Confirm the dialog remains usable, shows dedicated no-products messaging, and does not render template placeholder items.
+5. Reopen search and simulate selecting a product that is no longer available.
+6. Confirm the flow shows a recoverable unavailable-product error and returns the user to the same page context.
+
+### Scenario 5: Duplicate trigger handling
+
+1. Open the global search dialog.
+2. Trigger the header search button or `Cmd/Ctrl+J` again while search is open.
+3. Confirm no second search instance appears and the current overlay state is preserved.
+4. Select a product to open the edit dialog.
+5. Trigger the header search control again while edit is open.
+6. Confirm the edit dialog remains the only open overlay and form state is unchanged.

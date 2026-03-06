@@ -69,10 +69,10 @@ As a dashboard user, I want the search and edit flow to behave like a global ove
 ### Edge Cases
 
 - If the search dialog is opened before product results have finished loading, the dialog remains open and shows a loading state in the results area until the relevant results are ready.
-- How does the system behave when the product list is empty and the user opens the search dialog?
-- What happens when a user selects a product that has been removed or changed before the edit dialog finishes opening?
+- If the product list is empty when the user opens the search dialog, the dialog shows a dedicated empty state explaining that no products are available yet and does not render template placeholder items.
+- If a user selects a product that has been removed or changed before the edit dialog finishes opening, the system shows a recoverable unavailable-product error state, closes any partial edit flow, and returns the user to the same usable page context.
 - If saving changes from the edit-product dialog launched from search fails, the dialog remains open, preserves the current form state, shows the standard error feedback, and allows the user to retry.
-- What happens when the search dialog is triggered again while either the search dialog or edit-product dialog is already open?
+- If the search trigger is activated while the search dialog or edit-product dialog is already open, the system ignores the repeated trigger and keeps the current overlay state unchanged.
 
 ## Requirements *(mandatory)*
 
