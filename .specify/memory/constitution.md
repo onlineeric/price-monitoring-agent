@@ -1,50 +1,114 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: 0.0.0 -> 1.0.0
+- Modified principles:
+  - Template placeholder -> I. Monorepo Architecture Fidelity
+  - Template placeholder -> II. Typed, Explicit, Maintainable Code
+  - Template placeholder -> III. Safe Data Access and Canonical Models
+  - Template placeholder -> IV. Independent, Risk-Proportional Verification
+  - Template placeholder -> V. Operational Resilience by Default
+- Added sections:
+  - Delivery Constraints
+  - Workflow and Review Gates
+- Removed sections:
+  - None
+- Templates requiring updates:
+  - ✅ updated: .specify/templates/plan-template.md
+  - ✅ updated: .specify/templates/spec-template.md
+  - ✅ updated: .specify/templates/tasks-template.md
+  - ⚠ pending: .specify/templates/commands/*.md (directory not present in this repository)
+- Follow-up TODOs:
+  - None
+-->
+# Price Monitoring Agent Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Monorepo Architecture Fidelity
+All changes MUST fit the established monorepo architecture: `apps/web` for the
+Next.js dashboard and API surface, `apps/worker` for BullMQ-driven background
+processing, `packages/db` for shared Drizzle schema and database access, and
+`specs/` for implementation artifacts. New code MUST extend an existing
+boundary unless a plan explicitly justifies a new package, app, or runtime.
+This keeps feature work discoverable and prevents architecture drift.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Typed, Explicit, Maintainable Code
+Production code MUST be TypeScript-first, small in scope, and explicit in
+behavior. Functions, modules, and components MUST have clear responsibilities,
+human-readable naming, and types that document intent. Structured data MUST be
+parsed with purpose-built libraries rather than ad hoc regex, and reusable logic
+MUST be extracted when duplication appears. Clever but opaque patterns are not
+acceptable because maintainability is a core product requirement.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Safe Data Access and Canonical Models
+Database work MUST use the Drizzle query builder API and shared schema models in
+`packages/db`; raw SQL via `db.execute()` is prohibited unless no query-builder
+equivalent exists and the plan records the exception. Prices MUST remain stored
+as integer cents and product URLs remain the natural identity boundary unless a
+documented migration changes that rule. Any feature that touches persistence,
+queue payloads, or extraction outputs MUST preserve type safety and backward
+compatibility for existing records and jobs.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Independent, Risk-Proportional Verification
+Every feature specification MUST define independently testable user stories, and
+every implementation plan MUST state how each story will be verified before
+work begins. Verification depth MUST match risk: persistence changes,
+extraction logic, scheduling, queue flows, and user-visible business logic
+require automated coverage or a documented reason why a lower-cost check is
+sufficient. Work is not complete until the relevant verification has been run or
+the blocker has been recorded explicitly.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Operational Resilience by Default
+Changes MUST preserve safe runtime behavior for both local development and
+production deployment. Environment variables, scheduler behavior, retry/error
+handling, structured logging, graceful shutdown, and deployment assumptions MUST
+be documented whenever they are introduced or changed. Features that can affect
+worker scheduling, extraction reliability, email delivery, or production
+startup MUST include observability or diagnostics that make failures actionable.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Delivery Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Plans and specs MUST state the affected app or package boundaries, storage
+  impact, queue/scheduler impact, environment/config changes, and rollback or
+  safety considerations when relevant.
+- Feature work MUST prefer existing, battle-tested dependencies with active
+  maintenance and TypeScript support over bespoke implementations.
+- Frontend work MUST preserve the existing design system and Next.js patterns
+  unless the feature explicitly calls for a broader design change.
+- Documentation for operators and developers MUST be updated when runtime
+  behavior, setup steps, or deployment expectations change.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Workflow and Review Gates
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- The Constitution Check in each plan MUST confirm architecture fit, typed
+  maintainability, Drizzle-compliant data access, verification strategy, and
+  operational readiness before design proceeds.
+- Specifications MUST capture user stories in priority order, measurable
+  success criteria, edge cases, and technical or operational constraints that
+  materially affect implementation.
+- Tasks MUST remain grouped by user story, identify shared foundational work
+  separately, and include explicit verification, observability, and
+  documentation tasks whenever the change warrants them.
+- Code review and self-review MUST reject changes that violate these principles
+  unless the deviation is documented in the plan's Complexity Tracking section
+  and approved as an intentional exception.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution overrides conflicting local process guidance for feature
+planning, specification, and execution. Amendments MUST update this file and
+any affected templates in `.specify/templates/` within the same change so the
+workflow stays internally consistent.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Versioning policy for this constitution follows semantic versioning:
+- MAJOR for removing a principle or redefining governance in a way that changes
+  existing obligations.
+- MINOR for adding a new principle, gate, or mandatory section.
+- PATCH for clarifications, wording improvements, and non-semantic cleanup.
+
+Compliance review is mandatory at plan creation, task generation, implementation,
+and review time. Any approved exception MUST record the violated principle, why
+it is necessary, the simpler alternative that was rejected, and any mitigation
+or follow-up work.
+
+**Version**: 1.0.0 | **Ratified**: 2026-03-06 | **Last Amended**: 2026-03-06

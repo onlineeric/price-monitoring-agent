@@ -31,7 +31,20 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Architecture Fit**: Confirm the change stays within the existing monorepo
+  boundaries (`apps/web`, `apps/worker`, `packages/db`, `specs/`) or justify a
+  new boundary in Complexity Tracking.
+- **Typed Maintainability**: Confirm the design uses explicit TypeScript types,
+  focused modules, and purpose-built libraries for structured parsing or date
+  handling instead of ad hoc parsing.
+- **Data Safety**: Confirm all persistence work uses Drizzle query builder APIs
+  and shared schema models, with any exception documented explicitly.
+- **Verification Plan**: Define story-level verification for each user journey
+  and note where automated tests are required because the change affects data,
+  extraction, scheduling, queues, or user-visible business logic.
+- **Operational Readiness**: Identify environment variable changes, scheduler or
+  worker behavior changes, logging/diagnostic needs, and deployment or rollback
+  considerations.
 
 ## Project Structure
 

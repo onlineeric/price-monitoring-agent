@@ -95,6 +95,22 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+## Technical and Operational Constraints *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Record constraints that materially shape implementation so
+  planning can enforce the constitution without rediscovering them later.
+-->
+
+- **Affected Boundaries**: [Which of `apps/web`, `apps/worker`, `packages/db`,
+  `specs/`, or shared infrastructure this feature changes]
+- **Data and Contracts Impact**: [Schema, queue payload, extraction output, or
+  API contract implications; write `None` if not applicable]
+- **Operational Impact**: [Environment variables, scheduler behavior, logging,
+  retries, graceful shutdown, deployment, or rollback considerations]
+- **Verification Notes**: [Which user journeys require automated coverage,
+  contract tests, integration tests, or explicit manual validation]
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
