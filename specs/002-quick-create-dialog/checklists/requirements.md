@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-03-06  
-**Feature**: [spec.md](/home/onlineeric/repos/price-monitoring-agent/specs/001-quick-create-dialog/spec.md)
+**Feature**: [spec.md](/home/onlineeric/repos/price-monitoring-agent/specs/002-quick-create-dialog/spec.md)
 
 ## Content Quality
 
