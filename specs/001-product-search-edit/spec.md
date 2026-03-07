@@ -3,7 +3,7 @@
 **Feature Branch**: `001-product-search-edit`  
 **Created**: 2026-03-07  
 **Status**: Draft  
-**Input**: User description: "on top menu there is a Search button/field. Click on it a search dialog will popup. That dialog seems to be default from the dashboard template, it has search feature input text to filter the list below, is we should keep the feature, but the list on the dialog is something hardcoded, we need to in the result area load our products for search. when user choose one product, we should popup the same "Edit Product" dialog which in Products page, click Edit button on one project's options menu. Then the edit product dialog which should be the shared dialog, should function the same to edit the product. it means we need to make the Products page Edit Product dialog a common component, and being called by the search result click. the edit product dialog should behavior similar to the "Quick Create" button, for example, we can popup the search and edit product dialog while the screen on any page, after edit dialog closed, we should return back the the current page, the current page should be refreshed ONLY if current page is the Products page, otherwise don't refresh."
+**Input**: User description: "on top menu there is a Search button/field. Click on it a search dialog will popup. That dialog seems to be default from the dashboard template, it has search feature input text to filter the list below, is we should keep the feature, but the list on the dialog is something hardcoded, we need to in the result area load our products for search. when user choose one product, we should popup the same "Edit Product" dialog which in Products page, click Edit button on one project's options menu. Then the edit product dialog which should be the shared dialog, should function the same to edit the product. it means we need to make the Products page Edit Product dialog a common component, and being called by the search result click. the edit product dialog should behavior similar to the "Quick Create" button, for example, we can popup the search and edit product dialog while the screen on any page, after edit dialog closed, we should return back the the current page, the current page should be refreshed ONLY if current page is the Products page, otherwise don't refresh." Follow-up change: "on left panel, next to the Quick Create button, there is an icon button with a mail icon on it. change this button to a search button, change the icon to search icon. when click on it, do the same like click on the top menu search field."
 
 ## Clarifications
 
@@ -16,6 +16,7 @@
 - Q: What should happen when the user cancels the edit launched from global search? → A: Close edit dialog and end flow.
 - Q: What should happen if saving changes fails in the edit dialog launched from global search? → A: Keep edit dialog open and allow retry.
 - Q: What should the search dialog show while product results are still loading? → A: Show loading state in dialog.
+- Q: How should the left-sidebar icon button next to `Quick Create` behave? → A: Replace the unused mail action with a search action that opens the exact same global product search flow as the top navigation search trigger.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -25,14 +26,15 @@ As a dashboard user, I want the top navigation search dialog to show my real pro
 
 **Why this priority**: The search entry point already exists in the layout, but it does not currently help users complete a real product task. Replacing hardcoded results with actual products makes the global search useful.
 
-**Independent Test**: Can be fully tested by opening the top navigation search from multiple dashboard pages, typing product terms, and confirming the result list reflects matching saved products rather than static placeholder entries.
+**Independent Test**: Can be fully tested by opening the global search from both the top navigation trigger and the sidebar icon trigger on multiple dashboard pages, typing product terms, and confirming the result list reflects matching saved products rather than static placeholder entries.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user is on any dashboard page with the top navigation search control, **When** they open the search dialog, **Then** the result area shows the application's products instead of hardcoded template items.
-2. **Given** the search dialog is open and products exist, **When** the user enters text into the search field, **Then** the result list filters to products whose name or URL matches the entered text.
-3. **Given** the search dialog is open and no products match the entered text, **When** the filter is applied, **Then** the dialog shows a clear empty-result state and does not show unrelated placeholder content.
-4. **Given** the search dialog is open and matching products exist, **When** the result list is shown, **Then** active products appear in the first section and inactive products appear in the second section.
+2. **Given** a user is on any dashboard page with the left-sidebar utility icon next to `Quick Create`, **When** they select that icon, **Then** the system opens the same global search dialog and result set used by the top navigation search trigger.
+3. **Given** the search dialog is open and products exist, **When** the user enters text into the search field, **Then** the result list filters to products whose name or URL matches the entered text.
+4. **Given** the search dialog is open and no products match the entered text, **When** the filter is applied, **Then** the dialog shows a clear empty-result state and does not show unrelated placeholder content.
+5. **Given** the search dialog is open and matching products exist, **When** the result list is shown, **Then** active products appear in the first section and inactive products appear in the second section.
 
 ---
 
@@ -81,7 +83,9 @@ As a dashboard user, I want the search and edit flow to behave like a global ove
 - **FR-001**: The system MUST make the existing top navigation search dialog use the application's real product list for its result area instead of hardcoded template entries.
 - **FR-002**: The system MUST preserve the search field behavior so users can enter text and narrow the visible product results within the dialog.
 - **FR-002a**: The search input MUST match against product name and product URL.
-- **FR-003**: Users MUST be able to open the search dialog from any dashboard page where the top navigation search control is available.
+- **FR-003**: Users MUST be able to open the search dialog from any dashboard page where a supported global search trigger is available.
+- **FR-003a**: The existing top navigation search trigger MUST continue to open the global product search dialog.
+- **FR-003b**: The left-sidebar icon button adjacent to `Quick Create` MUST be converted into a search trigger with a search icon and MUST open the same global product search dialog behavior as the top navigation trigger.
 - **FR-004**: The system MUST show each matching product in a form that allows the user to select it from the search results.
 - **FR-004a**: The result list MUST be organized into two sections, with active products shown first and inactive products shown second.
 - **FR-005**: The system MUST provide a clear empty-result state when no products match the current search text.
@@ -118,7 +122,7 @@ As a dashboard user, I want the search and edit flow to behave like a global ove
 
 ### Measurable Outcomes
 
-- **SC-001**: In manual validation on the Products page and at least two other dashboard pages, opening the top navigation search shows real product results instead of template placeholder entries in 100% of tested cases.
+- **SC-001**: In manual validation on the Products page and at least two other dashboard pages, opening global search from both the top navigation trigger and the sidebar search icon shows real product results instead of template placeholder entries in 100% of tested cases.
 - **SC-002**: In functional testing, users can narrow search results to the intended product using the search field and receive a correct empty-result state when nothing matches in 100% of covered cases.
 - **SC-003**: In functional testing, selecting a product from global search opens the same edit-product experience and produces the same save, validation, cancel, and failure outcomes as editing from the Products page in 100% of covered scenarios.
 - **SC-004**: After edits launched from global search, the Products page refreshes only when it is the current page, and non-Products pages do not refresh automatically in 100% of covered scenarios.

@@ -31,7 +31,6 @@ interface ProductTableViewProps {
 
 export function ProductTableView({ products }: ProductTableViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -142,17 +141,13 @@ export function ProductTableView({ products }: ProductTableViewProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleCheckPrice(product.id)}
-                disabled={checkingPriceId === product.id}
-              >
+              <DropdownMenuItem onClick={() => handleCheckPrice(product.id)} disabled={checkingPriceId === product.id}>
                 <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
                 {checkingPriceId === product.id ? "Checking..." : "Check price now"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   setEditingProduct(product);
-                  setIsEditDialogOpen(true);
                 }}
               >
                 <Pencil className="mr-2 size-4" />
@@ -194,9 +189,8 @@ export function ProductTableView({ products }: ProductTableViewProps) {
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}
-          open={isEditDialogOpen}
+          open
           onOpenChange={(open) => {
-            setIsEditDialogOpen(open);
             if (!open) setEditingProduct(null);
           }}
         />

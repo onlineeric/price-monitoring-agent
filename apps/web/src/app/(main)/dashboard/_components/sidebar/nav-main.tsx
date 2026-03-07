@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
+import { ChevronRight, PlusCircleIcon, SearchIcon } from "lucide-react";
 
+import { useGlobalProductSearchDialog } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
 import { useProductCreateDialog } from "@/app/(main)/dashboard/_components/product-create/product-create-dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -145,6 +146,7 @@ const NavItemCollapsed = ({
 export function NavMain({ items }: NavMainProps) {
   const path = usePathname();
   const { state, isMobile } = useSidebar();
+  const { openGlobalProductSearch } = useGlobalProductSearchDialog();
   const { openProductCreateDialog } = useProductCreateDialog();
 
   const isItemActive = (url: string, subItems?: NavMainItem["subItems"]) => {
@@ -176,9 +178,15 @@ export function NavMain({ items }: NavMainProps) {
                 size="icon"
                 className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
                 variant="outline"
+                onClick={(event) =>
+                  openGlobalProductSearch({
+                    source: "sidebar-search-button",
+                    trigger: event.currentTarget,
+                  })
+                }
               >
-                <MailIcon />
-                <span className="sr-only">Inbox</span>
+                <SearchIcon />
+                <span className="sr-only">Search</span>
               </Button>
             </SidebarMenuItem>
           </SidebarMenu>

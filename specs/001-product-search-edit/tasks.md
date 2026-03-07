@@ -114,6 +114,7 @@
 - [X] T030 [P] Update feature notes and verification commands in `specs/001-product-search-edit/quickstart.md`
 - [X] T031 Record the dashboard verification command and expected outcome in `specs/001-product-search-edit/quickstart.md`
 - [X] T032 [P] Review `apps/web/src/app/(main)/dashboard/_components/sidebar/search-dialog.tsx` and `apps/web/src/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider.tsx` for loading/error copy and focus accessibility polish
+- [X] T033 Wire the sidebar utility button in `apps/web/src/app/(main)/dashboard/_components/sidebar/nav-main.tsx` to reuse the global product search flow, add focused coverage in `apps/web/src/test/dashboard/nav-main-search-trigger.test.tsx`, and update `specs/001-product-search-edit/spec.md`, `specs/001-product-search-edit/plan.md`, and `specs/001-product-search-edit/tasks.md` for the new entry point
 
 ---
 

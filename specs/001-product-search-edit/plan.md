@@ -5,7 +5,7 @@
 
 ## Summary
 
-Replace the dashboard template search results with real product data loaded from the existing `GET /api/products` contract, then route product selection through a dashboard-scoped overlay controller that opens a shared edit-product dialog reused from the Products page. The implementation keeps one active overlay at a time, preserves the current route, and refreshes only when the edit completes on `/dashboard/products`.
+Replace the dashboard template search results with real product data loaded from the existing `GET /api/products` contract, then route product selection through a dashboard-scoped overlay controller that opens a shared edit-product dialog reused from the Products page. The implementation keeps one active overlay at a time, preserves the current route, refreshes only when the edit completes on `/dashboard/products`, and allows both the top navigation search trigger and the sidebar utility button next to `Quick Create` to open the same search flow.
 
 ## Technical Context
 
@@ -17,7 +17,7 @@ Replace the dashboard template search results with real product data loaded from
 **Project Type**: Monorepo web application feature in `apps/web`  
 **Performance Goals**: Search overlay opens immediately and renders loading, empty, or ready states without route navigation; client filtering remains responsive for the current product list size  
 **Constraints**: Reuse existing API contracts, preserve existing design-system patterns, avoid stacked dialogs, refresh only on `/dashboard/products`, no new runtime configuration  
-**Scale/Scope**: Dashboard routes that render the shared sidebar and top navigation search
+**Scale/Scope**: Dashboard routes that render the shared sidebar and the existing global search entry points
 
 ## Constitution Check
 
@@ -88,6 +88,7 @@ apps/web/src/test/dashboard/
 
 - Add a dashboard-scoped provider that owns one overlay state machine: `closed`, `search`, or `edit`.
 - Load products through `GET /api/products`, normalize them for search results, and expose provider actions to the search dialog.
+- Reuse the same provider open action from the sidebar utility button so the left-panel trigger does not fork search behavior.
 - Replace template search content with loading, empty, error, and grouped result states.
 
 ### Phase 3: Route-Aware Completion
@@ -103,7 +104,7 @@ apps/web/src/test/dashboard/
 
 ## Story Verification
 
-- **US1 Search products from anywhere**: Automated tests cover product loading, filtering by name and URL, active/inactive grouping, loading state, and empty states. Manual checks verify the header search on `/dashboard/products`, `/dashboard/default`, and one additional dashboard route.
+- **US1 Search products from anywhere**: Automated tests cover product loading, filtering by name and URL, active/inactive grouping, loading state, empty states, and the sidebar search trigger reusing the same provider-backed flow. Manual checks verify global search from the header and sidebar on `/dashboard/products`, `/dashboard/default`, and one additional dashboard route.
 - **US2 Edit a product from search results**: Automated tests cover selecting a product, closing search before edit opens, reusing edit validation/submission behavior, save failure retry, and unavailable-product recovery. Manual checks verify the same shared edit experience opens from a non-Products route.
 - **US3 Preserve page context after global edit**: Automated tests cover route-aware success handling, cancel/dismiss behavior, duplicate-open prevention, and focus restoration. Manual checks verify refresh occurs only on `/dashboard/products`.
 

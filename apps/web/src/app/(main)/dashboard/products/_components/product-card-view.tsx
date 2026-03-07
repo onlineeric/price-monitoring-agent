@@ -9,7 +9,7 @@ import { MoreVertical, Pencil, RefreshCw, Trash2, TrendingDown, TrendingUp } fro
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +29,6 @@ interface ProductCardViewProps {
 
 export function ProductCardView({ products }: ProductCardViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
@@ -93,13 +92,14 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           onClick={() => handleCheckPrice(product.id)}
                           disabled={checkingPriceId === product.id}
                         >
-                          <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
+                          <RefreshCw
+                            className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`}
+                          />
                           {checkingPriceId === product.id ? "Checking..." : "Check price now"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setEditingProduct(product);
-                            setIsEditDialogOpen(true);
                           }}
                         >
                           <Pencil className="mr-2 size-4" />
@@ -175,9 +175,8 @@ export function ProductCardView({ products }: ProductCardViewProps) {
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}
-          open={isEditDialogOpen}
+          open
           onOpenChange={(open) => {
-            setIsEditDialogOpen(open);
             if (!open) setEditingProduct(null);
           }}
         />
