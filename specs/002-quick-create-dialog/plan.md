@@ -1,7 +1,7 @@
 # Implementation Plan: Global Quick Create Product Dialog
 
-**Branch**: `001-quick-create-dialog` | **Date**: 2026-03-06 | **Spec**: [/home/onlineeric/repos/price-monitoring-agent/specs/001-quick-create-dialog/spec.md](/home/onlineeric/repos/price-monitoring-agent/specs/001-quick-create-dialog/spec.md)
-**Input**: Feature specification from `/specs/001-quick-create-dialog/spec.md`
+**Branch**: `002-quick-create-dialog` | **Date**: 2026-03-06 | **Spec**: [/home/onlineeric/repos/price-monitoring-agent/specs/002-quick-create-dialog/spec.md](/home/onlineeric/repos/price-monitoring-agent/specs/002-quick-create-dialog/spec.md)
+**Input**: Feature specification from `/specs/002-quick-create-dialog/spec.md`
 
 ## Summary
 
@@ -34,7 +34,7 @@ Make the sidebar `Quick Create` action open the existing add-product experience 
 ### Documentation (this feature)
 
 ```text
-specs/001-quick-create-dialog/
+specs/002-quick-create-dialog/
 ├── plan.md
 ├── research.md
 ├── data-model.md

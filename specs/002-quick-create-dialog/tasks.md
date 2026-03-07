@@ -1,6 +1,6 @@
 # Tasks: Global Quick Create Product Dialog
 
-**Input**: Design documents from `/specs/001-quick-create-dialog/`
+**Input**: Design documents from `/specs/002-quick-create-dialog/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
 **Tests**: Include automated client-side coverage for the shared dialog controller, entry-point parity, submission outcomes, duplicate-open protection, and focus restoration because the specification and constitution require verification for this user-visible workflow.
@@ -16,7 +16,7 @@
 ## Path Conventions
 
 - Web app work lives under `apps/web/`
-- Feature documentation lives under `specs/001-quick-create-dialog/`
+- Feature documentation lives under `specs/002-quick-create-dialog/`
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -108,8 +108,8 @@
 
 **Purpose**: Finish documentation and run the end-to-end validation steps for the feature.
 
-- [X] T021 [P] Update the implementation and manual validation notes in `specs/001-quick-create-dialog/quickstart.md`
-- [ ] T022 Execute the validation checklist in `specs/001-quick-create-dialog/quickstart.md`, including `/dashboard/products` plus at least two non-Products dashboard routes
+- [X] T021 [P] Update the implementation and manual validation notes in `specs/002-quick-create-dialog/quickstart.md`
+- [ ] T022 Execute the validation checklist in `specs/002-quick-create-dialog/quickstart.md`, including `/dashboard/products` plus at least two non-Products dashboard routes
 
 ---
 
