@@ -34,7 +34,8 @@
       "Bash(npm view:*)",
       "Bash(sudo lsof:*)",
       "Bash(lsof:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git:*)"
     ]
   }
 }
