@@ -1,195 +1,163 @@
 # Price Monitor AI Agent
 
-AI-powered price monitoring system that tracks product prices over time with intelligent extraction, trend analysis, and automated email digests.
+Price Monitor AI Agent is a full-stack portfolio project that tracks product prices from arbitrary URLs, stores historical price records, and sends automated digest emails with trend analysis.
 
-**Purpose:** Portfolio project demonstrating full-stack development, background job processing, AI integration, and production deployment skills.
+The core engineering problem is extraction reliability. Instead of using AI as the first step, the worker starts with a fast HTML parser and only escalates to browser automation and AI-powered structured extraction when a page is dynamic, bot-protected, or poorly structured.
 
-**Live Demo:** https://price-monitor.onlineeric.net/dashboard
+**Live demo**  
+https://price-monitor.onlineeric.net/
 
-## Technical Highlights
+## What this project demonstrates
 
-### 2-Tier Intelligent Extraction Pipeline
+- Full-stack application design with Next.js 16, React 19, TypeScript, PostgreSQL, Redis, and BullMQ
+- Practical AI integration using the Vercel AI SDK with typed structured output, not just free-form prompting
+- Background job orchestration for price checks, digest generation, and scheduler-managed repeatable jobs
+- Browser automation with Playwright Extra and stealth mode for difficult e-commerce pages
+- Production-oriented operations including Dockerized services, health endpoints, CI/CD, and self-hosted deployment
 
-**Tier 1: Fast HTML Parser** (~100-500ms, free)
+## Product capabilities
 
-- Static HTML parsing with Cheerio
-- Multiple selector fallbacks
-- Instant results for standard e-commerce sites
+- Add a product URL and immediately enqueue an initial price check
+- Manage products with create, edit, delete, active/inactive state, and manual re-check actions
+- Browse monitored products in card or table views with recent price history
+- Use global product search to quickly locate and edit products from anywhere in the dashboard
+- Configure daily or weekly email digest schedules from the UI
+- Trigger a full "check all products and send digest" run manually from the dashboard
+- Track historical prices and compare current price vs last check and 7/30/90/180 day averages
 
-**Tier 2: AI-Powered Browser Automation** (~3-6s)
-
-- Headless Chromium with stealth mode (puppeteer-extra-plugin-stealth)
-- Bypasses bot detection (~70-80% success rate)
-- AI fallback for complex pages using Vercel AI SDK
-- Structured output validation with Zod
-- Multi-provider support (OpenAI, Anthropic, Google)
-
-### Worker-Managed Scheduling
-
-- **BullMQ Repeatable Jobs** - No external cron dependencies
-- **Dynamic schedule updates** - Detects changes within 5 minutes
-- **Always-on processing** - No cold starts
-- **Trend analysis** - Calculates 7/30/90/180 day price averages
-
-### Production-Ready CI/CD
+## How the system works
 
 ```text
-Developer → GitHub → GitHub Actions
-                         ↓
-             GitHub Container Registry
-                         ↓
-             Coolify (DigitalOcean)
-                         ↓
-       Web + Worker + PostgreSQL + Redis
-            (Auto-deployment)
+Next.js dashboard + API routes
+        |
+        v
+BullMQ queue on Redis
+        |
+        v
+Node worker
+  - HTML fetch + Cheerio
+  - Playwright + stealth
+  - AI structured extraction fallback
+        |
+        v
+PostgreSQL price history
+        |
+        v
+Resend email digests
 ```
 
-Fully automated deployment pipeline from code push to production with zero manual intervention.
+### End-to-end flow
 
-## Tech Stack
+1. A user adds a product URL in the web app.
+2. The Next.js API stores the product and enqueues a `check-price` job.
+3. The worker attempts extraction in tiers:
+   - Tier 1: direct HTTP fetch plus Cheerio selectors
+   - Tier 2: Playwright-rendered page plus selector extraction
+   - Tier 3: AI extraction with typed Zod validation if selectors still fail
+4. The latest result is stored in PostgreSQL as a new price record.
+5. Scheduled or manual digest jobs fan out price checks for all active products, calculate trends, and send a summary email.
 
-### Frontend & Backend
+## AI extraction pipeline
 
-Built on [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard), an MIT-licensed Next.js admin template.
+This repository uses AI where it adds clear value: as a fallback for difficult pages, not as the default for every request.
 
-- **Framework:** Next.js 16 (React 19, TypeScript)
-- **UI Components:** Shadcn UI (Radix primitives) + Tailwind CSS v4
-- **Forms:** React Hook Form + Zod validation
-- **Data Tables:** TanStack Table
-- **State Management:** Zustand
-- **Charts:** Recharts
+- **Fast path:** `fetch()` + Cheerio handles simple product pages cheaply and quickly.
+- **Rendered fallback:** Playwright loads JavaScript-heavy pages, waits for DOM stability, and retries extraction with browser-side selectors.
+- **AI fallback:** Vercel AI SDK `generateObject()` extracts `title`, `price`, `currency`, and `imageUrl` into a strict Zod schema.
+- **Provider flexibility:** OpenAI, Anthropic, and Google providers are switchable through environment variables.
+- **Operational detail:** the worker reuses a singleton browser instance and exposes a health server for deployment checks.
 
-### Background Processing
+## Tech stack
 
-- **Queue:** BullMQ (Redis-backed)
-- **Browser Automation:** Playwright with stealth mode
-- **AI Integration:** Vercel AI SDK (multi-provider: OpenAI, Anthropic, Google)
+| Area | Technologies |
+| --- | --- |
+| Web app | Next.js 16 App Router, React 19, TypeScript |
+| UI | Tailwind CSS v4, Shadcn UI, Radix primitives, Sonner, Lucide |
+| Forms and validation | React Hook Form, Zod |
+| Data access | Drizzle ORM, PostgreSQL 18 |
+| Queue and background jobs | BullMQ, Redis 8 |
+| Extraction | Cheerio, Playwright, Playwright Extra, `puppeteer-extra-plugin-stealth` |
+| AI | Vercel AI SDK, OpenAI, Anthropic, Google |
+| Email | Resend, React Email |
+| Testing | Vitest, Testing Library, jsdom |
+| DevOps | Docker Compose, GitHub Actions, GHCR, Coolify |
 
-### Data Layer
+## Engineering details worth noting
 
-- **Database:** PostgreSQL 18
-- **ORM:** Drizzle ORM (serverless-ready, query builder API — no raw SQL)
-- **Cache/Queue:** Redis 8
+- **Worker-managed scheduling:** one worker instance owns BullMQ repeatable jobs, avoiding external cron dependencies.
+- **Digest orchestration:** digest runs create child `check-price` jobs for each active product, then send the email after all checks complete.
+- **Health monitoring:** the web app exposes `/api/health`, and the worker exposes its own `/health` endpoint plus a proxied web route.
+- **Typed persistence:** products, price records, run logs, and settings are defined in a shared Drizzle schema package.
+- **Recent UI improvements:** the dashboard includes shared product create/edit flows and global search for faster product management.
 
-### Infrastructure
+## Local development
 
-- **Local Dev:** Docker Compose on WSL2
-- **Production:** Coolify (self-hosted PaaS on DigitalOcean Sydney)
-- **Container Registry:** GitHub Container Registry (GHCR)
-- **CI/CD:** GitHub Actions (auto-build + auto-deploy)
+### Prerequisites
 
-### Communication
+- Node.js 20+
+- pnpm
+- Docker
 
-- **Email Service:** Resend
-- **Email Templates:** React Email
-
-## Key Features
-
-- **Price Tracking** - Monitor products from any URL with historical price data
-- **Smart Extraction** - 2-tier fallback system (fast HTML → AI-powered browser automation)
-- **Automated Digests** - Scheduled email reports with trend analysis (7/30/90/180 day averages)
-- **Professional Dashboard** - Modern UI for product management and price analytics
-- **Production Deployment** - Automated CI/CD pipeline with zero-downtime deployments
-
-## Architecture
-
-### Local Development
-
-```text
-WSL2 Ubuntu
-├── Web App (Next.js dev server, port 3000)
-├── Worker (Docker background OR dev mode with hot reload)
-└── Docker Compose
-    ├── PostgreSQL 18
-    ├── Redis 8
-    └── Worker (optional, auto-starts with Docker Desktop)
-```
-
-Docker worker runs as a persistent background service. When developing, `pnpm dev:worker` automatically swaps to the dev worker and restores the Docker worker on exit.
-
-### Production
-
-```text
-DigitalOcean Droplet (Sydney)
-├── Coolify (orchestration)
-├── Web (containerized Next.js)
-├── Worker (containerized Node.js)
-├── PostgreSQL (container)
-└── Redis (container)
-```
-
-Self-hosted PaaS deployment with automated updates via GitHub Actions webhooks.
-
-## Quick Start
-
-**Prerequisites:** Node.js 20+, pnpm, Docker
+### Quick start
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Install Playwright browser
-pnpm --filter @price-monitor/worker exec playwright install chromium
-
-# Start database services
-pnpm docker:up
-
-# Configure environment
 cp .env.example .env
-# Edit .env with your API keys (ANTHROPIC_API_KEY, RESEND_API_KEY)
-
-# Initialize database
+# configure at least one AI provider key; add Resend settings for digest emails
+pnpm docker:up
 pnpm --filter @price-monitor/db push
-
-# Start background worker (one-time setup, auto-restarts with Docker Desktop)
 pnpm worker:up
+pnpm --filter @price-monitor/web dev
+```
 
-# Start web app
-pnpm --filter @price-monitor/web dev      # http://localhost:3000
+Open `http://localhost:3000/dashboard`.
 
-# For development: swap Docker worker with dev worker (auto-restores on Ctrl+C)
+### Development worker
+
+If you want the worker in local watch mode instead of Docker:
+
+```bash
+pnpm --filter @price-monitor/worker exec playwright install chromium
 pnpm dev:worker
 ```
 
-Visit `http://localhost:3000` to access the dashboard.
+`pnpm dev:worker` temporarily stops the background Docker worker, runs the worker with `tsx watch`, then restores the Docker worker when you exit.
 
 ## Deployment
 
-Production deployment is fully automated:
+Deployment is automated through GitHub Actions and Coolify.
 
-1. **Develop** - Work on feature branches, merge to `dev` for testing
-2. **Release** - Create PR from `dev` to `main`, review, and merge
-3. **Build** - GitHub Actions automatically builds Docker images
-4. **Push** - Images pushed to GitHub Container Registry (GHCR)
-5. **Deploy** - Coolify webhook triggers auto-deployment to production
+- Pushes to `dev` build `web:dev` and `worker:dev` images for CI validation.
+- Pushes to `main` build `web:latest` and `worker:latest`, push them to GHCR, and trigger Coolify webhooks.
+- The production setup runs separate web and worker containers plus PostgreSQL and Redis.
+- Only one production worker should have `ENABLE_SCHEDULER=true` to avoid duplicate scheduled emails.
 
-Zero manual intervention required. Push to `main` and your code is live.
-
-## Project Structure
+## Repository structure
 
 ```text
 apps/
-  web/       # Next.js application (dashboard + API endpoints)
-  worker/    # BullMQ consumer (extraction, email, scheduling)
+  web/       Next.js dashboard and API routes
+  worker/    BullMQ worker, extraction pipeline, scheduler, email jobs
 packages/
-  db/        # Shared Drizzle schema and database client
-specs/       # Architecture documentation
-scripts/     # Utility scripts
+  db/        Shared Drizzle schema and database client
+docs/        Deployment and environment notes
+specs/       Planning and implementation artifacts
+scripts/     Local development and utility scripts
 ```
 
-## Documentation
+## Good entry points for technical review
 
-- **[CLAUDE.md](CLAUDE.md)** - Development guide and reference
-- **[docs/production-env.md](docs/production-env.md)** - Production environment configuration
-- **[specs/implementation-3/](specs/implementation-3/)** - Architecture and implementation specifications
+- `apps/worker/src/services/scraper.ts`
+- `apps/worker/src/services/playwrightFetcher.ts`
+- `apps/worker/src/services/aiExtractor.ts`
+- `apps/worker/src/jobs/sendDigest.ts`
+- `apps/worker/src/scheduler.ts`
+- `apps/web/src/app/api/products/route.ts`
+- `apps/web/src/app/(main)/dashboard/products`
+- `packages/db/src/schema.ts`
+- `.github/workflows/build-and-push.yml`
 
-## Skills Demonstrated
+## Additional documentation
 
-- **Full-Stack Development** - Next.js, TypeScript, React, API design
-- **Background Jobs** - BullMQ queue system with worker-managed scheduling
-- **AI Integration** - Multi-provider AI SDK with structured output validation
-- **Browser Automation** - Playwright with stealth mode for bot detection bypass
-- **Database Design** - PostgreSQL with Drizzle ORM, efficient schema design
-- **DevOps** - Docker, Docker Compose, self-hosted PaaS deployment
-- **CI/CD** - GitHub Actions, automated builds and deployments
-- **Production Operations** - Monitoring, logging, zero-downtime deployments
+- [Production environment reference](docs/production-env.md)
+- [Docker troubleshooting](docs/troubleshooting-docker.md)
