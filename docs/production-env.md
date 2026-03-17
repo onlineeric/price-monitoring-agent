@@ -166,6 +166,36 @@ re_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 - Coolify → Web App → Environment Variables
 - Coolify → Worker App → Environment Variables
 
+#### EMAIL_FROM
+
+**Description:** Sender identity used by both manual report-only sends (web runtime) and worker digest sends
+
+**Format:** `"Display Name <sender@your-domain.com>"`
+
+**Example:**
+```
+Price Monitor <alerts@your-domain.com>
+```
+
+**Where to Set:**
+- Coolify → Web App → Environment Variables
+- Coolify → Worker App → Environment Variables
+
+#### ALERT_EMAIL
+
+**Description:** Default recipient used by the legacy queue-driven combined and scheduled digest flow
+
+**Format:** Valid email address
+
+**Example:**
+```
+ops@your-domain.com
+```
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables
+- Optional in Web App (only needed if you trigger legacy digest flow from web and want explicit parity)
+
 ---
 
 ### Worker Configuration
@@ -219,6 +249,16 @@ production
 
 ### Optional Debug Variables
 
+#### SCHEDULER_TIMEZONE
+
+**Description:** Business timezone for scheduled digests and manual-report daily recipient reset windows
+
+**Fallback Order:** `SCHEDULER_TIMEZONE` → `TZ` → `UTC`
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables
+- Coolify → Web App → Environment Variables (recommended for consistent manual-report quota behavior)
+
 #### FORCE_AI_EXTRACTION
 
 **Description:** Force all extractions to use AI (bypass HTML fetcher)
@@ -248,7 +288,9 @@ Use this checklist when configuring production environment:
 - [ ] ANTHROPIC_API_KEY (your key)
 - [ ] ANTHROPIC_MODEL (`claude-haiku-4-5`)
 - [ ] RESEND_API_KEY (your key)
+- [ ] EMAIL_FROM (sender identity for direct manual sends)
 - [ ] NODE_ENV (`production`)
+- [ ] SCHEDULER_TIMEZONE (recommended for daily quota reset behavior)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
 
 ### Worker Application
@@ -259,7 +301,10 @@ Use this checklist when configuring production environment:
 - [ ] ANTHROPIC_API_KEY (your key)
 - [ ] ANTHROPIC_MODEL (`claude-haiku-4-5`)
 - [ ] RESEND_API_KEY (your key)
+- [ ] EMAIL_FROM (sender identity)
+- [ ] ALERT_EMAIL (default legacy digest recipient)
 - [ ] ENABLE_SCHEDULER (`true`)
+- [ ] SCHEDULER_TIMEZONE (scheduler + quota day-boundary timezone)
 - [ ] NODE_ENV (`production`)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
 

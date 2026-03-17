@@ -52,3 +52,6 @@ export type NewRunLog = typeof schema.runLogs.$inferInsert;
 
 export type Setting = typeof schema.settings.$inferSelect;
 export type NewSetting = typeof schema.settings.$inferInsert;
+
+export type ManualReportSend = typeof schema.manualReportSends.$inferSelect;
+export type NewManualReportSend = typeof schema.manualReportSends.$inferInsert;

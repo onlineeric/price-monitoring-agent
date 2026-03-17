@@ -17,9 +17,9 @@
 
 **Purpose**: Create the package, route, and dependency scaffolding required by the design
 
-- [ ] T001 Create the shared reporting package scaffold in `packages/reporting/package.json`, `packages/reporting/tsconfig.json`, and `packages/reporting/src/index.ts`
-- [ ] T002 [P] Add `packages/reporting`, `@react-email/render`, and `date-fns-tz` dependency wiring in `apps/web/package.json`, `apps/worker/package.json`, `packages/reporting/package.json`, and `pnpm-lock.yaml`
-- [ ] T003 [P] Create manual-report route and API entry files in `apps/web/src/app/(main)/dashboard/send-report/page.tsx`, `apps/web/src/app/api/manual-report/preview/route.ts`, and `apps/web/src/app/api/manual-report/send/route.ts`
+- [X] T001 Create the shared reporting package scaffold in `packages/reporting/package.json`, `packages/reporting/tsconfig.json`, and `packages/reporting/src/index.ts`
+- [X] T002 [P] Add `packages/reporting`, `@react-email/render`, and `date-fns-tz` dependency wiring in `apps/web/package.json`, `apps/worker/package.json`, `packages/reporting/package.json`, and `pnpm-lock.yaml`
+- [X] T003 [P] Create manual-report route and API entry files in `apps/web/src/app/(main)/dashboard/send-report/page.tsx`, `apps/web/src/app/api/manual-report/preview/route.ts`, and `apps/web/src/app/api/manual-report/send/route.ts`
 
 ---
 
@@ -29,11 +29,11 @@
 
 **⚠️ CRITICAL**: No user story work should start until this phase is complete
 
-- [ ] T004 Add the `manualReportSends` schema and type exports in `packages/db/src/schema.ts` and `packages/db/src/index.ts`
-- [ ] T005 [P] Implement shared report payload models and active-product builders in `packages/reporting/src/report-snapshot.ts` and `packages/reporting/src/index.ts`
-- [ ] T006 [P] Implement shared digest email component reuse, HTML rendering helpers, and Resend delivery helpers in `packages/reporting/src/price-digest-email.tsx`, `packages/reporting/src/render-price-report.ts`, and `packages/reporting/src/send-price-report.ts`
-- [ ] T007 [P] Implement timezone/day-window and reviewed-preview cache helpers in `apps/web/src/lib/manual-report/timezone.ts` and `apps/web/src/lib/manual-report/preview-cache.ts`
-- [ ] T008 [P] Implement recipient parsing and manual-send quota services in `apps/web/src/lib/manual-report/recipient-list.ts` and `apps/web/src/lib/manual-report/send-limits.ts`
+- [X] T004 Add the `manualReportSends` schema and type exports in `packages/db/src/schema.ts` and `packages/db/src/index.ts`
+- [X] T005 [P] Implement shared report payload models and active-product builders in `packages/reporting/src/report-snapshot.ts` and `packages/reporting/src/index.ts`
+- [X] T006 [P] Implement shared digest email component reuse, HTML rendering helpers, and Resend delivery helpers in `packages/reporting/src/price-digest-email.tsx`, `packages/reporting/src/render-price-report.ts`, and `packages/reporting/src/send-price-report.ts`
+- [X] T007 [P] Implement timezone/day-window and reviewed-preview cache helpers in `apps/web/src/lib/manual-report/timezone.ts` and `apps/web/src/lib/manual-report/preview-cache.ts`
+- [X] T008 [P] Implement recipient parsing and manual-send quota services in `apps/web/src/lib/manual-report/recipient-list.ts` and `apps/web/src/lib/manual-report/send-limits.ts`
 
 **Checkpoint**: Shared reporting and quota infrastructure are ready for story work
 
@@ -47,16 +47,16 @@
 
 ### Verification for User Story 1
 
-- [ ] T009 [P] [US1] Add shared-email-preview rendering, recipient validation, and retry-state coverage in `apps/web/src/test/dashboard/send-report-page.test.tsx`
-- [ ] T010 [P] [US1] Add rolling-window, daily-limit, preview-id parity, reviewed-HTML preview contract, and direct-send API coverage in `apps/web/src/test/dashboard/send-report-limits.test.ts`
+- [X] T009 [P] [US1] Add shared-email-preview rendering, recipient validation, and retry-state coverage in `apps/web/src/test/dashboard/send-report-page.test.tsx`
+- [X] T010 [P] [US1] Add rolling-window, daily-limit, preview-id parity, reviewed-HTML preview contract, and direct-send API coverage in `apps/web/src/test/dashboard/send-report-limits.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Implement the preview contract and cached reviewed-preview response with `previewId`, `subject`, and rendered HTML in `apps/web/src/app/api/manual-report/preview/route.ts`
-- [ ] T012 [P] [US1] Implement the direct-send contract, atomic limit enforcement, and completed-send persistence in `apps/web/src/app/api/manual-report/send/route.ts`
-- [ ] T013 [P] [US1] Build recipient input and rendered-email preview presentation components in `apps/web/src/app/(main)/dashboard/send-report/_components/recipient-input.tsx` and `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-preview.tsx`
-- [ ] T014 [US1] Implement preview loading, send submission, retry-preserved state, and disabled limit messaging in `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-page-client.tsx`
-- [ ] T015 [US1] Create the dedicated report-only page shell in `apps/web/src/app/(main)/dashboard/send-report/page.tsx`
+- [X] T011 [P] [US1] Implement the preview contract and cached reviewed-preview response with `previewId`, `subject`, and rendered HTML in `apps/web/src/app/api/manual-report/preview/route.ts`
+- [X] T012 [P] [US1] Implement the direct-send contract, atomic limit enforcement, and completed-send persistence in `apps/web/src/app/api/manual-report/send/route.ts`
+- [X] T013 [P] [US1] Build recipient input and rendered-email preview presentation components in `apps/web/src/app/(main)/dashboard/send-report/_components/recipient-input.tsx` and `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-preview.tsx`
+- [X] T014 [US1] Implement preview loading, send submission, retry-preserved state, and disabled limit messaging in `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-page-client.tsx`
+- [X] T015 [US1] Create the dedicated report-only page shell in `apps/web/src/app/(main)/dashboard/send-report/page.tsx`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable
 
@@ -70,12 +70,12 @@
 
 ### Verification for User Story 2
 
-- [ ] T016 [P] [US2] Add sidebar navigation and route-open coverage in `apps/web/src/test/dashboard/send-report-routes.test.ts`
+- [X] T016 [P] [US2] Add sidebar navigation and route-open coverage in `apps/web/src/test/dashboard/send-report-routes.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Add the `Send Report to Emails` sidebar item in `apps/web/src/navigation/sidebar/sidebar-items.ts`
-- [ ] T018 [US2] Ensure the dashboard sidebar renders and highlights the new send-report entry in `apps/web/src/app/(main)/dashboard/_components/sidebar/nav-main.tsx`
+- [X] T017 [P] [US2] Add the `Send Report to Emails` sidebar item in `apps/web/src/navigation/sidebar/sidebar-items.ts`
+- [X] T018 [US2] Ensure the dashboard sidebar renders and highlights the new send-report entry in `apps/web/src/app/(main)/dashboard/_components/sidebar/nav-main.tsx`
 
 **Checkpoint**: User Stories 1 and 2 both work independently
 
@@ -89,15 +89,15 @@
 
 ### Verification for User Story 3
 
-- [ ] T019 [P] [US3] Add shared reporting regression coverage for active-product filtering, shared template rendering, and recipient formatting in `apps/web/src/test/dashboard/shared-reporting.test.ts`
-- [ ] T020 [P] [US3] Add combined digest trigger and scheduled digest completion regression coverage in `apps/web/src/test/dashboard/digest-trigger-route.test.ts` and `apps/worker/src/jobs/sendDigest.test.ts`
+- [X] T019 [P] [US3] Add shared reporting regression coverage for active-product filtering, shared template rendering, and recipient formatting in `apps/web/src/test/dashboard/shared-reporting.test.ts`
+- [X] T020 [P] [US3] Add combined digest trigger and scheduled digest completion regression coverage in `apps/web/src/test/dashboard/digest-trigger-route.test.ts` and `apps/worker/src/jobs/sendDigest.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T021 [P] [US3] Adapt shared reporting helpers for explicit `sendPriceReportEmail` reuse, HTML preview rendering, and refresh-first digest composition in `packages/reporting/src/report-snapshot.ts`, `packages/reporting/src/render-price-report.ts`, `packages/reporting/src/send-price-report.ts`, and `packages/reporting/src/index.ts`
-- [ ] T022 [US3] Refactor the worker digest completion flow to compose an explicit refresh-only `updatePrices` path with `packages/reporting` send helpers in `apps/worker/src/jobs/sendDigest.ts` and `apps/worker/src/services/update-prices.ts`
-- [ ] T023 [US3] Replace worker-only email rendering and sending code with `packages/reporting` compatibility wrappers in `apps/worker/src/services/emailService.ts` and `apps/worker/src/emails/PriceDigest.tsx`
-- [ ] T024 [US3] Keep the manual combined digest trigger queue-based and exempt from manual-report safeguards in `apps/web/src/app/api/digest/trigger/route.ts` and `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.tsx`
+- [X] T021 [P] [US3] Adapt shared reporting helpers for explicit `sendPriceReportEmail` reuse, HTML preview rendering, and refresh-first digest composition in `packages/reporting/src/report-snapshot.ts`, `packages/reporting/src/render-price-report.ts`, `packages/reporting/src/send-price-report.ts`, and `packages/reporting/src/index.ts`
+- [X] T022 [US3] Refactor the worker digest completion flow to compose an explicit refresh-only `updatePrices` path with `packages/reporting` send helpers in `apps/worker/src/jobs/sendDigest.ts` and `apps/worker/src/services/update-prices.ts`
+- [X] T023 [US3] Replace worker-only email rendering and sending code with `packages/reporting` compatibility wrappers in `apps/worker/src/services/emailService.ts` and `apps/worker/src/emails/PriceDigest.tsx`
+- [X] T024 [US3] Keep the manual combined digest trigger queue-based and exempt from manual-report safeguards in `apps/web/src/app/api/digest/trigger/route.ts` and `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.tsx`
 
 **Checkpoint**: All user stories are independently functional
 
@@ -107,9 +107,9 @@
 
 **Purpose**: Finish documentation, operator guidance, and cross-story validation
 
-- [ ] T025 [P] Update direct-send runtime and operator guidance, including legacy digest env expectations, in `docs/production-env.md` and `specs/003-send-report-email/quickstart.md`
-- [ ] T026 [P] Review manual-report error logging and user-facing limit/provider messages in `apps/web/src/app/api/manual-report/send/route.ts` and `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-page-client.tsx`
-- [ ] T027 Update final verification steps and expected commands in `specs/003-send-report-email/quickstart.md`
+- [X] T025 [P] Update direct-send runtime and operator guidance, including legacy digest env expectations, in `docs/production-env.md` and `specs/003-send-report-email/quickstart.md`
+- [X] T026 [P] Review manual-report error logging and user-facing limit/provider messages in `apps/web/src/app/api/manual-report/send/route.ts` and `apps/web/src/app/(main)/dashboard/send-report/_components/manual-report-page-client.tsx`
+- [X] T027 Update final verification steps and expected commands in `specs/003-send-report-email/quickstart.md`
 
 ---
 
