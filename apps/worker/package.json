@@ -5,7 +5,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "bash ../../scripts/dev-worker.sh",
+    "dev:tsx": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
