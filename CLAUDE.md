@@ -59,10 +59,13 @@ pnpm --filter @price-monitor/db generate  # Generate migrations
 pnpm --filter @price-monitor/db studio    # Open Drizzle Studio
 
 # Docker worker (background)
-pnpm worker:up / worker:down / worker:logs / worker:restart
+pnpm worker:up         # rebuild image and start Docker worker (always rebuilds with --build)
+pnpm worker:down       # stop Docker worker
+pnpm worker:logs       # tail Docker worker logs
+pnpm worker:restart    # restart Docker worker (no rebuild)
 ```
 
-The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts PostgreSQL and Redis. `pnpm dev:worker` stops the Docker worker, runs the local dev worker, then restarts Docker worker on exit.
+The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts PostgreSQL and Redis. `pnpm dev:worker` (from repo root) and `pnpm dev` (from `apps/worker/`) both route through `scripts/dev-worker.sh`: stop the Docker worker, run the local dev worker with tsx watch, then restart the Docker worker on exit (Ctrl+C).
 
 ---
 

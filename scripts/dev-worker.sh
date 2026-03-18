@@ -39,4 +39,4 @@ trap cleanup EXIT
 
 # Start dev worker
 echo "[dev-worker] Starting development worker..."
-pnpm --filter @price-monitor/worker dev
+pnpm --filter @price-monitor/worker dev:tsx

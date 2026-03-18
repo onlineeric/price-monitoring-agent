@@ -118,10 +118,21 @@ If you want the worker in local watch mode instead of Docker:
 
 ```bash
 pnpm --filter @price-monitor/worker exec playwright install chromium
-pnpm dev:worker
+pnpm dev:worker          # from repo root
+# or equivalently:
+cd apps/worker && pnpm dev
 ```
 
-`pnpm dev:worker` temporarily stops the background Docker worker, runs the worker with `tsx watch`, then restores the Docker worker when you exit.
+Both commands route through `scripts/dev-worker.sh`: temporarily stop the Docker worker, run the worker with `tsx watch`, then restore the Docker worker when you exit (Ctrl+C).
+
+### Rebuilding the Docker worker image
+
+After changing worker source code or dependencies, rebuild and restart the Docker worker:
+
+```bash
+pnpm worker:up    # rebuilds image (--build) and starts container
+pnpm worker:down  # stop without rebuild
+```
 
 ## Deployment
 

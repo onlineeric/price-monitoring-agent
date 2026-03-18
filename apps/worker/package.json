@@ -1,15 +1,16 @@
 {
   "name": "@price-monitor/worker",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "bash ../../scripts/dev-worker.sh",
+    "dev:tsx": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -22,18 +23,22 @@
     "dotenv": "^17.2.3",
     "react-email": "^5.1.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.2",
     "@ai-sdk/google": "^3.0.2",
     "@ai-sdk/openai": "^3.0.2",
     "@price-monitor/db": "workspace:*",
+    "@price-monitor/reporting": "workspace:*",
     "@react-email/components": "^1.0.3",
+    "@react-email/render": "^2.0.1",
     "ai": "^6.0.5",
     "bullmq": "^5.66.4",
     "cheerio": "^1.1.2",
     "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.8.2",
     "playwright": "1.57.0",

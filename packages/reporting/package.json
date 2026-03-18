@@ -1,0 +1,24 @@
+{
+  "name": "@price-monitor/reporting",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Shared reporting and email delivery helpers",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@price-monitor/db": "workspace:*",
+    "@react-email/components": "^1.0.3",
+    "@react-email/render": "^2.0.1",
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.2.0",
+    "react": "^19.2.3",
+    "resend": "^6.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "@types/react": "^19.2.7",
+    "typescript": "^5.9.3"
+  }
+}
