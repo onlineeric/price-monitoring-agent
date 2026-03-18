@@ -18,6 +18,7 @@ RUN npm install -g pnpm@10.26.2
 # Copy workspace configuration and package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/db/package.json ./packages/db/
+COPY packages/reporting/package.json ./packages/reporting/
 COPY apps/worker/package.json ./apps/worker/
 
 # Install dependencies with shamefully-hoist for Docker compatibility
@@ -26,6 +27,7 @@ RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 # Copy source code
 COPY packages/db ./packages/db
+COPY packages/reporting ./packages/reporting
 COPY apps/worker ./apps/worker
 
 # Build db package if needed (Drizzle schema compilation)

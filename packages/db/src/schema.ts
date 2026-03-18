@@ -49,6 +49,15 @@ export const settings = pgTable('settings', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Completed manual report sends ledger
+export const manualReportSends = pgTable('manual_report_sends', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  recipientCount: integer('recipient_count').notNull(),
+  previewGeneratedAt: timestamp('preview_generated_at').notNull(),
+  providerMessageId: text('provider_message_id'),
+  completedAt: timestamp('completed_at').defaultNow().notNull(),
+});
+
 // Relations
 export const productsRelations = relations(products, ({ many }) => ({
   priceRecords: many(priceRecords),

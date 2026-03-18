@@ -1,12 +1,7 @@
-import { Resend } from "resend";
-import PriceDigest from "../emails/PriceDigest.js";
-import type { ProductDigestItem } from "../emails/PriceDigest.js";
+import { sendPriceReportEmail, type ReportSnapshotItem } from "@price-monitor/reporting";
 
 // Re-export the type for consumers
-export type { ProductDigestItem };
-
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+export type ProductDigestItem = ReportSnapshotItem;
 
 /**
  * Parameters for sending digest email
@@ -14,6 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export interface SendDigestParams {
   to: string;
   products: ProductDigestItem[];
+  generatedAt?: Date;
 }
 
 /**
@@ -23,31 +19,17 @@ export interface SendDigestParams {
 export async function sendDigestEmail(
   params: SendDigestParams
 ): Promise<boolean> {
-  try {
-    const generatedAt = new Date();
+  const result = await sendPriceReportEmail({
+    recipients: [params.to],
+    generatedAt: params.generatedAt ?? new Date(),
+    products: params.products,
+  });
 
-    const emailFrom = (process.env.NODE_ENV === "development" ? "[dev] " : "") + 
-        (process.env.EMAIL_FROM || "Price Monitor <onboarding@resend.dev>");
-
-    const { data, error } = await resend.emails.send({
-      from: emailFrom,
-      to: params.to,
-      subject: `Price Monitor Report - ${generatedAt.toLocaleDateString()}`,
-      react: PriceDigest({
-        products: params.products,
-        generatedAt,
-      }),
-    });
-
-    if (error) {
-      console.error("[Email] Failed to send digest:", error);
-      return false;
-    }
-
-    console.log("[Email] Digest sent successfully:", data?.id);
-    return true;
-  } catch (error) {
-    console.error("[Email] Error sending digest:", error);
+  if (!result.success) {
+    console.error("[Email] Failed to send digest:", result.errorMessage);
     return false;
   }
+
+  console.log("[Email] Digest sent successfully:", result.providerMessageId);
+  return true;
 }

@@ -1,61 +1,30 @@
-import { Job, FlowProducer } from 'bullmq';
-import { db, products, eq } from '@price-monitor/db';
-import { connection } from '../config.js';
-import { calculateTrendsForAllProducts } from '../services/trendCalculator.js';
-import { sendDigestEmail } from '../services/emailService.js';
+import { Job } from "bullmq";
 
-let flowProducer: FlowProducer | null = null;
+import { buildActiveProductReportSnapshot, sendPriceReportEmail } from "@price-monitor/reporting";
 
-function getFlowProducer(): FlowProducer {
-  if (!flowProducer) {
-    flowProducer = new FlowProducer({
-      connection: connection,
-    });
-  }
-  return flowProducer;
-}
+import { closeUpdatePricesFlowProducer, enqueueRefreshFlowForActiveProducts } from "../services/update-prices.js";
 
 export async function sendDigestJob(job: Job) {
   console.log(`[${job.id}] Starting digest flow...`);
 
   try {
-    // Get all active products
-    const allProducts = await db
-      .select()
-      .from(products)
-      .where(eq(products.active, true));
+    const triggerType = job.name === "send-digest-scheduled" ? "scheduled" : "manual";
+    const refreshResult = await enqueueRefreshFlowForActiveProducts(triggerType);
 
-    console.log(`[${job.id}] Found ${allProducts.length} active products`);
+    console.log(`[${job.id}] Found ${refreshResult.activeProductCount} active products`);
 
-    if (allProducts.length === 0) {
+    if (!refreshResult.enqueued) {
       console.log(`[${job.id}] No products to check, skipping`);
       return { success: true, message: 'No products to check' };
     }
 
-    // Create child jobs for each product (price checks)
-    const flow = getFlowProducer();
-
-    const childJobs = allProducts.map((product) => ({
-      name: 'check-price',
-      data: { url: product.url },
-      queueName: 'price-monitor-queue',
-    }));
-
-    // Create flow with parent-child relationship
-    await flow.add({
-      name: 'send-digest-flow',
-      queueName: 'price-monitor-queue',
-      data: { triggerType: 'manual' },
-      children: childJobs,
-    });
-
-    console.log(`[${job.id}] Created flow with ${childJobs.length} child jobs`);
+    console.log(`[${job.id}] Created flow with ${refreshResult.activeProductCount} child jobs`);
 
     // Note: The actual email sending happens in the completion callback
     // This job just sets up the flow
     return {
       success: true,
-      message: `Enqueued ${childJobs.length} price check jobs`,
+      message: `Enqueued ${refreshResult.activeProductCount} price check jobs`,
     };
   } catch (error) {
     console.error(`[${job.id}] Error setting up digest flow:`, error);
@@ -64,6 +33,7 @@ export async function sendDigestJob(job: Job) {
 }
 
 export async function onDigestFlowComplete(job: Job, token?: string) {
+  void token;
   console.log(`[Digest Flow] All child jobs completed, sending email...`);
 
   try {
@@ -71,40 +41,24 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
     const childrenValues = await job.getChildrenValues();
     console.log(`[Digest Flow] Verified ${Object.keys(childrenValues).length} children completed`);
 
-    // Calculate trends for all products
-    const trends = await calculateTrendsForAllProducts();
-
-    // Transform to email format
-    const emailData = trends.map((trend) => ({
-      name: trend.name,
-      url: trend.url,
-      imageUrl: trend.imageUrl,
-      currentPrice: trend.currentPrice,
-      currency: trend.currency,
-      lastChecked: trend.lastChecked,
-      lastFailed: trend.lastFailed,
-      vsLastCheck: trend.vsLastCheck,
-      vs7dAvg: trend.vs7dAvg,
-      vs30dAvg: trend.vs30dAvg,
-      vs90dAvg: trend.vs90dAvg,
-      vs180dAvg: trend.vs180dAvg,
-    }));
+    const report = await buildActiveProductReportSnapshot();
 
     // Send digest email
     const recipientEmail = process.env.ALERT_EMAIL || 'test@example.com';
 
-    const success = await sendDigestEmail({
-      to: recipientEmail,
-      products: emailData,
+    const sendResult = await sendPriceReportEmail({
+      recipients: [recipientEmail],
+      generatedAt: report.generatedAt,
+      products: report.items,
     });
 
-    if (success) {
+    if (sendResult.success) {
       console.log('[Digest Flow] Email sent successfully');
     } else {
-      console.error('[Digest Flow] Failed to send email');
+      console.error('[Digest Flow] Failed to send email:', sendResult.errorMessage);
     }
 
-    return { success, productCount: trends.length };
+    return { success: sendResult.success, productCount: report.items.length };
   } catch (error) {
     console.error('[Digest Flow] Error in completion callback:', error);
     throw error;
@@ -112,8 +66,5 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
 }
 
 export async function closeFlowProducer() {
-  if (flowProducer) {
-    await flowProducer.close();
-    flowProducer = null;
-  }
+  await closeUpdatePricesFlowProducer();
 }

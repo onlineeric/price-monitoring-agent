@@ -1,32 +1,54 @@
-# AI chatbot idea specification
-I want to create an AI chatbot in our app.
-It could be combine with my Postgres DB, provide end-to-end AI integration.
-- chatbot should not access Postgres DB directly by SQL, to prevent SQL injection and other security issues.
-- chatbot should has guardrails to prevent it from generating unsafe or inappropriate content.
-- use MCP service to provide AI chatbot features.
+# Idea Specification: Price Monitor AI Agent & MCP Integration
 
-## Semantic search
-- in Postgres DB, save product data into pgvector vector store, provide vector embedding data for AI chatbot.
-- user can use natural language to search the product data in Postgres DB, the chatbot use Retrieval-Augmented Generation (RAG) to answer the user's question.
+## 1. Overview
 
-## Smart Deal Analyzer
-- in our email Price Monitor Report, for each product, perform LLM analysis, by combining the product's historical price data, current price, and other relevant data to generate a human-readable insight.
- For example, the insight report might look like this:
-  - "This Sony monitor is currently 15% off, the lowest price in the past 60 days. Based on past trends, this is a Strong Buy opportunity."
-  - "This energy drink price has been stable for the past 30 days, no significant price changes."
-  - "This product price has been increasing steadily for the past 90 days, with some discounts for a limited time. The current price is at average level."
+We are integrating an end-to-end AI Agent into our Price Monitor app. The goal is to provide a conversational interface for users to interact with their monitored products and to enhance our existing email reports with AI-driven market insights. The system will use the Model Context Protocol (MCP) to ensure secure, standardized, and scalable AI integration.
 
-## Price Monitor MCP Server and MCP Client
-### MCP Server
-- in our mono repo, create a independent project, price-monitor-mcp-server, to provide MCP server for our Price Monitor AI Agent.
-- provide tools for chatbot to access the Price Monitor data, and perform the actions.
-- tools should include to search product data, get product historical data, get summary of product price history, etc.
-- MCP server should be accessable from VSCode and Cursor for development and testing.
+## 2. Architecture & Core Components
 
-### MCP Client
-- in our web server chatbot backend, create a new MCP client, response to the chatbot to access the MCP server.
+### 2.1 Custom MCP Server (`price-monitor-mcp-server`)
 
-## AI Chatbot
-- create new page for chatbot
-- chatbot should be similar to common AI chatbot like chatgpt, chat history should be reserved and able to continue the conversation.
-- chatbot should majorly response to our app features, answering user's questions about our app, products, etc. Restrict to off-topic questions, to prevent inproper usage and avoid security issues.
+- **Location:** A new, independent project within our existing monorepo.
+- **Function:** Acts as the secure bridge between the AI Agent and our PostgreSQL database. 
+- **Tool Calling:** Exposes predefined tools for the AI to use. **Direct SQL access (Text-to-SQL) is strictly prohibited** to prevent SQL injection.
+- **Expected Tools:** - `search_products`: Search for monitored products.
+  - `get_product_history`: Retrieve historical price data.
+  - `get_price_summary`: Get a summary of a product's price trend.
+  - `add_product`: Add a new product to the monitor list.
+  - `update_product`: Update an existing product in DB.
+- **DX (Developer Experience):** Must be accessible via standard input/output (`stdio`) so it can be integrated with VSCode and Cursor for local development and testing.
+
+### 2.2 MCP Client
+
+- **Location:** Implemented in our web server backend (Next.js API routes).
+- **Function:** Acts as the communication layer, retrieving available tools from the MCP Server and passing them to the AI SDK.
+
+## 3. Key Features
+
+### 3.1 AI Chatbot UI & Logic
+
+- **Interface:** A dedicated chatbot page on our web app.
+- **Framework:** Built using the **Vercel AI SDK** for seamless streaming and state management.
+- **Context Awareness:** Maintains chat history so users can have continuous, multi-turn conversations.
+
+### 3.2 Semantic Search (RAG)
+
+- **Database:** Utilize the `pgvector` extension in our PostgreSQL DB.
+- **Embeddings:** Store product metadata (names, specs, categories) as vector embeddings.
+- **User Flow:** Users can search using natural language (e.g., "Find me a cheap gaming monitor"). The chatbot uses Retrieval-Augmented Generation (RAG) to fetch relevant products from pgvector and formulate an answer.
+
+### 3.3 Smart Deal Analyzer
+
+- **Integration:** Enhances our existing scheduled Email Price Monitor Report.
+- **Logic:** For each product, an LLM analyzes the current price against historical data to generate a short, human-readable insight.
+- **Examples:**
+  - *"This Sony monitor is currently 15% off, the lowest price in the past 60 days. Based on past trends, this is a Strong Buy opportunity."*
+  - *"This energy drink price has been stable for the past 30 days, no significant price changes."*
+  - *"This product price has been increasing steadily for the past 90 days. The current price is at an average level."*
+
+## 4. Security & Guardrails
+
+- **Strict Tool Boundaries:** The AI can only perform actions explicitly defined in the MCP Server tools. 
+- **Domain Restriction:** The chatbot's System Prompt will restrict it to app-related topics (products, prices, monitor features). It must politely decline off-topic questions or general chit-chat to prevent misuse and token abuse.
+- **Data Validation:** All parameters passed by the AI to the MCP Server tools must be strictly validated before executing any database operations.
+

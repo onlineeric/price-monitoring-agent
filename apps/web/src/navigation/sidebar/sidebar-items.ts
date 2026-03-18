@@ -1,4 +1,4 @@
-import { LayoutDashboard, type LucideIcon, Package, Settings } from "lucide-react";
+import { LayoutDashboard, Mail, type LucideIcon, Package, Settings } from "lucide-react";
 
 export interface NavSubItem {
   title: string;
@@ -39,6 +39,11 @@ export const sidebarItems: NavGroup[] = [
         title: "Products",
         url: "/dashboard/products",
         icon: Package,
+      },
+      {
+        title: "Send Report to Emails",
+        url: "/dashboard/send-report",
+        icon: Mail,
       },
       {
         title: "Settings",
