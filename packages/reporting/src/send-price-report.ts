@@ -18,16 +18,12 @@ interface ResendClient {
   };
 }
 
-let resendClient: ResendClient | null = null;
+let _cachedResendClient: ResendClient | null = null;
 const defaultSender = "Price Monitor <onboarding@resend.dev>";
 
-export function __setResendClientForTests(client: ResendClient | null) {
-  resendClient = client;
-}
-
-function getResendClient() {
-  if (resendClient) {
-    return resendClient;
+function getResendClient(): ResendClient {
+  if (_cachedResendClient) {
+    return _cachedResendClient;
   }
 
   const key = process.env.RESEND_API_KEY;
@@ -35,8 +31,8 @@ function getResendClient() {
     throw new Error("RESEND_API_KEY environment variable is required");
   }
 
-  resendClient = new Resend(key) as unknown as ResendClient;
-  return resendClient;
+  _cachedResendClient = new Resend(key) as unknown as ResendClient;
+  return _cachedResendClient;
 }
 
 function buildFromHeader() {
@@ -67,7 +63,10 @@ export interface SendPriceReportEmailResult {
   errorMessage?: string;
 }
 
-export async function sendPriceReportEmail(input: SendPriceReportEmailInput): Promise<SendPriceReportEmailResult> {
+export async function sendPriceReportEmail(
+  input: SendPriceReportEmailInput,
+  resend?: ResendClient,
+): Promise<SendPriceReportEmailResult> {
   try {
     if (input.recipients.length === 0) {
       return {
@@ -97,7 +96,7 @@ export async function sendPriceReportEmail(input: SendPriceReportEmailInput): Pr
             bcc: input.recipients,
           };
 
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await (resend ?? getResendClient()).emails.send({
       from,
       ...destination,
       subject: rendered.subject,

@@ -1,4 +1,5 @@
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { addDays } from "date-fns";
+import { format, fromZonedTime } from "date-fns-tz";
 
 export interface BusinessDayWindow {
   timezone: string;
@@ -11,16 +12,14 @@ export function resolveBusinessTimezone(env: NodeJS.ProcessEnv = process.env): s
 }
 
 export function getBusinessDayWindow(now: Date, timezone = resolveBusinessTimezone()): BusinessDayWindow {
-  const zonedNow = toZonedTime(now, timezone);
-  const zonedStart = new Date(zonedNow);
-  zonedStart.setHours(0, 0, 0, 0);
+  // Use format with the target timezone to get the correct calendar date — avoids
+  // setHours() which always uses the JS runtime's local timezone, not the target one.
+  const todayStr = format(now, "yyyy-MM-dd", { timeZone: timezone });
+  const start = fromZonedTime(`${todayStr}T00:00:00`, timezone);
+  // Add ~25h to midnight to safely cross into the next calendar day regardless of DST,
+  // then format in the target timezone to get the correct date string.
+  const tomorrowStr = format(addDays(start, 1), "yyyy-MM-dd", { timeZone: timezone });
+  const end = fromZonedTime(`${tomorrowStr}T00:00:00`, timezone);
 
-  const zonedEnd = new Date(zonedStart);
-  zonedEnd.setDate(zonedEnd.getDate() + 1);
-
-  return {
-    timezone,
-    start: fromZonedTime(zonedStart, timezone),
-    end: fromZonedTime(zonedEnd, timezone),
-  };
+  return { timezone, start, end };
 }

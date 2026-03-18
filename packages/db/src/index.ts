@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray } from 'drizzle-orm';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
@@ -38,7 +38,7 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 export * from './schema';
 
 // Re-export drizzle-orm utilities for use in other packages
-export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql };
+export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray };
 
 // Type exports
 export type Product = typeof schema.products.$inferSelect;

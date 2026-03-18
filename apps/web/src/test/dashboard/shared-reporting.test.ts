@@ -40,8 +40,8 @@ vi.mock("@price-monitor/db", () => {
         return {
           where: vi.fn(() => ({
             orderBy: vi.fn(async () => [
-              { price: 10000, currency: "USD", scrapedAt: new Date("2026-03-17T08:00:00.000Z") },
-              { price: 11000, currency: "USD", scrapedAt: new Date("2026-03-16T08:00:00.000Z") },
+              { productId: "active_1", price: 10000, currency: "USD", scrapedAt: new Date("2026-03-17T08:00:00.000Z") },
+              { productId: "active_1", price: 11000, currency: "USD", scrapedAt: new Date("2026-03-16T08:00:00.000Z") },
             ]),
           })),
         };
@@ -57,25 +57,18 @@ vi.mock("@price-monitor/db", () => {
     desc: vi.fn(),
     eq: vi.fn(),
     gte: vi.fn(),
+    inArray: vi.fn(),
   };
 });
 
-import {
-  __setResendClientForTests,
-  buildActiveProductReportSnapshot,
-  renderPriceReport,
-  sendPriceReportEmail,
-} from "@price-monitor/reporting";
+import { buildActiveProductReportSnapshot, renderPriceReport, sendPriceReportEmail } from "@price-monitor/reporting";
+
+const mockResendClient = { emails: { send: sendEmailMock } };
 
 describe("shared reporting package", () => {
   beforeEach(() => {
     process.env.RESEND_API_KEY = "re_test";
     sendEmailMock.mockReset();
-    __setResendClientForTests({
-      emails: {
-        send: sendEmailMock,
-      },
-    });
   });
 
   it("builds report snapshot from active products", async () => {
@@ -118,13 +111,16 @@ describe("shared reporting package", () => {
       error: null,
     });
 
-    const result = await sendPriceReportEmail({
-      recipients: ["one@example.com", "two@example.com"],
-      generatedAt: new Date("2026-03-17T09:00:00.000Z"),
-      products: [],
-      subject: "Subject",
-      html: "<p>Reviewed</p>",
-    });
+    const result = await sendPriceReportEmail(
+      {
+        recipients: ["one@example.com", "two@example.com"],
+        generatedAt: new Date("2026-03-17T09:00:00.000Z"),
+        products: [],
+        subject: "Subject",
+        html: "<p>Reviewed</p>",
+      },
+      mockResendClient,
+    );
 
     expect(result.success).toBe(true);
     expect(sendEmailMock).toHaveBeenCalledWith(

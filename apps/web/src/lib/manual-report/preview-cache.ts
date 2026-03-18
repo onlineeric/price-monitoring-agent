@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { ReportSnapshotItem } from "@price-monitor/reporting";
+import { z } from "zod";
 
 import { redisConnection } from "@/lib/redis";
 
@@ -24,6 +25,15 @@ interface SerializedPreviewSnapshot {
   productCount: number;
   items: ReportSnapshotItem[];
 }
+
+const serializedPreviewSnapshotSchema = z.object({
+  previewId: z.string().min(1),
+  generatedAt: z.string().datetime(),
+  subject: z.string(),
+  html: z.string(),
+  productCount: z.number().int().min(0),
+  items: z.array(z.object({ productId: z.string(), url: z.string() }).passthrough()),
+});
 
 function getPreviewKey(previewId: string) {
   return `${PREVIEW_KEY_PREFIX}:${previewId}`;
@@ -69,7 +79,11 @@ export async function getManualReportPreview(previewId: string): Promise<ManualR
   }
 
   try {
-    return deserializePreview(JSON.parse(value) as SerializedPreviewSnapshot);
+    const parsed = serializedPreviewSnapshotSchema.safeParse(JSON.parse(value));
+    if (!parsed.success) {
+      return null;
+    }
+    return deserializePreview(parsed.data as SerializedPreviewSnapshot);
   } catch {
     return null;
   }

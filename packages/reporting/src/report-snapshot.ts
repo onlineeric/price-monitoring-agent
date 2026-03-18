@@ -1,6 +1,6 @@
 import { subDays } from "date-fns";
 
-import { and, db, desc, eq, gte, priceRecords, products } from "@price-monitor/db";
+import { and, db, desc, eq, gte, inArray, priceRecords, products } from "@price-monitor/db";
 
 export interface ReportSnapshotItem {
   productId: string;
@@ -88,31 +88,43 @@ export function buildSnapshotItemFromRecords(
   };
 }
 
-async function loadRecordsForProduct(productId: string, now: Date) {
-  return db
+export async function buildActiveProductReportSnapshot(now = new Date()): Promise<ActiveProductReportSnapshot> {
+  const activeProducts = await db.select().from(products).where(eq(products.active, true));
+
+  if (activeProducts.length === 0) {
+    return { generatedAt: now, productCount: 0, items: [] };
+  }
+
+  const allRecords = await db
     .select({
+      productId: priceRecords.productId,
       price: priceRecords.price,
       currency: priceRecords.currency,
       scrapedAt: priceRecords.scrapedAt,
     })
     .from(priceRecords)
-    .where(and(eq(priceRecords.productId, productId), gte(priceRecords.scrapedAt, subDays(now, 180))))
+    .where(
+      and(
+        inArray(priceRecords.productId, activeProducts.map((p) => p.id)),
+        gte(priceRecords.scrapedAt, subDays(now, 180)),
+      ),
+    )
     .orderBy(desc(priceRecords.scrapedAt));
-}
 
-export async function buildActiveProductReportSnapshot(now = new Date()): Promise<ActiveProductReportSnapshot> {
-  const activeProducts = await db.select().from(products).where(eq(products.active, true));
+  const recordsByProductId = new Map<string, typeof allRecords>();
+  for (const record of allRecords) {
+    const existing = recordsByProductId.get(record.productId);
+    if (existing) {
+      existing.push(record);
+    } else {
+      recordsByProductId.set(record.productId, [record]);
+    }
+  }
 
-  const items = await Promise.all(
-    activeProducts.map(async (product) => {
-      const records = await loadRecordsForProduct(product.id, now);
-      return buildSnapshotItemFromRecords(product, records, now);
-    }),
-  );
+  const items = activeProducts.map((product) => {
+    const records = recordsByProductId.get(product.id) ?? [];
+    return buildSnapshotItemFromRecords(product, records, now);
+  });
 
-  return {
-    generatedAt: now,
-    productCount: items.length,
-    items,
-  };
+  return { generatedAt: now, productCount: items.length, items };
 }
