@@ -17,14 +17,21 @@ export interface ManualReportPreviewSnapshot {
   items: ReportSnapshotItem[];
 }
 
-interface SerializedPreviewSnapshot {
-  previewId: string;
-  generatedAt: string;
-  subject: string;
-  html: string;
-  productCount: number;
-  items: ReportSnapshotItem[];
-}
+const reportSnapshotItemSchema = z.object({
+  productId: z.string(),
+  name: z.string(),
+  url: z.string(),
+  imageUrl: z.string().nullable(),
+  currentPrice: z.number().nullable(),
+  currency: z.string().nullable(),
+  lastChecked: z.string().nullable(),
+  lastFailed: z.string().nullable(),
+  vsLastCheck: z.number().nullable(),
+  vs7dAvg: z.number().nullable(),
+  vs30dAvg: z.number().nullable(),
+  vs90dAvg: z.number().nullable(),
+  vs180dAvg: z.number().nullable(),
+});
 
 const serializedPreviewSnapshotSchema = z.object({
   previewId: z.string().min(1),
@@ -32,8 +39,10 @@ const serializedPreviewSnapshotSchema = z.object({
   subject: z.string(),
   html: z.string(),
   productCount: z.number().int().min(0),
-  items: z.array(z.object({ productId: z.string(), url: z.string() }).passthrough()),
+  items: z.array(reportSnapshotItemSchema),
 });
+
+type SerializedPreviewSnapshot = z.infer<typeof serializedPreviewSnapshotSchema>;
 
 function getPreviewKey(previewId: string) {
   return `${PREVIEW_KEY_PREFIX}:${previewId}`;
@@ -43,6 +52,11 @@ function serializePreview(snapshot: ManualReportPreviewSnapshot): SerializedPrev
   return {
     ...snapshot,
     generatedAt: snapshot.generatedAt.toISOString(),
+    items: snapshot.items.map((item) => ({
+      ...item,
+      lastChecked: item.lastChecked?.toISOString() ?? null,
+      lastFailed: item.lastFailed?.toISOString() ?? null,
+    })),
   };
 }
 
@@ -50,6 +64,11 @@ function deserializePreview(snapshot: SerializedPreviewSnapshot): ManualReportPr
   return {
     ...snapshot,
     generatedAt: new Date(snapshot.generatedAt),
+    items: snapshot.items.map((item) => ({
+      ...item,
+      lastChecked: item.lastChecked ? new Date(item.lastChecked) : null,
+      lastFailed: item.lastFailed ? new Date(item.lastFailed) : null,
+    })),
   };
 }
 
@@ -83,7 +102,7 @@ export async function getManualReportPreview(previewId: string): Promise<ManualR
     if (!parsed.success) {
       return null;
     }
-    return deserializePreview(parsed.data as SerializedPreviewSnapshot);
+    return deserializePreview(parsed.data);
   } catch {
     return null;
   }
