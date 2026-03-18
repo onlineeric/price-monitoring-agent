@@ -19,6 +19,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 # Copy all package.json files for workspace dependencies
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
+COPY packages/reporting/package.json ./packages/reporting/
 
 # Install dependencies (including dev dependencies for build)
 RUN pnpm install --frozen-lockfile
@@ -37,6 +38,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/reporting/node_modules ./packages/reporting/node_modules
 
 # Copy workspace configuration
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -44,6 +46,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 # Copy all source code
 COPY apps/web ./apps/web
 COPY packages/db ./packages/db
+COPY packages/reporting ./packages/reporting
 
 # Build Next.js with standalone output
 # The output will be in apps/web/.next/standalone
