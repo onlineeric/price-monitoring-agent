@@ -1,0 +1,21 @@
+{
+  "name": "@price-monitor/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MCP server exposing price-monitor tools to AI agents over stdio",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.2",
+  "devDependencies": {
+    "@types/node": "^20.19.27",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {}
+}

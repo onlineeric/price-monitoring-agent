@@ -64,7 +64,7 @@ Task type tag (placed at the start of each task):
 ### Phase 1 — MCP Server Foundation (stdio + hello-world tool)
 Goal: Prove the plumbing. A minimal MCP server exposing one trivial tool, inspectable via MCP Inspector, runnable from VSCode/Cursor.
 
-- [ ] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
+- [x] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
 - [ ] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
 - [ ] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
 - [ ] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
