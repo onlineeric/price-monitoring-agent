@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "bash ../../scripts/dev-worker.sh",
-    "dev:tsx": "tsx watch src/index.ts",
+    "dev:tsx": "concurrently -n worker,tsc -c cyan,yellow \"tsx watch src/index.ts\" \"tsc --watch --noEmit --preserveWatchOutput\"",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
@@ -20,6 +20,7 @@
     "@react-email/preview-server": "5.1.1",
     "@types/node": "^20.19.27",
     "@types/react": "^19.2.7",
+    "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
     "react-email": "^5.1.1",
     "tsx": "^4.21.0",

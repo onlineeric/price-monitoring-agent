@@ -6,7 +6,7 @@ import { redisConnection } from "@/lib/redis";
 
 import { getBusinessDayWindow } from "./timezone";
 
-export const ROLLING_WINDOW_LIMIT = 3;
+export const ROLLING_WINDOW_LIMIT = 5;
 export const ROLLING_WINDOW_MINUTES = 10;
 export const DAILY_RECIPIENT_LIMIT = 99;
 
