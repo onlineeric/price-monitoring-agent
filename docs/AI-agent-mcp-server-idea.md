@@ -65,8 +65,8 @@ Task type tag (placed at the start of each task):
 Goal: Prove the plumbing. A minimal MCP server exposing one trivial tool, inspectable via MCP Inspector, runnable from VSCode/Cursor.
 
 - [x] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
-- [ ] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
-- [ ] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
+- [x] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
+- [x] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
 - [ ] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
 - [ ] 1.5 **[Manual]** Run MCP Inspector (`npx @modelcontextprotocol/inspector`) against the local server and verify the `ping` tool returns `"pong"`
 - [ ] 1.6 **[Manual]** Register the server in VSCode/Cursor's MCP config so it appears in the IDE
