@@ -67,14 +67,14 @@ Goal: Prove the plumbing. A minimal MCP server exposing one trivial tool, inspec
 - [x] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
 - [x] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
 - [x] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
-- [ ] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
-- [ ] 1.5 **[Manual]** Run MCP Inspector (`npx @modelcontextprotocol/inspector`) against the local server and verify the `ping` tool returns `"pong"`
-- [ ] 1.6 **[Manual]** Register the server in VSCode/Cursor's MCP config so it appears in the IDE
+- [x] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
+- [x] 1.5 **[Manual]** Run MCP Inspector (`npx @modelcontextprotocol/inspector`) against the local server and verify the `ping` tool returns `"pong"`
+- [x] 1.6 **[Manual]** Register the server in VSCode/Cursor's MCP config so it appears in the IDE
 
 ### Phase 2 — Real MCP Tools Backed by the Database
 Goal: Replace the hello-world tool with the real toolset defined in section 2.1, each with Zod-validated inputs and Drizzle-backed queries.
 
-- [ ] 2.1 **[Code]** Wire `@price-monitor/db` into `apps/mcp-server/` (workspace dep, env loading, shared DB client)
+- [x] 2.1 **[Code]** Wire `@price-monitor/db` into `apps/mcp-server/` (workspace dep, env loading, shared DB client)
 - [ ] 2.2 **[Code]** Implement `search_products` tool (input: query string; Drizzle `ILIKE` over `products.name`; returns id, name, url, currentPrice)
 - [ ] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
 - [ ] 2.4 **[Code]** Implement `get_price_summary` tool (input: productId, window days; returns current, min, max, avg, trend direction)

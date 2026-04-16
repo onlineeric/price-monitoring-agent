@@ -17,6 +17,12 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.3.6)
+      '@price-monitor/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@opentelemetry/api@1.9.0)(postgres@3.4.7)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
