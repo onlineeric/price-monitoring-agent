@@ -75,8 +75,8 @@ Goal: Prove the plumbing. A minimal MCP server exposing one trivial tool, inspec
 Goal: Replace the hello-world tool with the real toolset defined in section 2.1, each with Zod-validated inputs and Drizzle-backed queries.
 
 - [x] 2.1 **[Code]** Wire `@price-monitor/db` into `apps/mcp-server/` (workspace dep, env loading, shared DB client)
-- [ ] 2.2 **[Code]** Implement `search_products` tool (input: query string; Drizzle `ILIKE` over `products.name`; returns id, name, url, currentPrice)
-- [ ] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
+- [x] 2.2 **[Code]** Implement `search_products` tool (input: query string; Drizzle `ILIKE` over `products.name`; returns id, name, url, currentPrice)
+- [x] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
 - [ ] 2.4 **[Code]** Implement `get_price_summary` tool (input: productId, window days; returns current, min, max, avg, trend direction)
 - [ ] 2.5 **[Code]** Implement `add_product` tool (input: URL; enqueues a `check-price` BullMQ job so the existing pipeline creates/updates the product)
 - [ ] 2.6 **[Code]** Centralize tool error handling: shared wrapper that catches exceptions and returns a structured `{ error: { code, message } }` shape to the MCP client

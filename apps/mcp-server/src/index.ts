@@ -1,13 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { db } from "@price-monitor/db";
+import { registerSearchProducts } from "./tools/search-products.js";
+import { registerGetProductHistory } from "./tools/get-product-history.js";
 
 const server = new McpServer({
   name: "price-monitor-mcp-server",
   version: "0.1.0",
 });
 
+// --- Real tools ---
+registerSearchProducts(server);
+registerGetProductHistory(server);
+
+// --- Dev/debug tools ---
 server.registerTool(
   "ping",
   {
