@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 
 const server = new McpServer({
   name: "price-monitor-mcp-server",
@@ -11,10 +12,18 @@ server.registerTool(
   {
     title: "Ping",
     description: "Health check tool — returns 'pong'.",
+    inputSchema: z.object({
+      count: z.number().int().min(1).optional(),
+    }),
   },
-  async () => ({
-    content: [{ type: "text", text: "pong" }],
-  }),
+  async ({ count }) => {
+    const parsedCount = Number(count);
+    const safeCount = Number.isInteger(parsedCount) && parsedCount > 0 ? parsedCount : 1;
+
+    return {
+      content: [{ type: "text", text: "pong ".repeat(safeCount).trim() }],
+    };
+  },
 );
 
 // stdio transport: stdout is reserved for JSON-RPC frames. Any logging must go

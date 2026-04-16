@@ -18,7 +18,9 @@
     "worker:up": "docker compose --profile worker up -d --build worker",
     "worker:down": "docker compose stop worker",
     "worker:logs": "docker compose logs -f worker",
-    "worker:restart": "docker compose --profile worker restart worker"
+    "worker:restart": "docker compose --profile worker restart worker",
+    "mcp:dev": "pnpm --filter @price-monitor/mcp-server dev",
+    "mcp:build": "pnpm --filter @price-monitor/mcp-server build"
   },
   "keywords": [],
   "author": "",
