@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db, products, priceRecords } from "@price-monitor/db";
 import { ilike, desc, eq } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
   query: z.string().describe("Search term to match against product names (case-insensitive)"),
@@ -18,7 +19,7 @@ export function registerSearchProducts(server: McpServer) {
         "Search for monitored products by name. Returns matching products with their current price.",
       inputSchema,
     },
-    async ({ query }) => {
+    withErrorHandling("search_products", async ({ query }) => {
       const matched = await db.query.products.findMany({
         where: ilike(products.name, `%${query}%`),
         columns: { id: true, name: true, url: true },
@@ -49,6 +50,6 @@ export function registerSearchProducts(server: McpServer) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }],
       };
-    },
+    }),
   );
 }

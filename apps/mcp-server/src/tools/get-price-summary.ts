@@ -3,6 +3,7 @@ import { db, priceRecords } from "@price-monitor/db";
 import { eq, gte, and, asc } from "drizzle-orm";
 import { subDays } from "date-fns";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
   productId: z.string().uuid().describe("The product ID to summarize"),
@@ -45,7 +46,7 @@ export function registerGetPriceSummary(server: McpServer) {
         "Summarize a product's price over a window of days: current, min, max, average, trend direction, and sample count.",
       inputSchema,
     },
-    async ({ productId, days }) => {
+    withErrorHandling("get_price_summary", async ({ productId, days }) => {
       const windowDays = days ?? DEFAULT_DAYS;
       const since = subDays(new Date(), windowDays);
 
@@ -92,6 +93,6 @@ export function registerGetPriceSummary(server: McpServer) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }],
       };
-    },
+    }),
   );
 }

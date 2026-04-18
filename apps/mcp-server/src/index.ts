@@ -5,6 +5,7 @@ import { registerSearchProducts } from "./tools/search-products.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
 import { registerGetPriceSummary } from "./tools/get-price-summary.js";
 import { registerAddProduct } from "./tools/add-product.js";
+import { withErrorHandling } from "./tools/_wrap.js";
 
 const server = new McpServer({
   name: "price-monitor-mcp-server",
@@ -27,14 +28,14 @@ server.registerTool(
       count: z.number().int().min(1).optional(),
     }),
   },
-  async ({ count }) => {
+  withErrorHandling("ping", async ({ count }) => {
     const parsedCount = Number(count);
     const safeCount = Number.isInteger(parsedCount) && parsedCount > 0 ? parsedCount : 1;
 
     return {
       content: [{ type: "text", text: "pong ".repeat(safeCount).trim() }],
     };
-  },
+  }),
 );
 
 // stdio transport: stdout is reserved for JSON-RPC frames. Any logging must go

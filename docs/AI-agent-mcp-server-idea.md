@@ -79,7 +79,7 @@ Goal: Replace the hello-world tool with the real toolset defined in section 2.1,
 - [x] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
 - [x] 2.4 **[Code]** Implement `get_price_summary` tool (input: productId, window days; returns current, min, max, avg, trend direction)
 - [x] 2.5 **[Code]** Implement `add_product` tool (input: URL; enqueues a `check-price` BullMQ job so the existing pipeline creates/updates the product)
-- [ ] 2.6 **[Code]** Centralize tool error handling: shared wrapper that catches exceptions and returns a structured `{ error: { code, message } }` shape to the MCP client
+- [x] 2.6 **[Code]** Centralize tool error handling: shared wrapper that catches exceptions and returns a structured `{ error: { code, message } }` shape to the MCP client
 
 ### Phase 3 — MCP Client + Chatbot UI in Next.js
 Goal: A dedicated chatbot page that streams responses, uses tool-calling via the MCP server, and keeps multi-turn context.

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db, products, eq } from "@price-monitor/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getPriceQueue } from "../queue.js";
+import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
   url: z
@@ -21,7 +22,7 @@ export function registerAddProduct(server: McpServer) {
         "Start monitoring a product by URL. Creates an active product row (if new) and enqueues a price check job; the worker fills in the title and first price. Idempotent: if the URL is already being monitored, returns the existing product without re-enqueueing.",
       inputSchema,
     },
-    async ({ url }) => {
+    withErrorHandling("add_product", async ({ url }) => {
       // Atomic insert-if-absent. Match the UI's add flow: new rows start active
       // so the scheduled digest picks them up. Falling back to the worker's
       // getOrCreateProductByUrl would create inactive rows (its default exists
@@ -68,6 +69,6 @@ export function registerAddProduct(server: McpServer) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       };
-    },
+    }),
   );
 }

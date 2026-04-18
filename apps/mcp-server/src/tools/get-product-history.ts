@@ -3,6 +3,7 @@ import { db, priceRecords } from "@price-monitor/db";
 import { eq, gte, and, desc } from "drizzle-orm";
 import { subDays } from "date-fns";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
   productId: z.string().uuid().describe("The product ID to retrieve price history for"),
@@ -26,7 +27,7 @@ export function registerGetProductHistory(server: McpServer) {
         "Retrieve historical price records for a product, ordered by most recent first. Optionally filter by a date range in days.",
       inputSchema,
     },
-    async ({ productId, days }) => {
+    withErrorHandling("get_product_history", async ({ productId, days }) => {
       const windowDays = days ?? DEFAULT_DAYS;
       const since = subDays(new Date(), windowDays);
 
@@ -59,6 +60,6 @@ export function registerGetProductHistory(server: McpServer) {
           },
         ],
       };
-    },
+    }),
   );
 }
