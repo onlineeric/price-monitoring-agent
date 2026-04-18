@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { registerSearchProducts } from "./tools/search-products.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
+import { registerGetPriceSummary } from "./tools/get-price-summary.js";
 
 const server = new McpServer({
   name: "price-monitor-mcp-server",
@@ -12,6 +13,7 @@ const server = new McpServer({
 // --- Real tools ---
 registerSearchProducts(server);
 registerGetProductHistory(server);
+registerGetPriceSummary(server);
 
 // --- Dev/debug tools ---
 server.registerTool(
