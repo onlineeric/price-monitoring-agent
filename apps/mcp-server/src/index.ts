@@ -4,6 +4,7 @@ import { z } from "zod";
 import { registerSearchProducts } from "./tools/search-products.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
 import { registerGetPriceSummary } from "./tools/get-price-summary.js";
+import { registerAddProduct } from "./tools/add-product.js";
 
 const server = new McpServer({
   name: "price-monitor-mcp-server",
@@ -14,6 +15,7 @@ const server = new McpServer({
 registerSearchProducts(server);
 registerGetProductHistory(server);
 registerGetPriceSummary(server);
+registerAddProduct(server);
 
 // --- Dev/debug tools ---
 server.registerTool(
