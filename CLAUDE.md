@@ -137,3 +137,11 @@ Top-level `specs/` files (`spec.md`, `plan.md`, `tasks.md`) represent the most r
 **Deployment:** Merge to `main` → GitHub Actions builds → GHCR → Coolify auto-deploys
 
 Only create commits when explicitly requested.
+
+## Active Technologies
+- TypeScript 5.9 + Next.js 16 (App Router), React 19, Tailwind CSS v4, Shadcn UI, TanStack Query/Table, Zustand, Drizzle ORM, PostgreSQL 18, Redis 8, BullMQ, Playwright, Vercel AI SDK (OpenAI / Anthropic / Google), `@modelcontextprotocol/sdk`, Resend + React Email
+
+## Recent Changes
+- 004-chat-streaming-api: Add `/api/chat` streaming route with MCP tool-calling, provider abstraction, and structured error taxonomy
+- 003-send-report-email: Introduce manual report preview/send flow with Redis-backed safeguards and shared `packages/reporting`
+- 002-quick-create-dialog: Quick-create product dialog on the dashboard
