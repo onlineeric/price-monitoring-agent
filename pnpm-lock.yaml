@@ -48,6 +48,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^3.0.2
+        version: 3.0.2(zod@3.23.8)
+      '@ai-sdk/google':
+        specifier: ^3.0.2
+        version: 3.0.2(zod@3.23.8)
+      '@ai-sdk/openai':
+        specifier: ^3.0.2
+        version: 3.0.2(zod@3.23.8)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -63,6 +72,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.70.0(react@19.2.3))
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.23.8)
       '@price-monitor/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -78,6 +90,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      ai:
+        specifier: ^6.0.5
+        version: 6.0.5(zod@3.23.8)
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -5218,11 +5233,24 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
+  '@ai-sdk/anthropic@3.0.2(zod@3.23.8)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.1
+      '@ai-sdk/provider-utils': 4.0.2(zod@3.23.8)
+      zod: 3.23.8
+
   '@ai-sdk/anthropic@3.0.2(zod@4.3.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.1
       '@ai-sdk/provider-utils': 4.0.2(zod@4.3.3)
       zod: 4.3.3
+
+  '@ai-sdk/gateway@3.0.4(zod@3.23.8)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.1
+      '@ai-sdk/provider-utils': 4.0.2(zod@3.23.8)
+      '@vercel/oidc': 3.0.5
+      zod: 3.23.8
 
   '@ai-sdk/gateway@3.0.4(zod@4.3.3)':
     dependencies:
@@ -5231,17 +5259,36 @@ snapshots:
       '@vercel/oidc': 3.0.5
       zod: 4.3.3
 
+  '@ai-sdk/google@3.0.2(zod@3.23.8)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.1
+      '@ai-sdk/provider-utils': 4.0.2(zod@3.23.8)
+      zod: 3.23.8
+
   '@ai-sdk/google@3.0.2(zod@4.3.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.1
       '@ai-sdk/provider-utils': 4.0.2(zod@4.3.3)
       zod: 4.3.3
 
+  '@ai-sdk/openai@3.0.2(zod@3.23.8)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.1
+      '@ai-sdk/provider-utils': 4.0.2(zod@3.23.8)
+      zod: 3.23.8
+
   '@ai-sdk/openai@3.0.2(zod@4.3.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.1
       '@ai-sdk/provider-utils': 4.0.2(zod@4.3.3)
       zod: 4.3.3
+
+  '@ai-sdk/provider-utils@4.0.2(zod@3.23.8)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.1
+      '@standard-schema/spec': 1.1.0
+      eventsource-parser: 3.0.6
+      zod: 3.23.8
 
   '@ai-sdk/provider-utils@4.0.2(zod@4.3.3)':
     dependencies:
@@ -5927,6 +5974,28 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@modelcontextprotocol/sdk@1.29.0(zod@3.23.8)':
+    dependencies:
+      '@hono/node-server': 1.19.14(hono@4.12.14)
+      ajv: 8.17.1
+      ajv-formats: 3.0.1(ajv@8.17.1)
+      content-type: 1.0.5
+      cors: 2.8.5
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.3.2(express@5.2.1)
+      hono: 4.12.14
+      jose: 6.2.2
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.23.8
+      zod-to-json-schema: 3.25.2(zod@3.23.8)
+    transitivePeerDependencies:
+      - supports-color
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
     dependencies:
@@ -7303,6 +7372,14 @@ snapshots:
   acorn@8.15.0: {}
 
   agent-base@7.1.4: {}
+
+  ai@6.0.5(zod@3.23.8):
+    dependencies:
+      '@ai-sdk/gateway': 3.0.4(zod@3.23.8)
+      '@ai-sdk/provider': 3.0.1
+      '@ai-sdk/provider-utils': 4.0.2(zod@3.23.8)
+      '@opentelemetry/api': 1.9.0
+      zod: 3.23.8
 
   ai@6.0.5(zod@4.3.3):
     dependencies:
@@ -9801,6 +9878,10 @@ snapshots:
   yn@3.1.1: {}
 
   yoctocolors@2.1.2: {}
+
+  zod-to-json-schema@3.25.2(zod@3.23.8):
+    dependencies:
+      zod: 3.23.8
 
   zod-to-json-schema@3.25.2(zod@4.3.6):
     dependencies:
