@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChatStore } from "@/stores/chat/chat-store";
+import { consumeChatStream } from "@/stores/chat/chat-stream";
 import type { AssistantMessage } from "@/stores/chat/types";
 
 function makeUiMessageStreamResponse(
@@ -30,7 +31,8 @@ function resetStore() {
     status: "idle",
     error: null,
     abortController: null,
-  });
+    __streamConsumer: consumeChatStream,
+  } as never);
 }
 
 const originalFetch = globalThis.fetch;

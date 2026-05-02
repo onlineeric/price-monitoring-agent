@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatPageClient } from "@/app/(main)/dashboard/chat/_components/chat-page-client";
 import { useChatStore } from "@/stores/chat/chat-store";
+import { consumeChatStream } from "@/stores/chat/chat-stream";
 import type { AssistantMessage, ChatErrorCode } from "@/stores/chat/types";
 
 function makeUiMessageStreamResponse(
@@ -43,7 +44,8 @@ function resetStore() {
     status: "idle",
     error: null,
     abortController: null,
-  });
+    __streamConsumer: consumeChatStream,
+  } as never);
 }
 
 const originalFetch = globalThis.fetch;
@@ -224,5 +226,20 @@ describe("Chat page — errors (US3)", () => {
     // Past the cap.
     fireEvent.change(textarea, { target: { value: "x".repeat(10_001) } });
     expect(sendButton.disabled).toBe(true);
+  });
+
+  it("clicking an autoSend=false starter chip populates the textarea AND enables Send", () => {
+    render(<ChatPageClient />);
+
+    // The empty state renders three chips. The "Add a new product" chip is
+    // autoSend=false — clicking it must populate the textarea and unlock Send,
+    // proving React state stays in sync (regression for the
+    // controlled-input bypass bug fixed in chat-page-client.tsx).
+    fireEvent.click(screen.getByRole("button", { name: /add a new product/i }));
+
+    const textarea = screen.getByTestId("chat-input-textarea") as HTMLTextAreaElement;
+    const sendButton = screen.getByTestId("chat-send-button") as HTMLButtonElement;
+    expect(textarea.value).toBe("Add this product: [paste URL]");
+    expect(sendButton.disabled).toBe(false);
   });
 });

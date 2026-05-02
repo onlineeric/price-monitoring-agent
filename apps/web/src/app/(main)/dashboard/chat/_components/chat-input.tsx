@@ -9,6 +9,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ConversationStatus } from "@/stores/chat/types";
 
+/**
+ * Imperative API the parent uses to drive the input — focusing it after a
+ * turn ends and populating it from a starter-prompt chip. The chip path
+ * cannot just write to `textarea.value`: the `<Textarea>` is a React
+ * controlled input, so a direct DOM write does not update React state and
+ * leaves Send disabled until the user types something else. Going through
+ * `setValue` here keeps state in sync.
+ */
+export interface ChatInputHandle {
+  focus: () => void;
+  setValue: (text: string) => void;
+}
+
 interface ChatInputProps {
   status: ConversationStatus;
   onSend: (text: string) => void;
@@ -35,13 +48,24 @@ const COUNTER_VISIBLE_AT = 8_000;
  * - Stop is visible iff `status === "streaming"`; always enabled (FR-008).
  * - Counter visible once length > COUNTER_VISIBLE_AT (FR-014).
  */
-export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(function ChatInput(
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
   { status, onSend, onStop },
   externalRef,
 ) {
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
-  useImperativeHandle(externalRef, () => internalRef.current as HTMLTextAreaElement);
   const [value, setValue] = useState("");
+
+  useImperativeHandle(
+    externalRef,
+    () => ({
+      focus: () => internalRef.current?.focus(),
+      setValue: (text: string) => {
+        setValue(text);
+        internalRef.current?.focus();
+      },
+    }),
+    [],
+  );
 
   const trimmedLength = value.trim().length;
   const overCap = value.length > MAX_CHARS;

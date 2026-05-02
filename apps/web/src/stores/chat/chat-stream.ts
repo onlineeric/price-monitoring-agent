@@ -16,7 +16,12 @@ function warnUnknownPart(type: string): void {
 
 /**
  * Update the trailing assistant message via an immutable transform.
- * Caller passes a function that maps the existing assistant to a new one.
+ *
+ * Returns `{}` when no streaming assistant is found OR when the trailing
+ * assistant has already reached a terminal state (`complete` / `stopped` /
+ * `errored`). The terminal-state guard matters because aborting the fetch
+ * does not synchronously stop the stream parser — chunks already buffered
+ * keep arriving after `stop()` and would otherwise mutate a stopped turn.
  */
 function updateStreamingAssistant(
   state: ChatState,
@@ -25,10 +30,10 @@ function updateStreamingAssistant(
   const next = [...state.messages];
   for (let i = next.length - 1; i >= 0; i--) {
     const message = next[i];
-    if (message.role === "assistant") {
-      next[i] = transform(message);
-      return { messages: next };
-    }
+    if (message.role !== "assistant") continue;
+    if (message.state !== "streaming") return {};
+    next[i] = transform(message);
+    return { messages: next };
   }
   return {};
 }
@@ -96,7 +101,10 @@ function applyStreamPart(part: StreamPart, set: ChatStateSetter): void {
         updateStreamingAssistant(state, (assistant) => ({
           ...assistant,
           toolEvents: assistant.toolEvents.map((event) =>
-            event.id === toolCallId
+            // Only transition tools that are still `running`. A `completed` /
+            // `failed` / `stopped` indicator is terminal and must not be
+            // overwritten by a late duplicate output event.
+            event.id === toolCallId && event.status === "running"
               ? {
                   ...event,
                   result: output,
@@ -123,7 +131,9 @@ function applyStreamPart(part: StreamPart, set: ChatStateSetter): void {
         updateStreamingAssistant(state, (assistant) => ({
           ...assistant,
           toolEvents: assistant.toolEvents.map((event) =>
-            event.id === toolCallId ? { ...event, status: "failed", errorEnvelope: envelope } : event,
+            event.id === toolCallId && event.status === "running"
+              ? { ...event, status: "failed", errorEnvelope: envelope }
+              : event,
           ),
         })),
       );
@@ -131,32 +141,36 @@ function applyStreamPart(part: StreamPart, set: ChatStateSetter): void {
     }
 
     case "finish": {
-      set((state) => ({
-        ...updateStreamingAssistant(state, (assistant) =>
-          assistant.state === "streaming" ? { ...assistant, state: "complete" } : assistant,
-        ),
-        status: "idle",
-        abortController: null,
-      }));
+      // Only transition to `idle` if there is still an active streaming turn
+      // to finalize. After Stop or a terminal error event, the turn is
+      // already finished and a late `finish` chunk must not clobber the
+      // `errored` status (which would silently hide the error UI).
+      set((state) => {
+        const update = updateStreamingAssistant(state, (assistant) => ({
+          ...assistant,
+          state: "complete",
+        }));
+        if (!update.messages) return {};
+        return { ...update, status: "idle", abortController: null };
+      });
       return;
     }
 
     case "error": {
       const { errorText } = part as { errorText: string };
       const error = parseChatErrorPayload(errorText, "in-stream");
-      set((state) => ({
-        ...updateStreamingAssistant(state, (assistant) => ({
+      set((state) => {
+        const update = updateStreamingAssistant(state, (assistant) => ({
           ...assistant,
           state: "errored",
           error,
           toolEvents: assistant.toolEvents.map((event) =>
             event.status === "running" ? { ...event, status: "failed" } : event,
           ),
-        })),
-        status: "errored",
-        error,
-        abortController: null,
-      }));
+        }));
+        if (!update.messages) return {};
+        return { ...update, status: "errored", error, abortController: null };
+      });
       return;
     }
 
@@ -212,16 +226,15 @@ export async function consumeChatStream(response: Response, set: ChatStateSetter
   const body = response.body;
   if (!body) {
     const error = parseChatErrorPayload("Streaming response had no body.", "in-stream");
-    set((state) => ({
-      ...updateStreamingAssistant(state, (assistant) => ({
+    set((state) => {
+      const update = updateStreamingAssistant(state, (assistant) => ({
         ...assistant,
         state: "errored",
         error,
-      })),
-      status: "errored",
-      error,
-      abortController: null,
-    }));
+      }));
+      if (!update.messages) return {};
+      return { ...update, status: "errored", error, abortController: null };
+    });
     return;
   }
 
@@ -249,16 +262,15 @@ export async function consumeChatStream(response: Response, set: ChatStateSetter
   } catch (err) {
     if ((err as Error)?.name === "AbortError") return;
     const error = parseChatErrorPayload(err instanceof Error ? err.message : String(err), "in-stream");
-    set((state) => ({
-      ...updateStreamingAssistant(state, (assistant) => ({
+    set((state) => {
+      const update = updateStreamingAssistant(state, (assistant) => ({
         ...assistant,
         state: "errored",
         error,
-      })),
-      status: "errored",
-      error,
-      abortController: null,
-    }));
+      }));
+      if (!update.messages) return {};
+      return { ...update, status: "errored", error, abortController: null };
+    });
   } finally {
     reader.releaseLock();
   }

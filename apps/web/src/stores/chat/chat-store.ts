@@ -111,14 +111,14 @@ export const useChatStore = create<ChatStateInternal>((set, get) => ({
         return;
       }
       const error = parseChatErrorPayload("Network error — please retry.", "pre-stream");
-      markPreStreamError(set, error);
+      markActiveAssistantErrored(set, error);
       return;
     }
 
     if (!response.ok) {
       const body = await response.json().catch(() => undefined);
       const error = parseChatErrorPayload(body, "pre-stream");
-      markPreStreamError(set, error);
+      markActiveAssistantErrored(set, error);
       return;
     }
 
@@ -134,7 +134,7 @@ export const useChatStore = create<ChatStateInternal>((set, get) => ({
         message: "Stream ended unexpectedly.",
         surface: "in-stream",
       };
-      markStreamingAssistantErrored(set, error);
+      markActiveAssistantErrored(set, error);
     }
   },
 
@@ -208,25 +208,12 @@ type ChatSetter = (
   partial: Partial<ChatStateInternal> | ((state: ChatStateInternal) => Partial<ChatStateInternal>),
 ) => void;
 
-function markPreStreamError(set: ChatSetter, error: ChatError): void {
-  set((current) => {
-    const next = [...current.messages];
-    for (let i = next.length - 1; i >= 0; i--) {
-      const message = next[i];
-      if (message.role !== "assistant") continue;
-      next[i] = { ...message, state: "errored", error };
-      break;
-    }
-    return {
-      messages: next,
-      status: "errored",
-      error,
-      abortController: null,
-    };
-  });
-}
-
-function markStreamingAssistantErrored(set: ChatSetter, error: ChatError): void {
+/**
+ * Mark the trailing assistant turn as `errored` and flip the conversation
+ * status to `errored`. Used for both pre-stream HTTP errors and the
+ * post-stream defensive cleanup when the body ended without a `finish`.
+ */
+function markActiveAssistantErrored(set: ChatSetter, error: ChatError): void {
   set((current) => {
     const next = [...current.messages];
     for (let i = next.length - 1; i >= 0; i--) {

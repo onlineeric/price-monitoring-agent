@@ -244,7 +244,7 @@ Responsibilities:
 - One short helper paragraph describing the assistant's scope.
 - Three starter-prompt chips (FR-013, after Q4 clarification):
   1. "Show me my monitored products." → autoSend = true
-  2. "What's the price trend on my [first product]?" → autoSend = true (placeholder text the user can edit before Send)
+  2. "What's the price trend on my [first product]?" → autoSend = **false** (the user must replace `[first product]` with a real product name; sending the literal placeholder would just confuse the model).
   3. "Add this product: [paste URL]" → autoSend = **false** (because the user must paste a URL first; sending the literal "[paste URL]" would just be an `add_product` failure).
 
 ### `ChatErrorBlock`

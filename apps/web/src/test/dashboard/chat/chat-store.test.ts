@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChatStore } from "@/stores/chat/chat-store";
-import type { AssistantMessage } from "@/stores/chat/types";
+import { __testing as streamTesting, consumeChatStream } from "@/stores/chat/chat-stream";
+import type { AssistantMessage, ChatState } from "@/stores/chat/types";
 
-type StreamConsumerArgs = Parameters<
-  ReturnType<typeof useChatStore.getState>["__streamConsumer" extends keyof unknown ? never : never]
->;
-
-// We re-fetch the store between tests to keep state isolated.
+// We re-fetch the store between tests to keep state isolated. The store is a
+// module-level singleton so we MUST also restore `__streamConsumer` to the
+// real implementation — otherwise a mock injected by an earlier test leaks
+// forward and silently replaces the real reducer in later tests.
 function resetStore() {
   useChatStore.setState({
     conversationId: null,
@@ -15,7 +15,8 @@ function resetStore() {
     status: "idle",
     error: null,
     abortController: null,
-  });
+    __streamConsumer: consumeChatStream,
+  } as never);
 }
 
 const originalFetch = globalThis.fetch;
@@ -244,6 +245,79 @@ describe("useChatStore.retry", () => {
     const before = useChatStore.getState().messages.length;
     await useChatStore.getState().retry();
     expect(useChatStore.getState().messages.length).toBe(before);
+  });
+});
+
+describe("stream reducer guards (post-stop / post-error)", () => {
+  it("ignores text-delta and tool-output chunks that arrive after the assistant is stopped", () => {
+    // Seed a message thread with one assistant in the `stopped` state and one
+    // tool indicator that was already flipped to `stopped` by the Stop action.
+    useChatStore.setState({
+      messages: [
+        { id: "u1", role: "user", text: "hi" },
+        {
+          id: "a1",
+          role: "assistant",
+          text: "partial",
+          toolEvents: [{ id: "t1", toolName: "search_products", status: "stopped" }],
+          state: "stopped",
+        },
+      ],
+    } as never);
+
+    const setUpdater = (updater: (state: ChatState) => Partial<ChatState>) => {
+      useChatStore.setState((current) => updater(current as ChatState) as never);
+    };
+
+    // Late chunks the SDK was holding when stop() fired.
+    streamTesting.applyStreamPart({ type: "text-delta", id: "t1", delta: " more" } as never, setUpdater);
+    streamTesting.applyStreamPart(
+      { type: "tool-output-available", toolCallId: "t1", output: { ok: true } } as never,
+      setUpdater,
+    );
+    streamTesting.applyStreamPart({ type: "finish" } as never, setUpdater);
+
+    const after = useChatStore.getState();
+    const last = after.messages[1] as AssistantMessage;
+    expect(last.text).toBe("partial"); // text was NOT mutated
+    expect(last.state).toBe("stopped"); // finish did NOT flip stopped → complete
+    expect(last.toolEvents[0].status).toBe("stopped"); // tool stayed stopped
+  });
+
+  it("ignores a tool-output-available for a tool whose status is already terminal", () => {
+    useChatStore.setState({
+      messages: [
+        { id: "u1", role: "user", text: "hi" },
+        {
+          id: "a1",
+          role: "assistant",
+          text: "",
+          toolEvents: [
+            { id: "t1", toolName: "search_products", status: "completed", result: { rows: [] } },
+          ],
+          state: "streaming",
+        },
+      ],
+    } as never);
+
+    const setUpdater = (updater: (state: ChatState) => Partial<ChatState>) => {
+      useChatStore.setState((current) => updater(current as ChatState) as never);
+    };
+
+    // A duplicate tool-output-available with an error envelope must NOT flip
+    // an already-completed tool to failed.
+    streamTesting.applyStreamPart(
+      {
+        type: "tool-output-available",
+        toolCallId: "t1",
+        output: { error: { code: "x", message: "y" } },
+      } as never,
+      setUpdater,
+    );
+
+    const last = useChatStore.getState().messages[1] as AssistantMessage;
+    expect(last.toolEvents[0].status).toBe("completed");
+    expect(last.toolEvents[0].errorEnvelope).toBeUndefined();
   });
 });
 

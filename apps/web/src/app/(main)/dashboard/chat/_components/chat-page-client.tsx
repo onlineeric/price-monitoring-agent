@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { selectError, selectMessages, selectStatus, useChatStore } from "@/stores/chat/chat-store";
 
-import { ChatInput } from "./chat-input";
+import { ChatInput, type ChatInputHandle } from "./chat-input";
 import { ChatThread } from "./chat-thread";
 
 /**
@@ -27,7 +27,7 @@ export function ChatPageClient() {
   const stop = useChatStore((s) => s.stop);
   const reset = useChatStore((s) => s.reset);
 
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const inputRef = useRef<ChatInputHandle | null>(null);
   const previousStatusRef = useRef(status);
 
   // Refocus the textarea after a turn ends (FR-016).
@@ -42,14 +42,12 @@ export function ChatPageClient() {
     (text: string, autoSend: boolean) => {
       if (autoSend) {
         void send(text);
-      } else {
-        const input = inputRef.current;
-        if (input) {
-          input.value = text;
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.focus();
-        }
+        return;
       }
+      // Drive the controlled input through its imperative handle so React
+      // state stays in sync — bypassing it (e.g. writing to `.value` directly)
+      // leaves Send disabled until the user types another character.
+      inputRef.current?.setValue(text);
     },
     [send],
   );
