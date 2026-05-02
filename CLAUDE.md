@@ -29,13 +29,14 @@ AI-powered price monitoring system that tracks product prices from URLs, stores 
 
 ```
 apps/
-  web/       # Next.js app — dashboard UI + REST API
-  worker/    # BullMQ consumer — extraction, DB writes, email
+  web/         # Next.js app — dashboard UI, chat page, REST + /api/chat streaming API
+  worker/      # BullMQ consumer — extraction, DB writes, email
+  mcp-server/  # Custom MCP server (stdio) exposing typed tools to the chat agent
 packages/
-  db/        # Shared Drizzle schema + DB client (@price-monitor/db)
-specs/       # Feature specs, plans, tasks per feature (e.g. 001-*, 002-*)
-docs/        # Production environment reference
-scripts/     # Utility scripts
+  db/          # Shared Drizzle schema + DB client (@price-monitor/db)
+specs/         # Feature specs, plans, tasks per feature (e.g. 001-*, 002-*)
+docs/          # Production environment reference
+scripts/       # Utility scripts
 ```
 
 ---
@@ -111,10 +112,19 @@ worker/health/      GET (proxy to worker)
 
 - `default/` — dashboard overview
 - `products/` — product list (card + table views), edit dialog, global search
+- `chat/` — streaming AI chat page with markdown rendering and inline tool-call indicators
 - `finance/` — analytics/KPIs
 - `settings/` — email schedule config
 
 Global product search is implemented as a dialog provider in `_components/product-search/`.
+
+### AI Chat Agent + MCP
+
+- **MCP server (`apps/mcp-server/`)** — standalone Node process over stdio using `@modelcontextprotocol/sdk`. Exposes typed tools (`search_products`, `get_product_history`, `get_price_summary`, `add_product`) backed by Drizzle queries and the BullMQ queue. Direct SQL access from the agent is intentionally not exposed. All tool errors flow through `tools/_wrap.ts` into a structured `{ error: { code, message } }` shape.
+- **MCP client (`apps/web/src/lib/mcp/client.ts`)** — singleton stdio client that spawns the MCP server via `pnpm --filter @price-monitor/mcp-server start`. Override with `MCP_SERVER_COMMAND` / `MCP_SERVER_ARGS` env vars.
+- **Chat API (`apps/web/src/app/api/chat/route.ts`)** — Node-runtime route using Vercel AI SDK `streamText` with MCP tools bridged via `buildMcpTools` (in `apps/web/src/lib/ai/chat-tools.ts`). Enforces `CHAT_MAX_STEPS` (5-step tool budget) and `CHAT_TURN_TIMEOUT_MS` (60s). Errors surface as documented `ChatErrorCode` values: `validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`.
+- **Provider selection** — same `AI_PROVIDER` env var as the worker (`openai` | `anthropic` | `google`).
+- **Domain guardrail** — `CHAT_SYSTEM_PROMPT` restricts the agent to product / price / monitor topics.
 
 ---
 
