@@ -28,6 +28,14 @@ vi.mock("ai", async () => {
 
 import { POST } from "@/app/api/chat/route";
 
+function u(text: string, role: "user" | "assistant" = "user") {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    parts: [{ type: "text", text }],
+  };
+}
+
 async function drain(response: Response) {
   if (!response.body) throw new Error("response.body missing");
   const reader = response.body.getReader();
@@ -99,10 +107,23 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
         string,
         { execute: (a: unknown, o: { toolCallId: string }) => Promise<unknown> }
       >;
-      // Use the first user message content as the turn marker to keep the
-      // test assertion deterministic (different markers per turn).
-      const userMessage = (opts.messages as Array<{ content: string }>)[0]
-        ?.content ?? "?";
+      // Use the first user message text as the turn marker to keep the
+      // test assertion deterministic. After convertToModelMessages, the
+      // message's `content` is either a string or an array of parts —
+      // extract the text from whichever shape we get.
+      const firstMessage = (opts.messages as Array<{ content: unknown }>)[0];
+      const rawContent = firstMessage?.content;
+      const userMessage =
+        typeof rawContent === "string"
+          ? rawContent
+          : Array.isArray(rawContent)
+            ? (rawContent.find(
+                (p): p is { type: string; text: string } =>
+                  typeof p === "object" &&
+                  p !== null &&
+                  (p as { type?: unknown }).type === "text",
+              )?.text ?? "?")
+            : "?";
       const toolCallId = `call-${userMessage.replace(/\s+/g, "-")}`;
       const pending = tools.search_products
         .execute(
@@ -140,7 +161,7 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            messages: [{ role: "user", content: "search monitors" }],
+            messages: [u("search monitors")],
             conversationId: "CONV-A",
           }),
         }),
@@ -150,7 +171,7 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            messages: [{ role: "user", content: "search keyboards" }],
+            messages: [u("search keyboards")],
             conversationId: "CONV-B",
           }),
         }),

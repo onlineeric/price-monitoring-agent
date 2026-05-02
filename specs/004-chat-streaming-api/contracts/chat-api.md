@@ -13,11 +13,38 @@
 **Headers**: `Content-Type: application/json`
 **Body** (JSON):
 
+The request body uses the AI SDK v6 `UIMessage[]` shape. The route runs the
+payload through `convertToModelMessages(messages, { tools, ignoreIncompleteToolCalls: true })`
+to produce provider-correct `tool-call` / `tool-result` content parts.
+
 ```jsonc
 {
   "messages": [
-    { "role": "user", "content": "what products do I track?" }
-    // ...additional prior messages of role user | assistant | tool, max 100 total
+    {
+      "id": "u-1",
+      "role": "user",
+      "parts": [{ "type": "text", "text": "what products do I track?" }]
+    },
+    {
+      "id": "a-1",
+      "role": "assistant",
+      "parts": [
+        { "type": "text", "text": "Here's what I found:" },
+        {
+          "type": "dynamic-tool",
+          "toolName": "search_products",
+          "toolCallId": "call_abc",
+          "state": "output-available",
+          "input":  { "query": "" },
+          "output": { "products": [/* ... */] }
+        }
+      ]
+    },
+    {
+      "id": "u-2",
+      "role": "user",
+      "parts": [{ "type": "text", "text": "trend on the first one?" }]
+    }
   ],
   "conversationId": "optional-free-form-string-<=-200-chars"
 }
@@ -26,10 +53,12 @@
 **Body validation** (enforced by `ChatRequestSchema`, see `data-model.md §1`):
 
 - `messages`: array, length 1..100.
-- Each `messages[i].role`: one of `"user" | "assistant" | "tool"`. A `"system"` role is rejected with `system_role_forbidden` (FR-008a).
-- Each `messages[i].content`: string, length 1..10000 (FR-008).
+- Each `messages[i].role`: one of `"user" | "assistant"`. A `"system"` role is rejected with `system_role_forbidden` (FR-008a). Tool exchanges live as `dynamic-tool` parts inside an assistant message rather than as a separate `tool` role message.
+- Each `messages[i].parts`: non-empty array. Each text part's `text`: 1..10000 chars (FR-008). Each `dynamic-tool` part has `state: "output-available"` (with `input` + `output`) or `state: "output-error"` (with `input` + `errorText`).
 - `conversationId`: optional string, ≤ 200 chars.
-- Extra top-level fields are ignored, except a `system` field which is treated the same as a system-role message and rejected.
+- Extra top-level fields cause a validation error; in particular a top-level `system` field is rejected as `system_role_forbidden`.
+
+> **Wire-format change (2026-05-02)**: earlier drafts of this contract used a flat `{role, content, toolCallId?, toolName?}` shape and a server-side cast of `as unknown as ModelMessage[]`. That shape produced provider rejections (OpenAI requires `tool` messages to be linked to a preceding assistant `tool_calls` array; the flat shape stripped the linkage). Switched to the SDK's canonical UIMessage shape + `convertToModelMessages` to delegate the provider-specific construction to the SDK.
 
 ## Pre-stream error responses
 

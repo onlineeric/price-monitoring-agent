@@ -124,6 +124,14 @@ function makeRequest(body: Record<string, unknown>): Request {
   });
 }
 
+function u(text: string, role: "user" | "assistant" = "user") {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    parts: [{ type: "text", text }],
+  };
+}
+
 const originalEnv = { ...process.env };
 
 beforeEach(() => {
@@ -159,7 +167,7 @@ describe("POST /api/chat — happy path (US1)", () => {
 
     const response = await POST(
       makeRequest({
-        messages: [{ role: "user", content: "hi" }],
+        messages: [u("hi")],
       }),
     );
 
@@ -203,9 +211,7 @@ describe("POST /api/chat — happy path (US1)", () => {
 
     const response = await POST(
       makeRequest({
-        messages: [
-          { role: "user", content: "do I have any monitors?" },
-        ],
+        messages: [u("do I have any monitors?")],
         conversationId: "c-123",
       }),
     );
@@ -232,7 +238,7 @@ describe("POST /api/chat — happy path (US1)", () => {
 
     const response = await POST(
       makeRequest({
-        messages: [{ role: "user", content: "hi" }],
+        messages: [u("hi")],
         conversationId: "conv-abc",
       }),
     );
@@ -269,7 +275,7 @@ describe("POST /api/chat — happy path (US1)", () => {
     });
 
     const response = await POST(
-      makeRequest({ messages: [{ role: "user", content: "anything?" }] }),
+      makeRequest({ messages: [u("anything?")] }),
     );
     const chunks = await readChunks(response);
     const types = chunks.map((c) => c.type);
@@ -304,7 +310,7 @@ describe("POST /api/chat — happy path (US1)", () => {
     });
 
     const response = await POST(
-      makeRequest({ messages: [{ role: "user", content: "search twice" }] }),
+      makeRequest({ messages: [u("search twice")] }),
     );
     const chunks = await readChunks(response);
     const toolCalls = chunks.filter((c) => c.type === "tool-input-available");

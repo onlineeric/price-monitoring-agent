@@ -18,11 +18,12 @@
 
 import { NextResponse } from "next/server";
 import {
+  convertToModelMessages,
   createUIMessageStreamResponse,
   createUIMessageStream,
   streamText,
   stepCountIs,
-  type ModelMessage,
+  type UIMessage,
 } from "ai";
 
 import {
@@ -37,7 +38,6 @@ import {
   emitChatError,
   getChatModel,
   makeChatError,
-  normalizeMessages,
   resolveChatProvider,
 } from "@/lib/ai";
 
@@ -126,14 +126,22 @@ export async function POST(request: Request) {
   let sawTextDelta = false;
   let sawToolCall = false;
 
+  // Convert the SDK's UIMessage wire shape into ModelMessages with proper
+  // tool-call / tool-result content parts. Without this, providers that
+  // require explicit tool_call_id linkage (OpenAI) reject any turn whose
+  // history includes prior tool results.
+  // `ignoreIncompleteToolCalls` is a safety net — the client already drops
+  // stopped/errored partial turns (FR-004a) so this should never fire in
+  // practice.
+  const modelMessages = await convertToModelMessages(
+    parsed.data.messages as UIMessage[],
+    { tools, ignoreIncompleteToolCalls: true },
+  );
+
   const result = streamText({
     model: getChatModel(resolved),
     system: CHAT_SYSTEM_PROMPT,
-    // Pass the normalized `{role, content}` list directly as ModelMessages.
-    // Typical callers (the Phase 3.5 UI) send user/assistant messages; tool
-    // messages are accepted by the schema for forward-compatibility but are
-    // rarely used because the endpoint manages its own tool-call loop.
-    messages: normalizeMessages(parsed.data) as unknown as ModelMessage[],
+    messages: modelMessages,
     tools,
     stopWhen: stepCountIs(CHAT_MAX_STEPS),
     abortSignal: turnAbort.signal,

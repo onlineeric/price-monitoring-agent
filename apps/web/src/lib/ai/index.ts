@@ -25,11 +25,10 @@ export {
 } from "./chat-logger";
 
 export {
-  type ChatMessage,
   type ChatRequest,
+  type ChatRequestUIMessage,
   ChatRequestSchema,
   describeValidationError,
-  normalizeMessages,
 } from "./chat-validation";
 
 export {

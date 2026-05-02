@@ -88,7 +88,7 @@ Goal: A dedicated chatbot page that streams responses, uses tool-calling via the
 - [x] 3.2 **[Code]** Build MCP client wrapper in `apps/web/src/lib/mcp/` that spawns/connects to `apps/mcp-server` via stdio and lists available tools
 - [x] 3.3 **[Code+Speckit]** Create `/api/chat` streaming route using Vercel AI SDK `streamText` with MCP tools — streaming format, multi-step tool calls (`maxSteps`), error handling, and provider abstraction deserve a spec
 - [x] 3.4 **[Code]** Add system prompt enforcing domain restriction (products / prices / monitor features only; politely decline off-topic)
-- [ ] 3.5 **[Code+Speckit]** Build `/dashboard/chat` page with streaming chat UI — message list, input, loading state, markdown rendering, tool-call display; UI structure + Zustand/React state design warrants a spec
+- [x] 3.5 **[Code+Speckit]** Build `/dashboard/chat` page with streaming chat UI — message list, input, loading state, markdown rendering, tool-call display; UI structure + Zustand/React state design warrants a spec
 - [ ] 3.6 **[Code]** Add multi-turn chat history (client-side first via Zustand; DB persistence deferred)
 - [ ] 3.7 **[Code]** Display tool-call traces in the UI (which tool, what args, what result) — high demo value
 
