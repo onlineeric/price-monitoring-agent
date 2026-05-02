@@ -130,6 +130,90 @@ describe("useChatStore.send", () => {
     expect(body.conversationId).toMatch(/[0-9a-f-]{36}/);
   });
 
+  it("sends the full multi-turn history (text + completed tool calls) on a follow-up turn (FR-004a / task 3.6)", async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(makeOkResponse())
+      .mockResolvedValueOnce(makeOkResponse());
+    globalThis.fetch = fetchSpy;
+
+    // First turn: stream consumer simulates a complete assistant turn that
+    // includes one completed tool call, then transitions to `complete`.
+    let consumerCall = 0;
+    useChatStore.setState({
+      __streamConsumer: vi.fn(async () => {
+        consumerCall += 1;
+        useChatStore.setState((state) => {
+          const next = [...state.messages];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "assistant") {
+              const baseAssistant = next[i] as AssistantMessage;
+              next[i] = {
+                ...baseAssistant,
+                state: "complete",
+                text: consumerCall === 1 ? "Found one." : "Sure.",
+                toolEvents:
+                  consumerCall === 1
+                    ? [
+                        {
+                          id: "call-1",
+                          toolName: "search_products",
+                          status: "completed",
+                          args: { q: "monitor" },
+                          result: { rows: [{ id: 7, name: "Sony" }] },
+                        },
+                      ]
+                    : baseAssistant.toolEvents,
+              };
+              break;
+            }
+          }
+          return { messages: next, status: "idle", abortController: null };
+        });
+      }),
+    } as never);
+
+    await useChatStore.getState().send("show monitors");
+    const firstConvId = useChatStore.getState().conversationId;
+
+    await useChatStore.getState().send("tell me more");
+    const secondConvId = useChatStore.getState().conversationId;
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(secondConvId).toBe(firstConvId);
+
+    const secondBody = JSON.parse(
+      (fetchSpy.mock.calls[1][1] as { body: string }).body,
+    );
+    expect(secondBody.conversationId).toBe(firstConvId);
+
+    // Multi-turn payload: prior user, prior assistant (text + dynamic-tool),
+    // then the new user message.
+    expect(secondBody.messages).toHaveLength(3);
+    expect(secondBody.messages[0]).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "show monitors" }],
+    });
+    expect(secondBody.messages[1]).toMatchObject({
+      role: "assistant",
+      parts: [
+        { type: "text", text: "Found one." },
+        {
+          type: "dynamic-tool",
+          toolName: "search_products",
+          toolCallId: "call-1",
+          state: "output-available",
+          input: { q: "monitor" },
+          output: { rows: [{ id: 7, name: "Sony" }] },
+        },
+      ],
+    });
+    expect(secondBody.messages[2]).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "tell me more" }],
+    });
+  });
+
   it("marks the assistant errored on a pre-stream HTTP error", async () => {
     globalThis.fetch = vi
       .fn()
