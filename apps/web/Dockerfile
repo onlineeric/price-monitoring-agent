@@ -54,7 +54,39 @@ WORKDIR /app/apps/web
 RUN pnpm build
 
 # ==========================================
-# Stage 3: Runner (Production)
+# Stage 3: MCP Server Deploy Bundle
+# ==========================================
+# The chat route in /app/api/chat spawns the MCP server as a stdio child
+# process. The Next.js standalone output (Stage 2) does NOT include
+# apps/mcp-server, so we produce a self-contained MCP bundle here using
+# `pnpm deploy --prod`. The bundle lands in /app/mcp/ in the runner stage
+# and is launched via tsx (now a runtime dep of the MCP server).
+FROM node:20-alpine AS mcp-deploy
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /workspace
+
+# Workspace skeleton — needed for pnpm to resolve filters + workspace deps.
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/mcp-server/package.json ./apps/mcp-server/
+COPY packages/db/package.json ./packages/db/
+
+# Install only deps reachable from @price-monitor/mcp-server (incl. workspace
+# deps) so the install footprint stays small.
+RUN pnpm install --frozen-lockfile --filter @price-monitor/mcp-server...
+
+# Source — required so workspace deps (@price-monitor/db) deploy as real files.
+COPY apps/mcp-server ./apps/mcp-server
+COPY packages/db ./packages/db
+
+# `pnpm deploy --prod` produces a self-contained directory with the MCP
+# server's files at the root and ALL prod deps (including the workspace dep
+# @price-monitor/db, copied as a regular package) under node_modules/.
+RUN pnpm deploy --filter @price-monitor/mcp-server --prod --legacy /mcp-deploy
+
+# ==========================================
+# Stage 4: Runner (Production)
 # ==========================================
 FROM node:20-alpine AS runner
 
@@ -75,6 +107,12 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+# MCP server bundle — sibling to the standalone tree at /app/mcp/.
+# Spawned by /api/chat via env vars MCP_SERVER_COMMAND + MCP_SERVER_ARGS:
+#   MCP_SERVER_COMMAND=/app/mcp/node_modules/.bin/tsx
+#   MCP_SERVER_ARGS=/app/mcp/src/index.ts
+COPY --from=mcp-deploy --chown=nextjs:nodejs /mcp-deploy ./mcp
 
 # Switch to non-root user
 USER nextjs
