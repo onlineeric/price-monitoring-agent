@@ -64,33 +64,34 @@ Task type tag (placed at the start of each task):
 ### Phase 1 — MCP Server Foundation (stdio + hello-world tool)
 Goal: Prove the plumbing. A minimal MCP server exposing one trivial tool, inspectable via MCP Inspector, runnable from VSCode/Cursor.
 
-- [ ] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
-- [ ] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
-- [ ] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
-- [ ] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
-- [ ] 1.5 **[Manual]** Run MCP Inspector (`npx @modelcontextprotocol/inspector`) against the local server and verify the `ping` tool returns `"pong"`
-- [ ] 1.6 **[Manual]** Register the server in VSCode/Cursor's MCP config so it appears in the IDE
+- [x] 1.1 **[Code]** Scaffold `apps/mcp-server/` package (pnpm workspace wiring, `package.json`, `tsconfig.json`, folder structure, placeholder `src/index.ts`)
+- [x] 1.2 **[Manual]** Install `@modelcontextprotocol/sdk` and `zod` in `apps/mcp-server/` (`pnpm --filter @price-monitor/mcp-server add @modelcontextprotocol/sdk zod`)
+- [x] 1.3 **[Code]** Implement stdio MCP server exposing a single `ping` tool that returns `"pong"` (uses the SDK's `Server` + `StdioServerTransport`)
+- [x] 1.4 **[Code]** Add root-level scripts (`pnpm mcp:dev`, `pnpm mcp:build`) and a README in `apps/mcp-server/` documenting MCP Inspector usage
+- [x] 1.5 **[Manual]** Run MCP Inspector (`npx @modelcontextprotocol/inspector`) against the local server and verify the `ping` tool returns `"pong"`
+- [x] 1.6 **[Manual]** Register the server in VSCode/Cursor's MCP config so it appears in the IDE
 
 ### Phase 2 — Real MCP Tools Backed by the Database
 Goal: Replace the hello-world tool with the real toolset defined in section 2.1, each with Zod-validated inputs and Drizzle-backed queries.
 
-- [ ] 2.1 **[Code]** Wire `@price-monitor/db` into `apps/mcp-server/` (workspace dep, env loading, shared DB client)
-- [ ] 2.2 **[Code]** Implement `search_products` tool (input: query string; Drizzle `ILIKE` over `products.name`; returns id, name, url, currentPrice)
-- [ ] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
-- [ ] 2.4 **[Code]** Implement `get_price_summary` tool (input: productId, window days; returns current, min, max, avg, trend direction)
-- [ ] 2.5 **[Code]** Implement `add_product` tool (input: URL; enqueues a `check-price` BullMQ job so the existing pipeline creates/updates the product)
-- [ ] 2.6 **[Code]** Centralize tool error handling: shared wrapper that catches exceptions and returns a structured `{ error: { code, message } }` shape to the MCP client
+- [x] 2.1 **[Code]** Wire `@price-monitor/db` into `apps/mcp-server/` (workspace dep, env loading, shared DB client)
+- [x] 2.2 **[Code]** Implement `search_products` tool (input: query string; Drizzle `ILIKE` over `products.name`; returns id, name, url, currentPrice)
+- [x] 2.3 **[Code]** Implement `get_product_history` tool (input: productId, optional range; returns priceRecords ordered by scrapedAt)
+- [x] 2.4 **[Code]** Implement `get_price_summary` tool (input: productId, window days; returns current, min, max, avg, trend direction)
+- [x] 2.5 **[Code]** Implement `add_product` tool (input: URL; enqueues a `check-price` BullMQ job so the existing pipeline creates/updates the product)
+- [x] 2.6 **[Code]** Centralize tool error handling: shared wrapper that catches exceptions and returns a structured `{ error: { code, message } }` shape to the MCP client
 
 ### Phase 3 — MCP Client + Chatbot UI in Next.js
 Goal: A dedicated chatbot page that streams responses, uses tool-calling via the MCP server, and keeps multi-turn context.
 
-- [ ] 3.1 **[Manual]** Install `ai`, `@ai-sdk/openai` (or equivalent provider), and MCP client deps in `apps/web/`
-- [ ] 3.2 **[Code]** Build MCP client wrapper in `apps/web/src/lib/mcp/` that spawns/connects to `apps/mcp-server` via stdio and lists available tools
-- [ ] 3.3 **[Code+Speckit]** Create `/api/chat` streaming route using Vercel AI SDK `streamText` with MCP tools — streaming format, multi-step tool calls (`maxSteps`), error handling, and provider abstraction deserve a spec
-- [ ] 3.4 **[Code]** Add system prompt enforcing domain restriction (products / prices / monitor features only; politely decline off-topic)
-- [ ] 3.5 **[Code+Speckit]** Build `/dashboard/chat` page with streaming chat UI — message list, input, loading state, markdown rendering, tool-call display; UI structure + Zustand/React state design warrants a spec
-- [ ] 3.6 **[Code]** Add multi-turn chat history (client-side first via Zustand; DB persistence deferred)
-- [ ] 3.7 **[Code]** Display tool-call traces in the UI (which tool, what args, what result) — high demo value
+- [x] 3.1 **[Manual]** Install `ai`, all three provider adapters (`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google` — matching `apps/worker/`), and MCP client deps in `apps/web/`. The active provider is selected at runtime via the existing `AI_PROVIDER` env var (`openai` | `anthropic` | `google`), consistent with the worker.
+- [x] 3.2 **[Code]** Build MCP client wrapper in `apps/web/src/lib/mcp/` that spawns/connects to `apps/mcp-server` via stdio and lists available tools
+- [x] 3.3 **[Code+Speckit]** Create `/api/chat` streaming route using Vercel AI SDK `streamText` with MCP tools — streaming format, multi-step tool calls (`maxSteps`), error handling, and provider abstraction deserve a spec
+- [x] 3.4 **[Code]** Add system prompt enforcing domain restriction (products / prices / monitor features only; politely decline off-topic)
+- [x] 3.5 **[Code+Speckit]** Build `/dashboard/chat` page with streaming chat UI — message list, input, loading state, markdown rendering, tool-call display; UI structure + Zustand/React state design warrants a spec
+- [x] 3.6 **[Code]** Add multi-turn chat history (client-side first via Zustand; DB persistence deferred)
+- [x] 3.7 **[Code]** Display tool-call traces in the UI (which tool, what args, what result) — high demo value
+- [x] 3.8 **[Code]** Persist chat history to `localStorage` via Zustand `persist` middleware so a refresh / tab reopen restores the thread; rehydrate sanitizes any mid-stream turns (`streaming` → `stopped`). Per-tab/per-browser stopgap; full DB-backed persistence still deferred.
 
 ### Phase 4 — Semantic Search with pgvector (RAG)
 Goal: Users query in natural language; the chatbot retrieves relevant products via vector similarity.

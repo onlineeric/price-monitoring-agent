@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "price-monitor": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["--filter", "@price-monitor/mcp-server", "start"]
+    }
+  }
+}

@@ -11,6 +11,7 @@ https://price-monitor.onlineeric.net/
 
 - Full-stack application design with Next.js 16, React 19, TypeScript, PostgreSQL, Redis, and BullMQ
 - Practical AI integration using the Vercel AI SDK with typed structured output, not just free-form prompting
+- Conversational AI agent with tool calling over a custom Model Context Protocol (MCP) server, streaming UI, and multi-turn chat history
 - Background job orchestration for price checks, digest generation, and scheduler-managed repeatable jobs
 - Browser automation with Playwright Extra and stealth mode for difficult e-commerce pages
 - Production-oriented operations including Dockerized services, health endpoints, CI/CD, and self-hosted deployment
@@ -21,6 +22,7 @@ https://price-monitor.onlineeric.net/
 - Manage products with create, edit, delete, active/inactive state, and manual re-check actions
 - Browse monitored products in card or table views with recent price history
 - Use global product search to quickly locate and edit products from anywhere in the dashboard
+- Chat with an AI agent that can search products, summarize price trends, retrieve history, and add new products through MCP tool calls
 - Configure daily or weekly email digest schedules from the UI
 - Trigger a full "check all products and send digest" run manually from the dashboard
 - Track historical prices and compare current price vs last check and 7/30/90/180 day averages
@@ -67,6 +69,30 @@ This repository uses AI where it adds clear value: as a fallback for difficult p
 - **Provider flexibility:** OpenAI, Anthropic, and Google providers are switchable through environment variables.
 - **Operational detail:** the worker reuses a singleton browser instance and exposes a health server for deployment checks.
 
+## AI chat agent with MCP
+
+A dedicated `/dashboard/chat` page lets users talk to the price monitor in natural language. The chat page streams responses from `/api/chat`, which invokes a custom Model Context Protocol (MCP) server to read and write the same database the dashboard uses. The AI agent has no SQL access, only the typed tools below.
+
+```text
+Browser (chat UI, streamed)
+        |
+        v
+Next.js /api/chat  (Vercel AI SDK streamText, multi-step tool calls)
+        |
+        v
+MCP client (stdio)  --->  apps/mcp-server  (typed tools, Zod-validated)
+                                  |
+                                  v
+                          PostgreSQL  +  BullMQ queue
+```
+
+- **Custom MCP server (`apps/mcp-server/`):** standalone Node process exposed over stdio, using `@modelcontextprotocol/sdk`. Tools: `search_products`, `get_product_history`, `get_price_summary`, and `add_product` (which enqueues a `check-price` BullMQ job, reusing the existing extraction pipeline). All tool inputs are Zod schemas; failures are wrapped into a structured `{ error: { code, message } }` shape.
+- **Streaming chat API:** `apps/web/src/app/api/chat/route.ts` runs on Node runtime (stdio transport requires it), bridges live MCP tools into AI SDK `tool()` instances, enforces a 5-step tool budget and 60-second per-turn timeout, and returns the AI SDK v6 UI-message protocol with a structured error taxonomy (`validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`).
+- **Provider abstraction:** the same `AI_PROVIDER` env var that drives the worker's extraction fallback (`openai` | `anthropic` | `google`) selects the chat model.
+- **Multi-turn UI:** Zustand-backed in-memory chat state, sanitized markdown rendering via `streamdown`, and inline tool-call indicators that show which tool ran, the arguments, and the result for demo transparency.
+- **Domain guardrail:** the system prompt restricts the agent to product / price / monitor topics so it politely declines off-topic requests.
+- **Local dev:** the same MCP server is registered in VSCode/Cursor, so the tools can be inspected with `npx @modelcontextprotocol/inspector` or driven directly from the IDE.
+
 ## Tech stack
 
 | Area | Technologies |
@@ -77,7 +103,7 @@ This repository uses AI where it adds clear value: as a fallback for difficult p
 | Data access | Drizzle ORM, PostgreSQL 18 |
 | Queue and background jobs | BullMQ, Redis 8 |
 | Extraction | Cheerio, Playwright, Playwright Extra, `puppeteer-extra-plugin-stealth` |
-| AI | Vercel AI SDK, OpenAI, Anthropic, Google |
+| AI | Vercel AI SDK, OpenAI, Anthropic, Google, `@modelcontextprotocol/sdk`, `streamdown` |
 | Email | Resend, React Email |
 | Testing | Vitest, Testing Library, jsdom |
 | DevOps | Docker Compose, GitHub Actions, GHCR, Coolify |
@@ -147,13 +173,14 @@ Deployment is automated through GitHub Actions and Coolify.
 
 ```text
 apps/
-  web/       Next.js dashboard and API routes
-  worker/    BullMQ worker, extraction pipeline, scheduler, email jobs
+  web/         Next.js dashboard, chat page, REST + streaming API routes
+  worker/      BullMQ worker, extraction pipeline, scheduler, email jobs
+  mcp-server/  Custom MCP server exposing typed tools to the AI chat agent
 packages/
-  db/        Shared Drizzle schema and database client
-docs/        Deployment and environment notes
-specs/       Planning and implementation artifacts
-scripts/     Local development and utility scripts
+  db/          Shared Drizzle schema and database client
+docs/          Deployment and environment notes
+specs/         Planning and implementation artifacts
+scripts/       Local development and utility scripts
 ```
 
 ## Good entry points for technical review
@@ -164,7 +191,13 @@ scripts/     Local development and utility scripts
 - `apps/worker/src/jobs/sendDigest.ts`
 - `apps/worker/src/scheduler.ts`
 - `apps/web/src/app/api/products/route.ts`
+- `apps/web/src/app/api/chat/route.ts`
 - `apps/web/src/app/(main)/dashboard/products`
+- `apps/web/src/app/(main)/dashboard/chat`
+- `apps/web/src/lib/mcp/client.ts`
+- `apps/web/src/lib/ai/chat-tools.ts`
+- `apps/mcp-server/src/index.ts`
+- `apps/mcp-server/src/tools`
 - `packages/db/src/schema.ts`
 - `.github/workflows/build-and-push.yml`
 
