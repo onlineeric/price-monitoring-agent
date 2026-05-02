@@ -330,20 +330,21 @@ state and remain interactive.
   the page to its empty state.
 - **FR-013**: The empty state MUST display a short hint about what
   the assistant helps with (products, prices, trends, deals, adding
-  products) and exactly three one-click starter prompts that, when
-  clicked, populate the input and immediately send. The three
-  prompts MUST each exercise a different MCP tool so the empty state
-  itself functions as a tool-call demo:
-  - "Show me my monitored products." (exercises `search_products`)
-  - "What's the price trend on my [first product]?" (exercises
-    `get_price_summary`; `[first product]` is a placeholder the user
-    edits before sending or, where the page can resolve it locally,
-    is auto-filled with the first product's name)
-  - "Add this product: [paste URL]" (exercises `add_product`;
-    `[paste URL]` is a placeholder the user replaces before send,
-    so this third chip behaves slightly differently — clicking it
-    populates the input but does NOT auto-send until the user has
-    pasted a URL).
+  products) and exactly three one-click starter prompts. Each prompt
+  MUST exercise a different MCP tool so the empty state itself
+  functions as a tool-call demo:
+  - "Show me my monitored products." — clicking this chip populates
+    the input AND immediately sends (no placeholder to resolve;
+    exercises `search_products`).
+  - "What's the price trend on my [first product]?" — clicking this
+    chip populates the input but does NOT auto-send; the user
+    replaces `[first product]` with an actual product name before
+    pressing Send (exercises `get_price_summary`). The page does
+    NOT auto-fetch product data to substitute the placeholder.
+  - "Add this product: [paste URL]" — clicking this chip populates
+    the input but does NOT auto-send; the user replaces `[paste URL]`
+    with an actual URL before pressing Send (exercises
+    `add_product`).
 - **FR-014**: The page MUST show a live character counter on the
   input once the typed content exceeds 80% of the 10,000-character
   per-message API limit and MUST disable Send when the input

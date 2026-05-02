@@ -1,15 +1,21 @@
 /**
  * Zod validation for POST /api/chat request bodies.
  *
- * Enforces the rules documented in specs/004-chat-streaming-api/data-model.md §1:
- *   - `messages` is 1..CHAT_MAX_MESSAGES items
- *   - `role` is one of `user` | `assistant` | `tool` (system is rejected — FR-008a)
- *   - `content` is 1..CHAT_MAX_MESSAGE_CHARS chars
- *   - `conversationId` is optional, ≤ CHAT_CONVERSATION_ID_MAX chars
- *   - A top-level `system` field is rejected
+ * The wire format is the AI SDK v6 `UIMessage[]` shape — the same shape the
+ * SDK's `useChat` hook ships and the same shape `convertToModelMessages`
+ * consumes on the server. Adopting it everywhere lets the route delegate
+ * provider-specific message construction (assistant `tool-call` parts +
+ * matching `tool-result` parts) to the SDK instead of fabricating a flat
+ * `{role, content}` payload that providers like OpenAI / Anthropic reject
+ * once tool history accumulates.
  *
- * The Zod schema is intentionally the only entry point; the route handler never
- * performs ad hoc checks (Constitution — Typed Maintainability).
+ * Constraints we still enforce ourselves (independent of the SDK's shape
+ * validation):
+ *   - 1..CHAT_MAX_MESSAGES messages per request
+ *   - role is `user` | `assistant` (system rejected — FR-008a)
+ *   - each text part: 1..CHAT_MAX_MESSAGE_CHARS chars
+ *   - conversationId optional, ≤ CHAT_CONVERSATION_ID_MAX chars
+ *   - top-level `system` field rejected (FR-008a)
  */
 
 import { z } from "zod";
@@ -20,26 +26,69 @@ import {
   CHAT_MAX_MESSAGE_CHARS,
 } from "./chat-config";
 
-const ChatRoleSchema = z.enum(["user", "assistant", "tool"]);
+const RoleSchema = z.enum(["user", "assistant"]);
 
-const ChatMessageSchema = z
+const TextPartSchema = z
   .object({
-    role: ChatRoleSchema,
-    content: z
+    type: z.literal("text"),
+    text: z
       .string()
       .min(1, "content_empty")
       .max(CHAT_MAX_MESSAGE_CHARS, "content_too_long"),
-    toolCallId: z.string().optional(),
-    toolName: z.string().optional(),
   })
-  // Accept future AI SDK UIMessage fields without breaking validation, but
-  // unknown roles are still rejected because `role` is typed above.
+  .passthrough();
+
+/**
+ * Replayed tool history. We accept only the two terminal states — completed
+ * (`output-available`) and failed (`output-error`). In-flight states never
+ * appear in a request body because the client drops stopped/errored partial
+ * turns before serializing (FR-004a).
+ */
+const DynamicToolPartCompletedSchema = z
+  .object({
+    type: z.literal("dynamic-tool"),
+    toolName: z.string().min(1),
+    toolCallId: z.string().min(1),
+    state: z.literal("output-available"),
+    input: z.unknown(),
+    output: z.unknown(),
+  })
+  .passthrough();
+
+const DynamicToolPartFailedSchema = z
+  .object({
+    type: z.literal("dynamic-tool"),
+    toolName: z.string().min(1),
+    toolCallId: z.string().min(1),
+    state: z.literal("output-error"),
+    input: z.unknown(),
+    errorText: z.string(),
+  })
+  .passthrough();
+
+const StepStartPartSchema = z
+  .object({ type: z.literal("step-start") })
+  .passthrough();
+
+const UIMessagePartSchema = z.union([
+  TextPartSchema,
+  DynamicToolPartCompletedSchema,
+  DynamicToolPartFailedSchema,
+  StepStartPartSchema,
+]);
+
+const UIMessageSchema = z
+  .object({
+    id: z.string().optional(),
+    role: RoleSchema,
+    parts: z.array(UIMessagePartSchema).min(1, "empty_parts"),
+  })
   .passthrough();
 
 export const ChatRequestSchema = z
   .object({
     messages: z
-      .array(ChatMessageSchema)
+      .array(UIMessageSchema)
       .min(1, "empty")
       .max(CHAT_MAX_MESSAGES, "too_many_messages"),
     conversationId: z
@@ -47,35 +96,34 @@ export const ChatRequestSchema = z
       .max(CHAT_CONVERSATION_ID_MAX, "conversation_id_invalid")
       .optional(),
   })
-  // `.strict()` makes any unknown top-level key (notably `system`, which
-  // clients might try to inject to override the server prompt — FR-008a)
-  // a validation error rather than silently ignoring it.
   .strict();
 
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+export type ChatRequestUIMessage = z.infer<typeof UIMessageSchema>;
 
 /**
- * Convert a ZodError into a stable `reason` string the route / logger can use
- * as a `validation_error` detail. We prefer the most-specific message emitted
- * by the schema (e.g. `system_role_forbidden`, `too_many_messages`,
- * `content_too_long`). Falls back to a generic `invalid_body` marker.
+ * Convert a ZodError into a stable `reason` string. Falls back to a generic
+ * `invalid_body` marker. Named reasons preserved for backwards compatibility
+ * with the existing logger and client UX:
+ *
+ *   - `system_role_forbidden` — client tried to set role: "system" or top-level system
+ *   - `invalid_role`           — any other role enum mismatch
+ *   - `too_many_messages`      — > CHAT_MAX_MESSAGES
+ *   - `empty`                  — empty messages array
+ *   - `content_too_long`       — text part exceeded CHAT_MAX_MESSAGE_CHARS
+ *   - `content_empty`          — text part empty
+ *   - `conversation_id_invalid`— conversationId longer than the cap
  */
 export function describeValidationError(err: z.ZodError): string {
   const first = err.issues[0];
   if (!first) return "invalid_body";
 
-  // Top-level strict-object extras (e.g. `system`) map to the same named
-  // reason as a system-role message so the client sees a single code for
-  // "you tried to set the system prompt".
   if (first.code === "unrecognized_keys") {
     const keys = (first as { keys?: string[] }).keys;
     if (keys?.includes("system")) return "system_role_forbidden";
     return "invalid_body";
   }
 
-  // Enum mismatch on `messages[i].role` with received === "system" → named
-  // reason; any other enum mismatch is `invalid_role`.
   if (first.code === "invalid_enum_value") {
     const received = (first as { received?: unknown }).received;
     if (received === "system") return "system_role_forbidden";
@@ -83,17 +131,4 @@ export function describeValidationError(err: z.ZodError): string {
   }
 
   return first.message || "invalid_body";
-}
-
-/**
- * Produce the message list the AI SDK `streamText` call receives.
- *
- * The caller already validated the role/content bounds; this helper strips
- * any extra passthrough fields we do not want to forward to the provider
- * and preserves the order supplied by the client.
- */
-export function normalizeMessages(
-  request: ChatRequest,
-): { role: ChatMessage["role"]; content: string }[] {
-  return request.messages.map((m) => ({ role: m.role, content: m.content }));
 }
