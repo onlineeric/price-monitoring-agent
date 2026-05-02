@@ -50,3 +50,26 @@ Object.defineProperty(window, "ResizeObserver", {
   writable: true,
   value: ResizeObserverMock,
 });
+
+class IntersectionObserverMock {
+  observe() {
+    // No-op for jsdom; tests inspect store/UI state, not real intersection.
+  }
+
+  unobserve() {
+    // No-op.
+  }
+
+  disconnect() {
+    // No-op.
+  }
+
+  takeRecords() {
+    return [];
+  }
+}
+
+Object.defineProperty(window, "IntersectionObserver", {
+  writable: true,
+  value: IntersectionObserverMock,
+});
