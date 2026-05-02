@@ -55,7 +55,7 @@ export function ChatPageClient() {
   );
 
   return (
-    <div className="@container/main flex h-[calc(100vh-4rem)] flex-col gap-3 md:gap-4">
+    <div className="@container/main flex h-[calc(100svh-5rem)] flex-col gap-3 md:h-[calc(100svh-7rem)] md:gap-4">
       <header className="flex items-start justify-between gap-3 px-1">
         <div className="flex flex-col gap-1">
           <h1 className="font-bold text-2xl md:text-3xl">Chat</h1>
