@@ -41,7 +41,7 @@ export const sidebarItems: NavGroup[] = [
         icon: Package,
       },
       {
-        title: "Chat",
+        title: "AI Chat",
         url: "/dashboard/chat",
         icon: MessageSquare,
         isNew: true,
