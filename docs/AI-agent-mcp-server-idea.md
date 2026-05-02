@@ -91,6 +91,7 @@ Goal: A dedicated chatbot page that streams responses, uses tool-calling via the
 - [x] 3.5 **[Code+Speckit]** Build `/dashboard/chat` page with streaming chat UI — message list, input, loading state, markdown rendering, tool-call display; UI structure + Zustand/React state design warrants a spec
 - [x] 3.6 **[Code]** Add multi-turn chat history (client-side first via Zustand; DB persistence deferred)
 - [x] 3.7 **[Code]** Display tool-call traces in the UI (which tool, what args, what result) — high demo value
+- [x] 3.8 **[Code]** Persist chat history to `localStorage` via Zustand `persist` middleware so a refresh / tab reopen restores the thread; rehydrate sanitizes any mid-stream turns (`streaming` → `stopped`). Per-tab/per-browser stopgap; full DB-backed persistence still deferred.
 
 ### Phase 4 — Semantic Search with pgvector (RAG)
 Goal: Users query in natural language; the chatbot retrieves relevant products via vector similarity.

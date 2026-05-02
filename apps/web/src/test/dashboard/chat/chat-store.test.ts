@@ -8,7 +8,12 @@ import type { AssistantMessage, ChatState } from "@/stores/chat/types";
 // module-level singleton so we MUST also restore `__streamConsumer` to the
 // real implementation — otherwise a mock injected by an earlier test leaks
 // forward and silently replaces the real reducer in later tests.
+//
+// The store is wrapped in `persist` middleware (localStorage), so we also
+// clear the persisted slot — otherwise a setState in one `it` block leaks
+// into the next via storage.
 function resetStore() {
+  globalThis.localStorage?.clear();
   useChatStore.setState({
     conversationId: null,
     messages: [],
@@ -402,6 +407,169 @@ describe("stream reducer guards (post-stop / post-error)", () => {
     const last = useChatStore.getState().messages[1] as AssistantMessage;
     expect(last.toolEvents[0].status).toBe("completed");
     expect(last.toolEvents[0].errorEnvelope).toBeUndefined();
+  });
+
+  it("flips a tool to `failed` when the MCP CallToolResult shape carries an error envelope", () => {
+    // The chat-tools bridge returns `{ isError: true, content: [{ type: "text",
+    // text: JSON.stringify({ error: { code, message } }) }] }` for both
+    // server-side tool failures and bridge-caught transport errors. The
+    // earlier extractor only matched a flat `{ error }` shape and would mark
+    // the indicator `completed` here — see PR #42 review for the regression.
+    useChatStore.setState({
+      messages: [
+        { id: "u1", role: "user", text: "hi" },
+        {
+          id: "a1",
+          role: "assistant",
+          text: "",
+          toolEvents: [
+            { id: "t1", toolName: "search_products", status: "running" },
+          ],
+          state: "streaming",
+        },
+      ],
+    } as never);
+
+    const setUpdater = (updater: (state: ChatState) => Partial<ChatState>) => {
+      useChatStore.setState((current) => updater(current as ChatState) as never);
+    };
+
+    streamTesting.applyStreamPart(
+      {
+        type: "tool-output-available",
+        toolCallId: "t1",
+        output: {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: { code: "INTERNAL_ERROR", message: "boom" },
+              }),
+            },
+          ],
+        },
+      } as never,
+      setUpdater,
+    );
+
+    const last = useChatStore.getState().messages[1] as AssistantMessage;
+    expect(last.toolEvents[0].status).toBe("failed");
+    expect(last.toolEvents[0].errorEnvelope).toEqual({
+      code: "INTERNAL_ERROR",
+      message: "boom",
+    });
+  });
+
+  it("falls back to a generic `tool_error` envelope when isError=true but the text is not a JSON envelope", () => {
+    useChatStore.setState({
+      messages: [
+        { id: "u1", role: "user", text: "hi" },
+        {
+          id: "a1",
+          role: "assistant",
+          text: "",
+          toolEvents: [
+            { id: "t1", toolName: "search_products", status: "running" },
+          ],
+          state: "streaming",
+        },
+      ],
+    } as never);
+
+    const setUpdater = (updater: (state: ChatState) => Partial<ChatState>) => {
+      useChatStore.setState((current) => updater(current as ChatState) as never);
+    };
+
+    streamTesting.applyStreamPart(
+      {
+        type: "tool-output-available",
+        toolCallId: "t1",
+        output: {
+          isError: true,
+          content: [{ type: "text", text: "not-a-json-envelope" }],
+        },
+      } as never,
+      setUpdater,
+    );
+
+    const last = useChatStore.getState().messages[1] as AssistantMessage;
+    expect(last.toolEvents[0].status).toBe("failed");
+    expect(last.toolEvents[0].errorEnvelope?.code).toBe("tool_error");
+  });
+});
+
+describe("localStorage persistence (refresh-survival)", () => {
+  it("writes messages to localStorage on send so a refresh can restore them", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(makeOkResponse());
+    useChatStore.setState({
+      __streamConsumer: vi.fn(async () => undefined),
+    } as never);
+
+    await useChatStore.getState().send("hello");
+
+    const raw = localStorage.getItem("price-monitor-chat");
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw as string) as {
+      state: { messages: Array<{ role: string; text?: string }>; conversationId: string | null };
+    };
+    expect(parsed.state.messages).toHaveLength(2);
+    expect(parsed.state.messages[0].role).toBe("user");
+    expect(parsed.state.messages[0].text).toBe("hello");
+    expect(parsed.state.conversationId).toMatch(/^[\da-f-]{10,}$/);
+  });
+
+  it("does not persist transient lifecycle fields (status, error, abortController)", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(makeOkResponse());
+    useChatStore.setState({
+      __streamConsumer: vi.fn(async () => undefined),
+    } as never);
+    await useChatStore.getState().send("hi");
+
+    const raw = localStorage.getItem("price-monitor-chat");
+    const parsed = JSON.parse(raw as string) as { state: Record<string, unknown> };
+    expect(parsed.state).not.toHaveProperty("status");
+    expect(parsed.state).not.toHaveProperty("error");
+    expect(parsed.state).not.toHaveProperty("abortController");
+    expect(parsed.state).not.toHaveProperty("__streamConsumer");
+  });
+
+  it("flips a rehydrated message that was still `streaming` to `stopped`", () => {
+    // Simulate the post-refresh rehydrate path by invoking the store's
+    // persist API directly with a payload that mimics a tab closed mid-turn.
+    localStorage.setItem(
+      "price-monitor-chat",
+      JSON.stringify({
+        version: 1,
+        state: {
+          conversationId: "c-prev",
+          messages: [
+            { id: "u1", role: "user", text: "hi" },
+            {
+              id: "a1",
+              role: "assistant",
+              text: "answering",
+              toolEvents: [{ id: "t1", toolName: "search_products", status: "running" }],
+              state: "streaming",
+            },
+          ],
+        },
+      }),
+    );
+
+    // `rehydrate()` re-reads from storage and runs `onRehydrateStorage`.
+    void useChatStore.persist.rehydrate();
+
+    const after = useChatStore.getState();
+    expect(after.conversationId).toBe("c-prev");
+    expect(after.messages).toHaveLength(2);
+    const assistant = after.messages[1] as AssistantMessage;
+    expect(assistant.state).toBe("stopped");
+    expect(assistant.toolEvents[0].status).toBe("stopped");
+    // Lifecycle reset to idle so the page is interactive immediately.
+    expect(after.status).toBe("idle");
+    expect(after.error).toBeNull();
+    expect(after.abortController).toBeNull();
   });
 });
 

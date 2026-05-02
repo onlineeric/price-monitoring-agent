@@ -183,13 +183,52 @@ function applyStreamPart(part: StreamPart, set: ChatStateSetter): void {
 /**
  * Try to interpret an arbitrary tool output as a Phase 2.6 error envelope
  * `{ error: { code, message } }`. Returns `undefined` if the output does not
- * match. Accepts both objects and JSON strings.
+ * match.
+ *
+ * Accepts three shapes:
+ *   1. A flat object `{ error: { code, message } }` (or its JSON string form).
+ *   2. The MCP `CallToolResult` returned by the chat-tools bridge:
+ *      `{ isError: true, content: [{ type: "text", text: "{\"error\":...}" }] }`
+ *      — produced both by the MCP server's `withErrorHandling` wrapper and
+ *      by the bridge's own catch path on connection-level failures.
+ *   3. A flat object that already exposes `code` + `message` at the top level
+ *      (defensive — some MCP SDKs surface errors this way).
  */
 function extractToolErrorEnvelope(output: unknown): ToolErrorEnvelope | undefined {
   const candidate = typeof output === "string" ? safeJsonParse(output) : output;
+  if (!candidate || typeof candidate !== "object") return undefined;
+
+  const direct = matchErrorEnvelope(candidate);
+  if (direct) return direct;
+
+  const mcp = candidate as {
+    isError?: unknown;
+    content?: unknown;
+  };
+  if (mcp.isError === true && Array.isArray(mcp.content)) {
+    for (const part of mcp.content) {
+      if (
+        part &&
+        typeof part === "object" &&
+        (part as { type?: unknown }).type === "text" &&
+        typeof (part as { text?: unknown }).text === "string"
+      ) {
+        const parsed = safeJsonParse((part as { text: string }).text);
+        const fromText = matchErrorEnvelope(parsed);
+        if (fromText) return fromText;
+      }
+    }
+    // Last resort: surface a generic envelope so the indicator still flips
+    // to `failed` even if the text payload was not JSON-encoded.
+    return { code: "tool_error", message: "Tool reported an error." };
+  }
+
+  return undefined;
+}
+
+function matchErrorEnvelope(candidate: unknown): ToolErrorEnvelope | undefined {
+  if (!candidate || typeof candidate !== "object") return undefined;
   if (
-    candidate &&
-    typeof candidate === "object" &&
     "error" in candidate &&
     candidate.error &&
     typeof candidate.error === "object"

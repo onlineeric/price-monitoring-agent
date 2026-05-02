@@ -3,15 +3,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
+ * `isAtBottom` is treated as true while the user's last scroll position is
+ * within this many pixels of the actual scroll-bottom. Generous enough to
+ * survive a single streamed chunk pushing content past the viewport before
+ * the auto-scroll effect runs.
+ */
+const NEAR_BOTTOM_THRESHOLD_PX = 80;
+
+/**
  * Auto-scroll-with-user-pause hook for the chat thread.
  *
- * Implementation per `specs/005-chat-page-ui/research.md` §3:
- * - A sentinel `<div>` is rendered at the bottom of the thread.
- * - An `IntersectionObserver` watches the sentinel. While it intersects
- *   the scroll container, we are "at bottom" and auto-scroll on new content.
- * - When the user scrolls up, the sentinel leaves the viewport, `isAtBottom`
- *   flips to `false`, auto-scroll pauses, and the consumer surfaces a
- *   "Jump to latest" button that calls `jumpToLatest()`.
+ * `isAtBottom` is updated from scroll events only — not from layout/resize.
+ * That distinction is what makes the streaming case work: when a text-delta
+ * lands and grows the thread height, the sentinel briefly sits below the
+ * viewport, but no scroll event has fired yet, so `isAtBottom` is still
+ * `true` and the consumer's effect can call `scrollIntoView` to follow the
+ * new content. The programmatic scroll then fires a `scroll` event that
+ * keeps `isAtBottom` true at the new bottom.
+ *
+ * The earlier `IntersectionObserver` implementation flipped `isAtBottom` to
+ * `false` on every transient layout shift during streaming, leaving the
+ * thread frozen above the latest content until the user manually scrolled
+ * back down.
  */
 export function useAutoScrollToBottom<
   Container extends HTMLElement = HTMLDivElement,
@@ -22,20 +35,19 @@ export function useAutoScrollToBottom<
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     const container = scrollContainerRef.current;
-    if (!sentinel || !container) return;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          setIsAtBottom(entry.isIntersecting);
-        }
-      },
-      { root: container, threshold: 0 },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    const measure = () => {
+      const distance =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      setIsAtBottom(distance <= NEAR_BOTTOM_THRESHOLD_PX);
+    };
+
+    container.addEventListener("scroll", measure, { passive: true });
+    measure();
+
+    return () => container.removeEventListener("scroll", measure);
   }, []);
 
   const jumpToLatest = useCallback(() => {
