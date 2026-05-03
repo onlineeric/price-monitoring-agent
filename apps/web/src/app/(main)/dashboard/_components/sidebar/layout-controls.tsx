@@ -41,6 +41,7 @@ export function LayoutControls() {
   const setFont = usePreferencesStore((s) => s.setFont);
 
   const [workerVersion, setWorkerVersion] = useState<string | null>(null);
+  const [mcpVersion, setMcpVersion] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/worker/health")
@@ -50,6 +51,14 @@ export function LayoutControls() {
       })
       .then((data) => setWorkerVersion(data.version ?? null))
       .catch(() => setWorkerVersion(null));
+
+    fetch("/api/mcp-server/health")
+      .then((res) => {
+        if (!res.ok) throw new Error("Not OK");
+        return res.json();
+      })
+      .then((data) => setMcpVersion(data.version ?? null))
+      .catch(() => setMcpVersion(null));
   }, []);
 
   const onThemePresetChange = async (preset: ThemePreset) => {
@@ -265,6 +274,7 @@ export function LayoutControls() {
           <div className="text-center text-muted-foreground text-xs">
             <div>web: v{webVersion}</div>
             <div>worker: {workerVersion ? `v${workerVersion}` : "offline"}</div>
+            <div>mcp-server: {mcpVersion ? `v${mcpVersion}` : "offline"}</div>
           </div>
         </div>
       </PopoverContent>

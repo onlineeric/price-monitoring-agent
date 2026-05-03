@@ -152,6 +152,6 @@ Only create commits when explicitly requested.
 - TypeScript 5.9 + Next.js 16 (App Router), React 19, Tailwind CSS v4, Shadcn UI, TanStack Query/Table, Zustand, Drizzle ORM, PostgreSQL 18, Redis 8, BullMQ, Playwright, Vercel AI SDK (OpenAI / Anthropic / Google), `@modelcontextprotocol/sdk`, `streamdown` (Markdown rendering), Resend + React Email
 
 ## Recent Changes
+- 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` on port 3001) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown
 - 005-chat-page-ui: Dashboard chat page streaming `/api/chat` responses with sanitized markdown, inline tool-call indicators, and per-tab in-memory conversation state
 - 004-chat-streaming-api: Add `/api/chat` streaming route with MCP tool-calling, provider abstraction, and structured error taxonomy
-- 003-send-report-email: Introduce manual report preview/send flow with Redis-backed safeguards and shared `packages/reporting`
