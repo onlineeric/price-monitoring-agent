@@ -4,9 +4,11 @@
   "type": "module",
   "description": "MCP server exposing price-monitor tools to AI agents over stdio",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "bash ../../scripts/dev-mcp.sh",
+    "dev:tsx": "MCP_TRANSPORT=http MCP_HTTP_PORT=3002 tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +16,10 @@
   "packageManager": "pnpm@10.28.2",
   "devDependencies": {
     "@types/node": "^20.19.27",
+    "dotenv": "^17.2.3",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
