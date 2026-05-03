@@ -1,6 +1,6 @@
 import { render } from "@react-email/render";
 
-import { PriceDigestEmail, buildPriceReportSubject } from "./price-digest-email";
+import { buildPriceReportSubject, PriceDigestEmail } from "./price-digest-email";
 import type { ReportSnapshotItem } from "./report-snapshot";
 
 export interface RenderPriceReportInput {

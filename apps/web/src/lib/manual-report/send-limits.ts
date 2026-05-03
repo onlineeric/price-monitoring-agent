@@ -1,10 +1,9 @@
-import { randomUUID } from "node:crypto";
-
 import { and, asc, db, gte, lt, manualReportSends, sql } from "@price-monitor/db";
 
 import { redisConnection } from "@/lib/redis";
 
 import { getBusinessDayWindow } from "./timezone";
+import { randomUUID } from "node:crypto";
 
 export const ROLLING_WINDOW_LIMIT = 5;
 export const ROLLING_WINDOW_MINUTES = 10;
@@ -57,7 +56,9 @@ export async function getManualReportUsage(now = new Date()): Promise<ManualRepo
         recipientCount: sql<number>`COALESCE(SUM(${manualReportSends.recipientCount}), 0)`,
       })
       .from(manualReportSends)
-      .where(and(gte(manualReportSends.completedAt, dayWindow.start), lt(manualReportSends.completedAt, dayWindow.end))),
+      .where(
+        and(gte(manualReportSends.completedAt, dayWindow.start), lt(manualReportSends.completedAt, dayWindow.end)),
+      ),
   ]);
 
   const rollingWindowUsed = rollingRows.length;

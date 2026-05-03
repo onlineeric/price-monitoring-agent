@@ -22,9 +22,7 @@ export const CURRENCY_MAP: Record<string, string> = {
  * @param priceText - Raw price text (e.g., "$19.99", "€1.234,56", "£19.99")
  * @returns Object with price in cents and currency code, or null if parsing fails
  */
-export function parsePrice(
-  priceText: string
-): { price: number; currency: string } | null {
+export function parsePrice(priceText: string): { price: number; currency: string } | null {
   if (!priceText) return null;
 
   // Clean the text
@@ -67,7 +65,7 @@ export function parsePrice(
   }
 
   const value = parseFloat(numStr);
-  if (isNaN(value)) return null;
+  if (Number.isNaN(value)) return null;
 
   // Convert to cents
   const priceInCents = Math.round(value * 100);
@@ -81,10 +79,7 @@ export function parsePrice(
  * @param baseUrl - The base URL of the page
  * @returns Absolute URL if valid and safe, null otherwise
  */
-export function resolveImageUrl(
-  imageUrl: string | null,
-  baseUrl: string
-): string | null {
+export function resolveImageUrl(imageUrl: string | null, baseUrl: string): string | null {
   if (!imageUrl) return null;
 
   // Sanitize: trim whitespace and reject dangerous protocols
@@ -92,13 +87,7 @@ export function resolveImageUrl(
   const lowerUrl = trimmed.toLowerCase();
 
   // Block dangerous protocols (XSS vectors)
-  const dangerousProtocols = [
-    "javascript:",
-    "data:",
-    "file:",
-    "vbscript:",
-    "about:",
-  ];
+  const dangerousProtocols = ["javascript:", "data:", "file:", "vbscript:", "about:"];
   if (dangerousProtocols.some((proto) => lowerUrl.startsWith(proto))) {
     console.warn(`[Security] Blocked dangerous image URL: ${trimmed}`);
     return null;
@@ -112,14 +101,14 @@ export function resolveImageUrl(
   }
   // Protocol-relative URL
   else if (trimmed.startsWith("//")) {
-    resolvedUrl = "https:" + trimmed;
+    resolvedUrl = `https:${trimmed}`;
   }
   // Absolute path
   else if (trimmed.startsWith("/")) {
     try {
       const url = new URL(baseUrl);
       resolvedUrl = url.origin + trimmed;
-    } catch (e) {
+    } catch (_e) {
       console.warn(`[Security] Invalid base URL for image: ${baseUrl}`);
       return null;
     }
@@ -129,7 +118,7 @@ export function resolveImageUrl(
     try {
       const url = new URL(baseUrl);
       resolvedUrl = new URL(trimmed, url.href).href;
-    } catch (e) {
+    } catch (_e) {
       console.warn(`[Security] Failed to resolve relative image URL: ${trimmed}`);
       return null;
     }

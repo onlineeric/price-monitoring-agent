@@ -4,16 +4,12 @@ import { useChatStore } from "@/stores/chat/chat-store";
 import { consumeChatStream } from "@/stores/chat/chat-stream";
 import type { AssistantMessage } from "@/stores/chat/types";
 
-function makeUiMessageStreamResponse(
-  chunks: Array<Record<string, unknown>>,
-): Response {
+function makeUiMessageStreamResponse(chunks: Array<Record<string, unknown>>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
       }
       controller.close();
     },
@@ -112,25 +108,24 @@ describe("Chat page — tool-call indicators (US2)", () => {
   });
 
   it("renders two indicators in stream order for two sequential tool calls", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      makeUiMessageStreamResponse([
-        { type: "start" },
-        { type: "tool-input-available", toolCallId: "c1", toolName: "search_products", input: {} },
-        { type: "tool-output-available", toolCallId: "c1", output: { rows: [] } },
-        { type: "tool-input-available", toolCallId: "c2", toolName: "get_price_summary", input: {} },
-        { type: "tool-output-available", toolCallId: "c2", output: { trend: "down" } },
-        { type: "text-delta", id: "t1", delta: "Done." },
-        { type: "finish" },
-      ]),
-    );
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        makeUiMessageStreamResponse([
+          { type: "start" },
+          { type: "tool-input-available", toolCallId: "c1", toolName: "search_products", input: {} },
+          { type: "tool-output-available", toolCallId: "c1", output: { rows: [] } },
+          { type: "tool-input-available", toolCallId: "c2", toolName: "get_price_summary", input: {} },
+          { type: "tool-output-available", toolCallId: "c2", output: { trend: "down" } },
+          { type: "text-delta", id: "t1", delta: "Done." },
+          { type: "finish" },
+        ]),
+      );
 
     await useChatStore.getState().send("everything please");
 
     const last = useChatStore.getState().messages[1] as AssistantMessage;
-    expect(last.toolEvents.map((e) => e.toolName)).toEqual([
-      "search_products",
-      "get_price_summary",
-    ]);
+    expect(last.toolEvents.map((e) => e.toolName)).toEqual(["search_products", "get_price_summary"]);
     expect(last.toolEvents.every((e) => e.status === "completed")).toBe(true);
   });
 });

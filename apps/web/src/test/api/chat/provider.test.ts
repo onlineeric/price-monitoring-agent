@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  ChatProviderConfigError,
-  resolveChatProvider,
-} from "@/lib/ai/provider";
+import { ChatProviderConfigError, resolveChatProvider } from "@/lib/ai/provider";
 
 function setEnv(vars: Record<string, string | undefined>) {
   for (const [key, value] of Object.entries(vars)) {

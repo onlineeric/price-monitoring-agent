@@ -90,11 +90,7 @@ describe("ToolCallIndicator — expandable trace (task 3.7)", () => {
   });
 
   it("does not allow expansion while the tool is still running", () => {
-    render(
-      <ToolCallIndicator
-        event={makeEvent({ status: "running", args: { q: "x" }, result: undefined })}
-      />,
-    );
+    render(<ToolCallIndicator event={makeEvent({ status: "running", args: { q: "x" }, result: undefined })} />);
 
     const trigger = screen.getByRole("status");
     expect(trigger).toBeDisabled();

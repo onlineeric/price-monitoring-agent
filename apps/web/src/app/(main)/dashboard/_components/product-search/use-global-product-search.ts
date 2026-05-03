@@ -6,9 +6,9 @@ import {
   filterProductSearchResults,
   groupProductSearchResults,
   normalizeProductSearchResult,
-  updateProductSearchResult,
   type ProductSearchApiRecord,
   type ProductSearchResult,
+  updateProductSearchResult,
 } from "./product-search-model";
 
 type ProductsRequestState = "idle" | "loading" | "ready" | "error";

@@ -1,7 +1,7 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray } from 'drizzle-orm';
-import postgres from 'postgres';
-import * as schema from './schema';
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
 
 // Lazy database connection - only initialized when accessed
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
@@ -10,7 +10,7 @@ let _client: ReturnType<typeof postgres> | null = null;
 function getDb() {
   if (!_db) {
     if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is required');
+      throw new Error("DATABASE_URL environment variable is required");
     }
     _client = postgres(process.env.DATABASE_URL);
     _db = drizzle(_client, { schema });
@@ -26,7 +26,7 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 });
 
 // Re-export schema
-export * from './schema';
+export * from "./schema";
 
 // Re-export drizzle-orm utilities for use in other packages
 export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray };

@@ -11,14 +11,9 @@ interface EnvValidationResult {
   warnings: string[];
 }
 
-const REQUIRED_ENV_VARS = [
-  "DATABASE_URL",
-  "REDIS_URL",
-  "AI_PROVIDER",
-  "RESEND_API_KEY",
-] as const;
+const REQUIRED_ENV_VARS = ["DATABASE_URL", "REDIS_URL", "AI_PROVIDER", "RESEND_API_KEY"] as const;
 
-const OPTIONAL_ENV_VARS = [
+const _OPTIONAL_ENV_VARS = [
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
   "GOOGLE_GENERATIVE_AI_API_KEY",
@@ -90,13 +85,17 @@ export function validateAndExit(): void {
   // Log warnings
   if (result.warnings.length > 0) {
     console.log("[CONFIG] Warnings:");
-    result.warnings.forEach((warning) => console.log(`  - ${warning}`));
+    for (const warning of result.warnings) {
+      console.log(`  - ${warning}`);
+    }
   }
 
   // Exit on missing required variables
   if (!result.valid) {
     console.error("[CONFIG] Missing required environment variables:");
-    result.missing.forEach((key) => console.error(`  - ${key}`));
+    for (const key of result.missing) {
+      console.error(`  - ${key}`);
+    }
     console.error("\n[CONFIG] Please set these variables and restart the worker.");
     process.exit(1);
   }

@@ -27,10 +27,7 @@ export interface ChatErrorPayload {
   };
 }
 
-export function makeChatError(
-  code: ChatErrorCode,
-  message: string,
-): ChatErrorPayload {
+export function makeChatError(code: ChatErrorCode, message: string): ChatErrorPayload {
   return { error: { code, message: scrubMessage(message) } };
 }
 
@@ -53,10 +50,7 @@ export function scrubMessage(raw: string): string {
   message = message.replace(/(?:\/|[A-Za-z]:\\)[^\s"']+/g, "[redacted-path]");
 
   // Drop anything that looks like an API key or bearer token.
-  message = message.replace(
-    /\b(?:sk|pk|rk|gsk|xai|ant|openai|anthropic|google)[\w-]{8,}\b/gi,
-    "[redacted-secret]",
-  );
+  message = message.replace(/\b(?:sk|pk|rk|gsk|xai|ant|openai|anthropic|google)[\w-]{8,}\b/gi, "[redacted-secret]");
   message = message.replace(/Bearer\s+[\w.-]+/gi, "Bearer [redacted-secret]");
 
   // Drop known API-key env var names from the message body (defense-in-depth
@@ -72,12 +66,7 @@ export function scrubMessage(raw: string): string {
   return message.trim() || "An error occurred.";
 }
 
-const API_KEY_ENV_VARS = [
-  "OPENAI_API_KEY",
-  "ANTHROPIC_API_KEY",
-  "GOOGLE_GENERATIVE_AI_API_KEY",
-  "GOOGLE_API_KEY",
-];
+const API_KEY_ENV_VARS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"];
 
 /**
  * Emit a `{ code, message }` error into an AI SDK v6 UI message stream writer.
@@ -97,11 +86,7 @@ export interface ChatErrorWriter {
   write(chunk: { type: "error"; errorText: string }): void;
 }
 
-export function emitChatError(
-  writer: ChatErrorWriter,
-  code: ChatErrorCode,
-  message: string,
-): void {
+export function emitChatError(writer: ChatErrorWriter, code: ChatErrorCode, message: string): void {
   const payload = makeChatError(code, message);
   writer.write({ type: "error", errorText: JSON.stringify(payload) });
 }

@@ -10,8 +10,8 @@ vi.mock("@/lib/mcp", () => ({
   listMcpTools: listMcpToolsMock,
 }));
 
-import { buildMcpTools, jsonSchemaToZod } from "@/lib/ai/chat-tools";
 import { createChatLogger } from "@/lib/ai/chat-logger";
+import { buildMcpTools, jsonSchemaToZod } from "@/lib/ai/chat-tools";
 
 function makeLogger() {
   const spies = {
@@ -90,10 +90,7 @@ describe("buildMcpTools", () => {
     };
     expect(t.description).toBe("Full-text search across products");
 
-    const result = await t.execute(
-      { q: "monitor" },
-      { toolCallId: "call-1" } as unknown as { toolCallId: string },
-    );
+    const result = await t.execute({ q: "monitor" }, { toolCallId: "call-1" } as unknown as { toolCallId: string });
     expect(result).toEqual({
       content: [{ type: "text", text: '{"rows":[{"id":1}]}' }],
     });
@@ -189,9 +186,7 @@ describe("buildMcpTools", () => {
     };
     expect(parsed.error.code).toBe("INTERNAL_ERROR");
     expect(parsed.error.message).toContain("boom while calling tool");
-    expect(logger.toolCallEnd).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: "error" }),
-    );
+    expect(logger.toolCallEnd).toHaveBeenCalledWith(expect.objectContaining({ outcome: "error" }));
   });
 
   it("returns an empty tool map and logs a warning when MCP publishes zero tools", async () => {

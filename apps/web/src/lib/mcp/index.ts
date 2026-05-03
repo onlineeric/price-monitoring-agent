@@ -1,1 +1,1 @@
-export { getMcpClient, listMcpTools, closeMcpClient } from "./client";
+export { closeMcpClient, getMcpClient, listMcpTools } from "./client";

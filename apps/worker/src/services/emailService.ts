@@ -1,4 +1,4 @@
-import { sendPriceReportEmail, type ReportSnapshotItem } from "@price-monitor/reporting";
+import { type ReportSnapshotItem, sendPriceReportEmail } from "@price-monitor/reporting";
 
 // Re-export the type for consumers
 export type ProductDigestItem = ReportSnapshotItem;
@@ -16,9 +16,7 @@ export interface SendDigestParams {
  * Send a price digest email
  * @returns true if email was sent successfully, false otherwise
  */
-export async function sendDigestEmail(
-  params: SendDigestParams
-): Promise<boolean> {
+export async function sendDigestEmail(params: SendDigestParams): Promise<boolean> {
   const result = await sendPriceReportEmail({
     recipients: [params.to],
     generatedAt: params.generatedAt ?? new Date(),

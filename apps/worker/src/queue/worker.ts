@@ -1,20 +1,20 @@
-import { Worker, Job } from "bullmq";
+import { type Job, Worker } from "bullmq";
 import { connection, QUEUE_NAME } from "../config.js";
 import priceCheckJob from "../jobs/priceCheck.js";
-import { sendDigestJob, onDigestFlowComplete } from '../jobs/sendDigest.js';
+import { onDigestFlowComplete, sendDigestJob } from "../jobs/sendDigest.js";
 
 // Job processor function
 async function processJob(job: Job) {
   switch (job.name) {
-    case 'check-price':
+    case "check-price":
       return await priceCheckJob(job);
 
-    case 'send-digest':
-    case 'send-digest-scheduled':
+    case "send-digest":
+    case "send-digest-scheduled":
       // Both manual and scheduled digest jobs use the same handler
       return await sendDigestJob(job);
 
-    case 'send-digest-flow':
+    case "send-digest-flow":
       // This is the parent job created by FlowProducer
       // When it completes (all children done), trigger callback
       return await onDigestFlowComplete(job);

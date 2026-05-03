@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { serializeHistoryForApi } from "@/stores/chat/chat-history";
-import type {
-  AssistantMessage,
-  DisplayedMessage,
-  UserMessage,
-} from "@/stores/chat/types";
+import type { AssistantMessage, DisplayedMessage, UserMessage } from "@/stores/chat/types";
 
 function user(text: string): UserMessage {
   return { id: `u-${text}`, role: "user", text };
@@ -35,10 +31,7 @@ describe("serializeHistoryForApi (FR-004a)", () => {
   });
 
   it("emits a complete user+assistant pair as UIMessages", () => {
-    const messages: DisplayedMessage[] = [
-      user("hello"),
-      assistant("complete", "hi there"),
-    ];
+    const messages: DisplayedMessage[] = [user("hello"), assistant("complete", "hi there")];
     expect(serializeHistoryForApi(messages)).toEqual([
       { id: "u-hello", role: "user", parts: [{ type: "text", text: "hello" }] },
       {
@@ -128,20 +121,13 @@ describe("serializeHistoryForApi (FR-004a)", () => {
       user("first"),
       assistant("complete", "response 1"),
       user("second"),
-      assistant("stopped", "partial response", [
-        { id: "call-9", toolName: "search_products", status: "stopped" },
-      ]),
+      assistant("stopped", "partial response", [{ id: "call-9", toolName: "search_products", status: "stopped" }]),
       user("third"),
     ];
 
     const serialized = serializeHistoryForApi(messages);
     const ordered = serialized.map((m) => `${m.role}:${m.id}`);
-    expect(ordered).toEqual([
-      "user:u-first",
-      "assistant:a-response 1-complete",
-      "user:u-second",
-      "user:u-third",
-    ]);
+    expect(ordered).toEqual(["user:u-first", "assistant:a-response 1-complete", "user:u-second", "user:u-third"]);
   });
 
   it("drops errored assistant turns and their tool events", () => {
@@ -153,17 +139,11 @@ describe("serializeHistoryForApi (FR-004a)", () => {
       user("retry"),
     ];
 
-    expect(serializeHistoryForApi(messages).map((m) => m.role)).toEqual([
-      "user",
-      "user",
-    ]);
+    expect(serializeHistoryForApi(messages).map((m) => m.role)).toEqual(["user", "user"]);
   });
 
   it("drops streaming assistant turns (still in flight)", () => {
-    const messages: DisplayedMessage[] = [
-      user("hi"),
-      assistant("streaming", "thi"),
-    ];
+    const messages: DisplayedMessage[] = [user("hi"), assistant("streaming", "thi")];
 
     expect(serializeHistoryForApi(messages).map((m) => m.role)).toEqual(["user"]);
   });
@@ -193,9 +173,7 @@ describe("serializeHistoryForApi (FR-004a)", () => {
   it("emits an assistant message with only tool parts when the text is empty", () => {
     const messages: DisplayedMessage[] = [
       user("ping"),
-      assistant("complete", "", [
-        { id: "t1", toolName: "search_products", status: "completed", result: null },
-      ]),
+      assistant("complete", "", [{ id: "t1", toolName: "search_products", status: "completed", result: null }]),
     ];
 
     const serialized = serializeHistoryForApi(messages);
@@ -219,15 +197,10 @@ describe("serializeHistoryForApi (FR-004a)", () => {
   it("drops an assistant turn whose only tool events are running/stopped (no useful parts)", () => {
     const messages: DisplayedMessage[] = [
       user("hi"),
-      assistant("complete", "", [
-        { id: "t1", toolName: "search_products", status: "stopped" },
-      ]),
+      assistant("complete", "", [{ id: "t1", toolName: "search_products", status: "stopped" }]),
       user("again"),
     ];
     // Empty-parts assistant is dropped to keep the model from seeing a no-op turn.
-    expect(serializeHistoryForApi(messages).map((m) => m.role)).toEqual([
-      "user",
-      "user",
-    ]);
+    expect(serializeHistoryForApi(messages).map((m) => m.role)).toEqual(["user", "user"]);
   });
 });

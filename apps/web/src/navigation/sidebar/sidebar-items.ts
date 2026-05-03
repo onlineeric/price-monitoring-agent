@@ -1,4 +1,4 @@
-import { LayoutDashboard, Mail, MessageSquare, type LucideIcon, Package, Settings } from "lucide-react";
+import { LayoutDashboard, type LucideIcon, Mail, MessageSquare, Package, Settings } from "lucide-react";
 
 export interface NavSubItem {
   title: string;

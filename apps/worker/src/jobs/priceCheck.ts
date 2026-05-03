@@ -1,13 +1,13 @@
 import type { Job } from "bullmq";
-import { scrapeProduct, type ScraperResult } from "../services/scraper.js";
 import {
-  savePriceRecord,
-  updateProductTimestamp,
-  updateProductFailure,
-  logRun,
-  getProductById,
   getOrCreateProductByUrl,
+  getProductById,
+  logRun,
+  savePriceRecord,
+  updateProductFailure,
+  updateProductTimestamp,
 } from "../services/database.js";
+import { type ScraperResult, scrapeProduct } from "../services/scraper.js";
 
 /**
  * Job data interface for price check jobs
@@ -21,9 +21,7 @@ interface PriceCheckJobData {
 /**
  * Job result type
  */
-type PriceCheckResult =
-  | ScraperResult
-  | { status: "skipped"; reason: string };
+type PriceCheckResult = ScraperResult | { status: "skipped"; reason: string };
 
 /**
  * Format error message for logging
@@ -39,7 +37,7 @@ function formatErrorMessage(error: unknown): string {
 async function resolveTargetUrl(
   url: string | undefined,
   productId: string | undefined,
-  jobId: string
+  jobId: string,
 ): Promise<string | null> {
   // Modern approach: URL is directly provided
   if (url) {
@@ -70,7 +68,7 @@ async function savePriceData(
   price: number,
   currency: string,
   imageUrl: string | null,
-  jobId: string
+  jobId: string,
 ): Promise<string | null> {
   try {
     const productName = title || "Unknown Product";
@@ -100,9 +98,7 @@ async function savePriceData(
  * Scrapes product URL and saves price data to database
  * Products are automatically looked up by URL or created if they don't exist
  */
-export default async function priceCheckJob(
-  job: Job<PriceCheckJobData>
-): Promise<PriceCheckResult> {
+export default async function priceCheckJob(job: Job<PriceCheckJobData>): Promise<PriceCheckResult> {
   const { url, productId } = job.data;
   const jobId = String(job.id);
 
@@ -132,7 +128,7 @@ export default async function priceCheckJob(
       await logRun({
         productId,
         status: "FAILED",
-        errorMessage: result.error || "Scrape failed"
+        errorMessage: result.error || "Scrape failed",
       });
     }
 
@@ -150,7 +146,7 @@ export default async function priceCheckJob(
         await logRun({
           productId,
           status: "FAILED",
-          errorMessage
+          errorMessage,
         });
       } catch (err) {
         console.warn(`[${jobId}] Failed to log failure:`, err);
@@ -176,7 +172,7 @@ export default async function priceCheckJob(
         await logRun({
           productId,
           status: "FAILED",
-          errorMessage
+          errorMessage,
         });
       } catch (err) {
         console.warn(`[${jobId}] Failed to log failure:`, err);
@@ -196,7 +192,7 @@ export default async function priceCheckJob(
       result.data.price,
       result.data.currency,
       result.data.imageUrl,
-      jobId
+      jobId,
     );
   } catch (dbError) {
     const errorMessage = formatErrorMessage(dbError);
@@ -209,7 +205,7 @@ export default async function priceCheckJob(
         await logRun({
           productId,
           status: "FAILED",
-          errorMessage: `Database error: ${errorMessage}`
+          errorMessage: `Database error: ${errorMessage}`,
         });
       } catch (err) {
         console.warn(`[${jobId}] Failed to log failure:`, err);

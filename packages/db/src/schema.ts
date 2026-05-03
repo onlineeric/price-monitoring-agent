@@ -1,61 +1,54 @@
-import {
-  pgTable,
-  uuid,
-  text,
-  boolean,
-  integer,
-  timestamp,
-} from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations } from "drizzle-orm";
+import { boolean, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // Products table
-export const products = pgTable('products', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  url: text('url').notNull().unique(),
-  name: text('name'), // Nullable - will be filled by scraper if not provided
-  imageUrl: text('image_url'),
-  active: boolean('active').default(true),
-  lastSuccessAt: timestamp('last_success_at'),
-  lastFailedAt: timestamp('last_failed_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+export const products = pgTable("products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  url: text("url").notNull().unique(),
+  name: text("name"), // Nullable - will be filled by scraper if not provided
+  imageUrl: text("image_url"),
+  active: boolean("active").default(true),
+  lastSuccessAt: timestamp("last_success_at"),
+  lastFailedAt: timestamp("last_failed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Price records table
-export const priceRecords = pgTable('price_records', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  productId: uuid('product_id')
+export const priceRecords = pgTable("price_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id")
     .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  price: integer('price').notNull(),
-  currency: text('currency').default('USD'),
-  scrapedAt: timestamp('scraped_at').defaultNow(),
+    .references(() => products.id, { onDelete: "cascade" }),
+  price: integer("price").notNull(),
+  currency: text("currency").default("USD"),
+  scrapedAt: timestamp("scraped_at").defaultNow(),
 });
 
 // Run logs table
-export const runLogs = pgTable('run_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  productId: uuid('product_id').notNull(), // No FK constraint - can log for any ID
-  status: text('status').notNull(), // 'SUCCESS' | 'FAILED'
-  errorMessage: text('error_message'),
-  createdAt: timestamp('created_at').defaultNow(),
+export const runLogs = pgTable("run_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull(), // No FK constraint - can log for any ID
+  status: text("status").notNull(), // 'SUCCESS' | 'FAILED'
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Settings table - general purpose key-value store
-export const settings = pgTable('settings', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  key: text('key').notNull().unique(),
-  value: text('value').notNull(), // JSON string
-  updatedAt: timestamp('updated_at').defaultNow(),
+export const settings = pgTable("settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(), // JSON string
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Completed manual report sends ledger
-export const manualReportSends = pgTable('manual_report_sends', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  recipientCount: integer('recipient_count').notNull(),
-  previewGeneratedAt: timestamp('preview_generated_at').notNull(),
-  providerMessageId: text('provider_message_id'),
-  completedAt: timestamp('completed_at').defaultNow().notNull(),
+export const manualReportSends = pgTable("manual_report_sends", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recipientCount: integer("recipient_count").notNull(),
+  previewGeneratedAt: timestamp("preview_generated_at").notNull(),
+  providerMessageId: text("provider_message_id"),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
 });
 
 // Relations

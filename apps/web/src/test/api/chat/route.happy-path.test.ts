@@ -54,9 +54,7 @@ function fakeStreamResult(options: {
   streamTextMock.mockImplementationOnce((opts: Record<string, unknown>) => {
     onCall(opts as never);
     // Invoke onChunk for each text/tool-call chunk so the route's book-keeping fires.
-    const onChunk = opts.onChunk as
-      | ((event: { chunk: Record<string, unknown> }) => void)
-      | undefined;
+    const onChunk = opts.onChunk as ((event: { chunk: Record<string, unknown> }) => void) | undefined;
     if (onChunk) {
       for (const chunk of chunks) onChunk({ chunk });
     }
@@ -68,9 +66,7 @@ function fakeStreamResult(options: {
       },
     });
 
-    const onFinish = opts.onFinish as
-      | ((event: { finishReason: string }) => void)
-      | undefined;
+    const onFinish = opts.onFinish as ((event: { finishReason: string }) => void) | undefined;
 
     // Defer the onFinish callback until the next tick so the route reads the
     // stream before finish.
@@ -85,9 +81,7 @@ function fakeStreamResult(options: {
   });
 }
 
-async function readChunks(
-  response: Response,
-): Promise<Array<{ type: string; [k: string]: unknown }>> {
+async function readChunks(response: Response): Promise<Array<{ type: string; [k: string]: unknown }>> {
   if (!response.body) throw new Error("response.body missing");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -274,9 +268,7 @@ describe("POST /api/chat — happy path (US1)", () => {
       },
     });
 
-    const response = await POST(
-      makeRequest({ messages: [u("anything?")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("anything?")] }));
     const chunks = await readChunks(response);
     const types = chunks.map((c) => c.type);
     expect(types).toContain("text-delta");
@@ -309,9 +301,7 @@ describe("POST /api/chat — happy path (US1)", () => {
       },
     });
 
-    const response = await POST(
-      makeRequest({ messages: [u("search twice")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("search twice")] }));
     const chunks = await readChunks(response);
     const toolCalls = chunks.filter((c) => c.type === "tool-input-available");
     expect(toolCalls.length).toBeGreaterThanOrEqual(2);

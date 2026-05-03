@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GlobalProductSearchDialogProvider } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
 import { SearchDialog } from "@/app/(main)/dashboard/_components/sidebar/search-dialog";
 
 vi.mock("next/image", () => ({
+  // biome-ignore lint/performance/noImgElement: jsdom mock for next/image — Image optimization is irrelevant in tests
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img alt={props.alt} {...props} />,
 }));
 

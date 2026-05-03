@@ -1,7 +1,7 @@
+import type { Browser, Page } from "playwright";
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser, Page } from "playwright";
-import type { ScraperResult, ScraperConfig } from "../types/scraper.js";
+import type { ScraperConfig, ScraperResult } from "../types/scraper.js";
 import { parsePrice, resolveImageUrl } from "../utils/priceParser.js";
 import { aiExtract } from "./aiExtractor.js";
 
@@ -45,15 +45,7 @@ interface ExtractedData {
 
 // Resource types to block for bandwidth reduction (proxy cost optimization)
 // Safe to block: image URLs are extracted from DOM attributes, not image binaries
-const BLOCKED_RESOURCE_TYPES = [
-  "image",
-  "font",
-  "media",
-  "stylesheet",
-  "websocket",
-  "manifest",
-  "other",
-];
+const BLOCKED_RESOURCE_TYPES = ["image", "font", "media", "stylesheet", "websocket", "manifest", "other"];
 
 // Selectors for extracting product data
 const SELECTORS = {
@@ -124,10 +116,7 @@ export async function closeBrowser(): Promise<void> {
  * Wait for DOM to stabilize by monitoring HTML size changes
  * Returns when DOM size changes are below threshold for the quiet window duration
  */
-async function waitForDOMStability(
-  page: Page,
-  config: DOMStabilityConfig = DOM_STABILITY_CONFIG
-): Promise<void> {
+async function waitForDOMStability(page: Page, config: DOMStabilityConfig = DOM_STABILITY_CONFIG): Promise<void> {
   console.log(`[Playwright] Waiting for DOM stability...`);
 
   const startTime = Date.now();
@@ -144,9 +133,7 @@ async function waitForDOMStability(
         stableStartTime = Date.now();
       } else if (Date.now() - stableStartTime >= config.quietWindowMs) {
         // Stability persisted for quiet window
-        console.log(
-          `[Playwright] DOM stable after ${Date.now() - startTime}ms (size: ${currentHtmlSize} chars)`
-        );
+        console.log(`[Playwright] DOM stable after ${Date.now() - startTime}ms (size: ${currentHtmlSize} chars)`);
         return;
       }
     } else {
@@ -159,9 +146,7 @@ async function waitForDOMStability(
   }
 
   // Stability never reached within maxWaitMs, proceed anyway
-  console.log(
-    `[Playwright] DOM did not stabilize within ${config.maxWaitMs}ms, proceeding with current content`
-  );
+  console.log(`[Playwright] DOM did not stabilize within ${config.maxWaitMs}ms, proceeding with current content`);
 }
 
 /**
@@ -196,11 +181,7 @@ async function extractDataWithSelectors(page: Page): Promise<ExtractedData> {
     for (const sel of sels.image) {
       const el = document.querySelector(sel) as HTMLImageElement | null;
       if (el) {
-        imageUrl =
-          el.src ||
-          el.getAttribute("data-src") ||
-          el.getAttribute("data-old-hires") ||
-          null;
+        imageUrl = el.src || el.getAttribute("data-src") || el.getAttribute("data-old-hires") || null;
         if (imageUrl) break;
       }
     }
@@ -243,10 +224,7 @@ function hasValidData(title: string | null, price: number | null, imageUrl: stri
 /**
  * Fetch and extract product data using Playwright headless browser
  */
-export async function playwrightFetch(
-  url: string,
-  config?: ScraperConfig
-): Promise<ScraperResult> {
+export async function playwrightFetch(url: string, config?: ScraperConfig): Promise<ScraperResult> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   let page: Page | null = null;
 
@@ -279,13 +257,15 @@ export async function playwrightFetch(
       debugLog(`Response status: ${response.status()}`);
       debugLog(`Response URL (after redirects): ${response.url()}`);
       const headers = response.headers();
-      debugLog(`Response headers: ${JSON.stringify({
-        'content-type': headers['content-type'],
-        'server': headers['server'],
-        'cf-ray': headers['cf-ray'],
-        'cf-cache-status': headers['cf-cache-status'],
-        'x-frame-options': headers['x-frame-options'],
-      })}`);
+      debugLog(
+        `Response headers: ${JSON.stringify({
+          "content-type": headers["content-type"],
+          server: headers.server,
+          "cf-ray": headers["cf-ray"],
+          "cf-cache-status": headers["cf-cache-status"],
+          "x-frame-options": headers["x-frame-options"],
+        })}`,
+      );
     } else {
       debugLog(`Response is null (navigation may have failed)`);
     }
@@ -323,7 +303,9 @@ export async function playwrightFetch(
     // Extract data using selectors
     console.log(`[Playwright] Attempting selector-based extraction...`);
     const rawData = await extractDataWithSelectors(page);
-    console.log(`[Playwright] Selector results - title: ${rawData.title ? 'found' : 'null'}, priceText: ${rawData.priceText ? 'found' : 'null'}, imageUrl: ${rawData.imageUrl ? 'found' : 'null'}`);
+    console.log(
+      `[Playwright] Selector results - title: ${rawData.title ? "found" : "null"}, priceText: ${rawData.priceText ? "found" : "null"}, imageUrl: ${rawData.imageUrl ? "found" : "null"}`,
+    );
 
     // Parse price from extracted text
     let price: number | null = null;

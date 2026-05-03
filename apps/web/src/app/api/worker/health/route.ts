@@ -13,10 +13,7 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json(
-        { status: "error", version: null, error: "Worker not responding" },
-        { status: 503 },
-      );
+      return NextResponse.json({ status: "error", version: null, error: "Worker not responding" }, { status: 503 });
     }
 
     const data = await response.json();

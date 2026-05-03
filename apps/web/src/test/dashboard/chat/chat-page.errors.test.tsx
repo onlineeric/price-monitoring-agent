@@ -6,16 +6,12 @@ import { useChatStore } from "@/stores/chat/chat-store";
 import { consumeChatStream } from "@/stores/chat/chat-stream";
 import type { AssistantMessage, ChatErrorCode } from "@/stores/chat/types";
 
-function makeUiMessageStreamResponse(
-  chunks: Array<Record<string, unknown>>,
-): Response {
+function makeUiMessageStreamResponse(chunks: Array<Record<string, unknown>>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
       }
       controller.close();
     },
@@ -26,11 +22,7 @@ function makeUiMessageStreamResponse(
   });
 }
 
-function makePreStreamErrorResponse(
-  status: number,
-  code: ChatErrorCode,
-  message: string,
-): Response {
+function makePreStreamErrorResponse(status: number, code: ChatErrorCode, message: string): Response {
   return new Response(JSON.stringify({ error: { code, message } }), {
     status,
     headers: { "content-type": "application/json" },
@@ -69,9 +61,7 @@ describe("Chat page — errors (US3)", () => {
 
     for (const { code, status, retryable } of cases) {
       it(`${code} → block visible, retry ${retryable ? "shown" : "hidden"}`, async () => {
-        globalThis.fetch = vi
-          .fn()
-          .mockResolvedValue(makePreStreamErrorResponse(status, code, `mock ${code}`));
+        globalThis.fetch = vi.fn().mockResolvedValue(makePreStreamErrorResponse(status, code, `mock ${code}`));
 
         render(<ChatPageClient />);
         await useChatStore.getState().send("hello");
@@ -139,9 +129,7 @@ describe("Chat page — errors (US3)", () => {
     const consumerWaits = new Promise<void>((resolve) => {
       release = resolve;
     });
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response(new ReadableStream<Uint8Array>(), { status: 200 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(new ReadableStream<Uint8Array>(), { status: 200 }));
 
     useChatStore.setState({
       __streamConsumer: vi.fn(async () => {
@@ -153,9 +141,7 @@ describe("Chat page — errors (US3)", () => {
               next[i] = {
                 ...(next[i] as AssistantMessage),
                 text: "partial reply",
-                toolEvents: [
-                  { id: "t1", toolName: "search_products", status: "running" },
-                ],
+                toolEvents: [{ id: "t1", toolName: "search_products", status: "running" }],
               };
               break;
             }
@@ -187,9 +173,7 @@ describe("Chat page — errors (US3)", () => {
     const consumerWaits = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValue(new Response(new ReadableStream<Uint8Array>(), { status: 200 }));
+    const fetchSpy = vi.fn().mockResolvedValue(new Response(new ReadableStream<Uint8Array>(), { status: 200 }));
     globalThis.fetch = fetchSpy;
     useChatStore.setState({
       __streamConsumer: vi.fn(async () => {

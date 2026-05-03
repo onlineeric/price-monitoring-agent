@@ -5,9 +5,7 @@ import { MarkdownContent } from "@/app/(main)/dashboard/chat/_components/markdow
 
 describe("MarkdownContent — sanitization & rendering", () => {
   it("renders bullet lists", () => {
-    const { container } = render(
-      <MarkdownContent text={"- one\n- two\n- three"} />,
-    );
+    const { container } = render(<MarkdownContent text={"- one\n- two\n- three"} />);
     const items = container.querySelectorAll("li");
     expect(items).toHaveLength(3);
     expect(items[0].textContent).toContain("one");
@@ -18,18 +16,14 @@ describe("MarkdownContent — sanitization & rendering", () => {
     // Streamdown wraps emphasis in semantic styled spans/elements with a
     // `data-streamdown` marker. We assert the visible text is rendered with
     // strong-emphasis styling rather than as literal asterisks.
-    expect(container.querySelector('[data-streamdown="strong"]')?.textContent).toBe(
-      "bold",
-    );
+    expect(container.querySelector('[data-streamdown="strong"]')?.textContent).toBe("bold");
     expect(container.querySelector("em")?.textContent).toBe("italic");
     // The asterisks must not appear as literal characters.
     expect(container.textContent).not.toContain("**");
   });
 
   it("renders fenced code blocks", () => {
-    const { container } = render(
-      <MarkdownContent text={"```js\nconst x = 1;\n```"} />,
-    );
+    const { container } = render(<MarkdownContent text={"```js\nconst x = 1;\n```"} />);
     const code = container.querySelector("code");
     expect(code).not.toBeNull();
     expect(code?.textContent).toContain("const x = 1;");
@@ -54,16 +48,12 @@ describe("MarkdownContent — sanitization & rendering", () => {
   });
 
   it("does not render <script> tags from raw HTML in input", () => {
-    const { container } = render(
-      <MarkdownContent text={"hello <script>alert(1)</script> there"} />,
-    );
+    const { container } = render(<MarkdownContent text={"hello <script>alert(1)</script> there"} />);
     expect(container.querySelector("script")).toBeNull();
   });
 
   it("strips javascript: URLs from links (renders inert href)", () => {
-    const { container } = render(
-      <MarkdownContent text={"[click me](javascript:alert(1))"} />,
-    );
+    const { container } = render(<MarkdownContent text={"[click me](javascript:alert(1))"} />);
     const link = container.querySelector("a");
     if (link) {
       const href = link.getAttribute("href") ?? "";
@@ -73,16 +63,12 @@ describe("MarkdownContent — sanitization & rendering", () => {
   });
 
   it("does not render <iframe> from raw HTML", () => {
-    const { container } = render(
-      <MarkdownContent text={"x <iframe src=\"https://evil.com\"></iframe> y"} />,
-    );
+    const { container } = render(<MarkdownContent text={'x <iframe src="https://evil.com"></iframe> y'} />);
     expect(container.querySelector("iframe")).toBeNull();
   });
 
   it("passes plain text through unchanged", () => {
     render(<MarkdownContent text={"just plain prose with no formatting"} />);
-    expect(
-      screen.getByText("just plain prose with no formatting"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("just plain prose with no formatting")).toBeInTheDocument();
   });
 });

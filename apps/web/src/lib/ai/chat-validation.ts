@@ -20,21 +20,14 @@
 
 import { z } from "zod";
 
-import {
-  CHAT_CONVERSATION_ID_MAX,
-  CHAT_MAX_MESSAGES,
-  CHAT_MAX_MESSAGE_CHARS,
-} from "./chat-config";
+import { CHAT_CONVERSATION_ID_MAX, CHAT_MAX_MESSAGE_CHARS, CHAT_MAX_MESSAGES } from "./chat-config";
 
 const RoleSchema = z.enum(["user", "assistant"]);
 
 const TextPartSchema = z
   .object({
     type: z.literal("text"),
-    text: z
-      .string()
-      .min(1, "content_empty")
-      .max(CHAT_MAX_MESSAGE_CHARS, "content_too_long"),
+    text: z.string().min(1, "content_empty").max(CHAT_MAX_MESSAGE_CHARS, "content_too_long"),
   })
   .passthrough();
 
@@ -66,9 +59,7 @@ const DynamicToolPartFailedSchema = z
   })
   .passthrough();
 
-const StepStartPartSchema = z
-  .object({ type: z.literal("step-start") })
-  .passthrough();
+const StepStartPartSchema = z.object({ type: z.literal("step-start") }).passthrough();
 
 const UIMessagePartSchema = z.union([
   TextPartSchema,
@@ -87,14 +78,8 @@ const UIMessageSchema = z
 
 export const ChatRequestSchema = z
   .object({
-    messages: z
-      .array(UIMessageSchema)
-      .min(1, "empty")
-      .max(CHAT_MAX_MESSAGES, "too_many_messages"),
-    conversationId: z
-      .string()
-      .max(CHAT_CONVERSATION_ID_MAX, "conversation_id_invalid")
-      .optional(),
+    messages: z.array(UIMessageSchema).min(1, "empty").max(CHAT_MAX_MESSAGES, "too_many_messages"),
+    conversationId: z.string().max(CHAT_CONVERSATION_ID_MAX, "conversation_id_invalid").optional(),
   })
   .strict();
 

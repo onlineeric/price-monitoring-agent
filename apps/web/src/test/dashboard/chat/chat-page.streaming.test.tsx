@@ -9,16 +9,12 @@ import type { AssistantMessage } from "@/stores/chat/types";
  * Each chunk becomes `data: <json>\n\n`. The terminal blank line is
  * appended automatically.
  */
-function makeUiMessageStreamResponse(
-  chunks: Array<Record<string, unknown>>,
-): Response {
+function makeUiMessageStreamResponse(chunks: Array<Record<string, unknown>>): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const chunk of chunks) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
       }
       controller.close();
     },
@@ -53,18 +49,20 @@ afterEach(() => {
 
 describe("Chat page — streaming (US1)", () => {
   it("appends text-delta chunks incrementally to the assistant bubble", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      makeUiMessageStreamResponse([
-        { type: "start", messageId: "m1" },
-        { type: "start-step" },
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "Hello" },
-        { type: "text-delta", id: "t1", delta: " there" },
-        { type: "text-end", id: "t1" },
-        { type: "finish-step" },
-        { type: "finish" },
-      ]),
-    );
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        makeUiMessageStreamResponse([
+          { type: "start", messageId: "m1" },
+          { type: "start-step" },
+          { type: "text-start", id: "t1" },
+          { type: "text-delta", id: "t1", delta: "Hello" },
+          { type: "text-delta", id: "t1", delta: " there" },
+          { type: "text-end", id: "t1" },
+          { type: "finish-step" },
+          { type: "finish" },
+        ]),
+      );
 
     await useChatStore.getState().send("hi");
 
@@ -99,30 +97,28 @@ describe("Chat page — streaming (US1)", () => {
     await useChatStore.getState().send("follow-up");
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    const secondBody = JSON.parse(
-      (fetchSpy.mock.calls[1][1] as { body: string }).body,
-    );
+    const secondBody = JSON.parse((fetchSpy.mock.calls[1][1] as { body: string }).body);
     expect(secondBody.messages).toMatchObject([
       { role: "user", parts: [{ type: "text", text: "first question" }] },
       { role: "assistant", parts: [{ type: "text", text: "First answer." }] },
       { role: "user", parts: [{ type: "text", text: "follow-up" }] },
     ]);
     // Same conversationId on both requests.
-    const firstBody = JSON.parse(
-      (fetchSpy.mock.calls[0][1] as { body: string }).body,
-    );
+    const firstBody = JSON.parse((fetchSpy.mock.calls[0][1] as { body: string }).body);
     expect(secondBody.conversationId).toBe(firstBody.conversationId);
   });
 
   it("renders streamed markdown deltas through MarkdownContent", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      makeUiMessageStreamResponse([
-        { type: "start" },
-        { type: "text-delta", id: "t1", delta: "**bold** and " },
-        { type: "text-delta", id: "t1", delta: "_italic_" },
-        { type: "finish" },
-      ]),
-    );
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        makeUiMessageStreamResponse([
+          { type: "start" },
+          { type: "text-delta", id: "t1", delta: "**bold** and " },
+          { type: "text-delta", id: "t1", delta: "_italic_" },
+          { type: "finish" },
+        ]),
+      );
 
     await useChatStore.getState().send("test");
     const last = useChatStore.getState().messages[1] as AssistantMessage;

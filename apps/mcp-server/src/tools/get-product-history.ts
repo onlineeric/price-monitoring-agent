@@ -1,19 +1,13 @@
-import { z } from "zod";
-import { db, priceRecords } from "@price-monitor/db";
-import { eq, gte, and, desc } from "drizzle-orm";
-import { subDays } from "date-fns";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { db, priceRecords } from "@price-monitor/db";
+import { subDays } from "date-fns";
+import { and, desc, eq, gte } from "drizzle-orm";
+import { z } from "zod";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
   productId: z.string().uuid().describe("The product ID to retrieve price history for"),
-  days: z
-    .number()
-    .int()
-    .min(1)
-    .max(365)
-    .optional()
-    .describe("Number of past days to include (default 30, max 365)"),
+  days: z.number().int().min(1).max(365).optional().describe("Number of past days to include (default 30, max 365)"),
 });
 
 const DEFAULT_DAYS = 30;

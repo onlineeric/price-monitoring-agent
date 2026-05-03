@@ -80,19 +80,17 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
 
     // Each turn receives its own payload; the callToolMock resolves based on
     // the `q` argument so the two concurrent turns get distinct results.
-    callToolMock.mockImplementation(
-      async ({ arguments: args }: { arguments: Record<string, unknown> }) => {
-        await new Promise((r) => setTimeout(r, 10));
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ q: args.q, rows: [`row-for-${String(args.q)}`] }),
-            },
-          ],
-        };
-      },
-    );
+    callToolMock.mockImplementation(async ({ arguments: args }: { arguments: Record<string, unknown> }) => {
+      await new Promise((r) => setTimeout(r, 10));
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ q: args.q, rows: [`row-for-${String(args.q)}`] }),
+          },
+        ],
+      };
+    });
 
     const capturedExecutes: Array<{
       turnMarker: string;
@@ -119,17 +117,12 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
           : Array.isArray(rawContent)
             ? (rawContent.find(
                 (p): p is { type: string; text: string } =>
-                  typeof p === "object" &&
-                  p !== null &&
-                  (p as { type?: unknown }).type === "text",
+                  typeof p === "object" && p !== null && (p as { type?: unknown }).type === "text",
               )?.text ?? "?")
             : "?";
       const toolCallId = `call-${userMessage.replace(/\s+/g, "-")}`;
       const pending = tools.search_products
-        .execute(
-          { q: userMessage.split(" ").pop() ?? "?" },
-          { toolCallId },
-        )
+        .execute({ q: userMessage.split(" ").pop() ?? "?" }, { toolCallId })
         .then((result) => {
           capturedExecutes.push({ turnMarker: userMessage, toolCallId, result });
         });
@@ -186,12 +179,8 @@ describe("POST /api/chat — concurrent turns (FR-013)", () => {
     const turnMarkers = capturedExecutes.map((e) => e.turnMarker).sort();
     expect(turnMarkers).toEqual(["search keyboards", "search monitors"]);
 
-    const foundA = capturedExecutes.find(
-      (e) => e.turnMarker === "search monitors",
-    );
-    const foundB = capturedExecutes.find(
-      (e) => e.turnMarker === "search keyboards",
-    );
+    const foundA = capturedExecutes.find((e) => e.turnMarker === "search monitors");
+    const foundB = capturedExecutes.find((e) => e.turnMarker === "search keyboards");
     if (!foundA || !foundB) throw new Error("expected both tool calls captured");
     const resultA = foundA.result as { content: Array<{ text: string }> };
     const resultB = foundB.result as { content: Array<{ text: string }> };

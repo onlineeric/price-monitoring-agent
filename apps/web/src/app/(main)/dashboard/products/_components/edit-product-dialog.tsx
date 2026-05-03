@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
-import type { ProductWithStats } from "./products-view";
 import { SharedEditProductDialog } from "./edit-product/shared-edit-product-dialog";
+import type { ProductWithStats } from "./products-view";
 
 interface EditProductDialogProps {
   product: ProductWithStats;

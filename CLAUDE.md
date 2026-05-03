@@ -59,11 +59,14 @@ scripts/       # Utility scripts
 pnpm docker:up                            # Start PostgreSQL + Redis
 pnpm --filter @price-monitor/web dev      # Next.js dev server (port 3000)
 pnpm dev:worker                           # Dev worker (auto-manages Docker worker)
-pnpm lint                                 # Biome lint
+pnpm lint                                 # Biome lint over every workspace + scripts
+pnpm lint:fix                             # apply Biome safe + unsafe fixes (review the diff)
 
-# Tests (web app)
-pnpm --filter @price-monitor/web test     # Run all Vitest tests
-pnpm --filter @price-monitor/web test -- --reporter=verbose  # Verbose output
+# Tests (all workspaces — runs Vitest in web, worker, mcp-server, db, reporting)
+pnpm test                                 # Run every workspace's test script (Vitest)
+pnpm --filter @price-monitor/web test     # Web tests only
+pnpm --filter @price-monitor/worker test  # Worker tests only
+pnpm --filter @price-monitor/mcp-server test  # MCP server tests only
 
 # Database
 pnpm --filter @price-monitor/db push      # Push schema to DB
@@ -142,6 +145,43 @@ Global product search is implemented as a dialog provider in `_components/produc
 - **Domain guardrail** — `CHAT_SYSTEM_PROMPT` restricts the agent to product / price / monitor topics.
 
 ---
+
+## Lint & Tests
+
+**Lint** is Biome, configured at the repo root (`biome.json`). The web workspace
+keeps its own `apps/web/biome.json` (marked `"root": false`) for React/Next/
+Tailwind-specific rules; Biome auto-picks the nested config for files under
+`apps/web/`. Running `pnpm lint` from the root walks the whole monorepo
+(workspaces, packages, scripts).
+
+- `pnpm lint` — read-only check; CI-equivalent gate.
+- `pnpm lint:fix` — applies Biome's safe + unsafe autofixes. **Always review
+  the diff** — unsafe fixes can drop write-only fields (e.g. private class
+  members assigned but never read) and rewrite `isNaN` to `Number.isNaN`.
+
+**Tests** run with Vitest in every workspace that ships code. There is no CI
+pipeline for tests — they are a local pre-commit gate. The contract is:
+
+- Tests live next to the file they cover: `src/foo/bar.ts` →
+  `src/foo/bar.test.ts` (or `.test.tsx` for React components). Web has a
+  parallel `src/test/` tree for dashboard-page / API-route tests that need
+  cross-cutting setup.
+- Each workspace has its own `vitest.config.ts`; `passWithNoTests: true` is
+  set on the package configs so the root `pnpm test` doesn't fail an empty
+  package.
+- Shared web jsdom setup (matchMedia, ResizeObserver, IntersectionObserver
+  mocks) lives in `apps/web/src/test/setup.ts`.
+
+**Workflow rule for contributors and AI agents:**
+
+> When you change application code, add or update the colocated test file
+> in the same change, and run `pnpm test` (and `pnpm lint`) before opening a
+> PR. Tests are the only mechanism we have to keep refactors and AI-assisted
+> edits from regressing existing behavior.
+
+If a test file you touch needs a backend (Postgres/Redis/Resend), mock it at
+the module boundary — see `apps/worker/src/jobs/priceCheck.test.ts` and
+`apps/mcp-server/src/tools/*.test.ts` for the chainable-Drizzle mock pattern.
 
 ## Spec-Driven Development (SDD with Speckit)
 

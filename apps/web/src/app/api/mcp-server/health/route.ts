@@ -17,10 +17,7 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json(
-        { status: "error", version: null, error: "MCP server not responding" },
-        { status: 503 },
-      );
+      return NextResponse.json({ status: "error", version: null, error: "MCP server not responding" }, { status: 503 });
     }
 
     const data = await response.json();
@@ -33,10 +30,7 @@ export async function GET() {
           : error.message
         : "Failed to connect to MCP server";
 
-    return NextResponse.json(
-      { status: "error", version: null, error: message },
-      { status: 503 },
-    );
+    return NextResponse.json({ status: "error", version: null, error: message }, { status: 503 });
   } finally {
     clearTimeout(timeout);
   }

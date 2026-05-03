@@ -1,14 +1,11 @@
-import { z } from "zod";
-import { db, products, eq } from "@price-monitor/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { db, eq, products } from "@price-monitor/db";
+import { z } from "zod";
 import { getPriceQueue } from "../queue.js";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .describe("Product page URL to start monitoring (http/https)"),
+  url: z.string().url().describe("Product page URL to start monitoring (http/https)"),
 });
 
 const JOB_NAME = "check-price";

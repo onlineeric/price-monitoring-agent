@@ -17,22 +17,23 @@
  */
 
 import { NextResponse } from "next/server";
+
 import {
   convertToModelMessages,
-  createUIMessageStreamResponse,
   createUIMessageStream,
-  streamText,
+  createUIMessageStreamResponse,
   stepCountIs,
+  streamText,
   type UIMessage,
 } from "ai";
 
 import {
+  buildMcpTools,
   CHAT_MAX_STEPS,
   CHAT_SYSTEM_PROMPT,
   CHAT_TURN_TIMEOUT_MS,
   ChatProviderConfigError,
   ChatRequestSchema,
-  buildMcpTools,
   createChatLogger,
   describeValidationError,
   emitChatError,
@@ -43,11 +44,7 @@ import {
 
 export const runtime = "nodejs";
 
-function jsonError(
-  status: number,
-  code: Parameters<typeof makeChatError>[0],
-  message: string,
-): Response {
+function jsonError(status: number, code: Parameters<typeof makeChatError>[0], message: string): Response {
   return NextResponse.json(makeChatError(code, message), { status });
 }
 
@@ -96,11 +93,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.providerError({ message: `mcp_unreachable: ${message}` });
-    return jsonError(
-      502,
-      "mcp_unreachable",
-      "Upstream MCP server is unreachable.",
-    );
+    return jsonError(502, "mcp_unreachable", "Upstream MCP server is unreachable.");
   }
 
   logger.turnReceived({
@@ -133,10 +126,10 @@ export async function POST(request: Request) {
   // `ignoreIncompleteToolCalls` is a safety net — the client already drops
   // stopped/errored partial turns (FR-004a) so this should never fire in
   // practice.
-  const modelMessages = await convertToModelMessages(
-    parsed.data.messages as UIMessage[],
-    { tools, ignoreIncompleteToolCalls: true },
-  );
+  const modelMessages = await convertToModelMessages(parsed.data.messages as UIMessage[], {
+    tools,
+    ignoreIncompleteToolCalls: true,
+  });
 
   const result = streamText({
     model: getChatModel(resolved),
@@ -151,8 +144,7 @@ export async function POST(request: Request) {
     },
     onAbort() {
       // `onAbort` fires for any abort; map the reason back to the right log.
-      const reason =
-        (turnAbort.signal.reason as Error | undefined)?.message ?? "unknown";
+      const reason = (turnAbort.signal.reason as Error | undefined)?.message ?? "unknown";
       if (reason === "turn_timeout") {
         logger.turnTimeout({ elapsedMs: Date.now() - startedAt });
       } else {
@@ -190,8 +182,7 @@ export async function POST(request: Request) {
         const finishReason = await result.finishReason;
 
         if (turnAbort.signal.aborted) {
-          const reason =
-            (turnAbort.signal.reason as Error | undefined)?.message ?? "";
+          const reason = (turnAbort.signal.reason as Error | undefined)?.message ?? "";
           if (reason === "turn_timeout") {
             emitChatError(writer, "turn_timeout", "Turn exceeded 60s timeout.");
           }
@@ -201,21 +192,13 @@ export async function POST(request: Request) {
 
         if (finishReason === "tool-calls") {
           logger.budgetExceeded({ steps: CHAT_MAX_STEPS });
-          emitChatError(
-            writer,
-            "step_budget_exceeded",
-            `Model exceeded the ${CHAT_MAX_STEPS}-step tool budget.`,
-          );
+          emitChatError(writer, "step_budget_exceeded", `Model exceeded the ${CHAT_MAX_STEPS}-step tool budget.`);
           return;
         }
 
         if (!sawTextDelta && !sawToolCall) {
           logger.emptyResponse();
-          emitChatError(
-            writer,
-            "empty_response",
-            "Model produced no text and no tool call.",
-          );
+          emitChatError(writer, "empty_response", "Model produced no text and no tool call.");
           return;
         }
       } finally {

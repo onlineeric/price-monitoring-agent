@@ -39,9 +39,7 @@ export class ChatProviderConfigError extends Error {
   public readonly provider: ChatProvider;
 
   constructor(provider: ChatProvider, envVar: string) {
-    super(
-      `Missing ${envVar} environment variable for AI_PROVIDER="${provider}".`,
-    );
+    super(`Missing ${envVar} environment variable for AI_PROVIDER="${provider}".`);
     this.name = "ChatProviderConfigError";
     this.provider = provider;
     this.envVar = envVar;

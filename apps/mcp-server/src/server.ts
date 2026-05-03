@@ -2,11 +2,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import { ToolError, withErrorHandling } from "./tools/_wrap.js";
 import { registerAddProduct } from "./tools/add-product.js";
 import { registerGetPriceSummary } from "./tools/get-price-summary.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
 import { registerSearchProducts } from "./tools/search-products.js";
-import { ToolError, withErrorHandling } from "./tools/_wrap.js";
 
 /**
  * Construct the MCP server with the canonical tool set. Both transports
@@ -83,8 +83,7 @@ export function createServer(): McpServer {
       "throw_test",
       {
         title: "Throw Test",
-        description:
-          "Test-only: always throws a ToolError. Registered only when MCP_TEST_TOOLS=1.",
+        description: "Test-only: always throws a ToolError. Registered only when MCP_TEST_TOOLS=1.",
         inputSchema: z.object({}),
       },
       withErrorHandling("throw_test", async () => {

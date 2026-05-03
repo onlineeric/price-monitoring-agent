@@ -10,10 +10,7 @@ export class ToolError extends Error {
   }
 }
 
-export function withErrorHandling<Args>(
-  toolName: string,
-  handler: (args: Args) => Promise<CallToolResult>,
-) {
+export function withErrorHandling<Args>(toolName: string, handler: (args: Args) => Promise<CallToolResult>) {
   return async (args: Args): Promise<CallToolResult> => {
     try {
       return await handler(args);

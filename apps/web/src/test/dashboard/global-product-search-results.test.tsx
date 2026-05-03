@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { ProductSearchResultItem } from "@/app/(main)/dashboard/_components/product-search/product-search-result-item";
 import { Command, CommandList } from "@/components/ui/command";
 
 vi.mock("next/image", () => ({
+  // biome-ignore lint/performance/noImgElement: jsdom mock for next/image — Image optimization is irrelevant in tests
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img alt={props.alt} {...props} />,
 }));
 

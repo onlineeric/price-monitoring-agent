@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, startTransition, useContext, useRef, useState, type PropsWithChildren } from "react";
+import { createContext, type PropsWithChildren, startTransition, useContext, useRef, useState } from "react";
+
 import { usePathname, useRouter } from "next/navigation";
 
 import { SharedEditProductDialog } from "@/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog";
 
-import { useGlobalProductSearch } from "./use-global-product-search";
 import type { ProductSearchResult } from "./product-search-model";
+import { useGlobalProductSearch } from "./use-global-product-search";
 
 export type GlobalProductSearchDialogSource =
   | "header-search-button"

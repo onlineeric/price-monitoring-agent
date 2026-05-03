@@ -1,11 +1,11 @@
 import { Queue } from "bullmq";
-import worker from "./queue/worker.js";
-import { closeBrowser } from "./services/scraper.js";
-import { closeFlowProducer } from "./jobs/sendDigest.js";
 import { connection, QUEUE_NAME } from "./config.js";
+import { closeFlowProducer } from "./jobs/sendDigest.js";
+import worker from "./queue/worker.js";
 import { DigestScheduler } from "./scheduler.js";
-import { validateAndExit } from "./utils/validateEnv.js";
 import { startServer, stopServer } from "./server.js";
+import { closeBrowser } from "./services/scraper.js";
+import { validateAndExit } from "./utils/validateEnv.js";
 
 // ===================================
 // Worker Startup

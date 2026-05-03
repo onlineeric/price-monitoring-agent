@@ -3,8 +3,8 @@ import * as React from "react";
 
 import { AlertCircle, LoaderCircle, Search } from "lucide-react";
 
-import { ProductSearchResultItem } from "@/app/(main)/dashboard/_components/product-search/product-search-result-item";
 import { useGlobalProductSearchDialog } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
+import { ProductSearchResultItem } from "@/app/(main)/dashboard/_components/product-search/product-search-result-item";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,

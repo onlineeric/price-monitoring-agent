@@ -1,7 +1,7 @@
-import { z } from "zod";
-import { db, products, priceRecords } from "@price-monitor/db";
-import { ilike, desc, eq } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { db, priceRecords, products } from "@price-monitor/db";
+import { desc, ilike } from "drizzle-orm";
+import { z } from "zod";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
@@ -15,8 +15,7 @@ export function registerSearchProducts(server: McpServer) {
     "search_products",
     {
       title: "Search Products",
-      description:
-        "Search for monitored products by name. Returns matching products with their current price.",
+      description: "Search for monitored products by name. Returns matching products with their current price.",
       inputSchema,
     },
     withErrorHandling("search_products", async ({ query }) => {

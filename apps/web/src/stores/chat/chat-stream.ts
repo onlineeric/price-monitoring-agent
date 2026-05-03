@@ -228,11 +228,7 @@ function extractToolErrorEnvelope(output: unknown): ToolErrorEnvelope | undefine
 
 function matchErrorEnvelope(candidate: unknown): ToolErrorEnvelope | undefined {
   if (!candidate || typeof candidate !== "object") return undefined;
-  if (
-    "error" in candidate &&
-    candidate.error &&
-    typeof candidate.error === "object"
-  ) {
+  if ("error" in candidate && candidate.error && typeof candidate.error === "object") {
     const err = candidate.error as { code?: unknown; message?: unknown };
     if (typeof err.code === "string" && typeof err.message === "string") {
       return { code: err.code, message: err.message };

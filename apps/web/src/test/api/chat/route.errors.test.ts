@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { callToolMock, listMcpToolsMock, streamTextMock, getMcpClientMock } =
-  vi.hoisted(() => ({
-    callToolMock: vi.fn(),
-    listMcpToolsMock: vi.fn(),
-    streamTextMock: vi.fn(),
-    getMcpClientMock: vi.fn(),
-  }));
+const { callToolMock, listMcpToolsMock, streamTextMock, getMcpClientMock } = vi.hoisted(() => ({
+  callToolMock: vi.fn(),
+  listMcpToolsMock: vi.fn(),
+  streamTextMock: vi.fn(),
+  getMcpClientMock: vi.fn(),
+}));
 
 vi.mock("@/lib/mcp", () => ({
   getMcpClient: getMcpClientMock,
@@ -29,7 +28,7 @@ vi.mock("ai", async () => {
 });
 
 import { POST } from "@/app/api/chat/route";
-import { CHAT_MAX_MESSAGES, CHAT_MAX_MESSAGE_CHARS } from "@/lib/ai/chat-config";
+import { CHAT_MAX_MESSAGE_CHARS, CHAT_MAX_MESSAGES } from "@/lib/ai/chat-config";
 
 function makeRequest(body: Record<string, unknown>, init?: RequestInit): Request {
   return new Request("http://localhost/api/chat", {
@@ -48,9 +47,7 @@ function u(text: string, role: "user" | "assistant" = "user") {
   };
 }
 
-async function readChunks(
-  response: Response,
-): Promise<Array<{ type: string; [k: string]: unknown }>> {
+async function readChunks(response: Response): Promise<Array<{ type: string; [k: string]: unknown }>> {
   if (!response.body) throw new Error("response.body missing");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -84,9 +81,7 @@ function fakeStreamResult(options: {
   throwOnRun?: Error;
 }) {
   streamTextMock.mockImplementationOnce((opts: Record<string, unknown>) => {
-    const onChunk = opts.onChunk as
-      | ((event: { chunk: Record<string, unknown> }) => void)
-      | undefined;
+    const onChunk = opts.onChunk as ((event: { chunk: Record<string, unknown> }) => void) | undefined;
     if (onChunk) {
       for (const chunk of options.chunks) onChunk({ chunk });
     }
@@ -102,13 +97,9 @@ function fakeStreamResult(options: {
     });
     const finishReason = options.finishReason ?? "stop";
     const finishPromise = options.delayFinishMs
-      ? new Promise<typeof finishReason>((r) =>
-          setTimeout(() => r(finishReason), options.delayFinishMs),
-        )
+      ? new Promise<typeof finishReason>((r) => setTimeout(() => r(finishReason), options.delayFinishMs))
       : Promise.resolve(finishReason);
-    const onFinish = opts.onFinish as
-      | ((event: { finishReason: string }) => void)
-      | undefined;
+    const onFinish = opts.onFinish as ((event: { finishReason: string }) => void) | undefined;
     if (onFinish) {
       queueMicrotask(() => onFinish({ finishReason }));
     }
@@ -141,11 +132,7 @@ function expectSafeErrorBody(body: unknown) {
   expect(text).not.toMatch(/[A-Za-z]:\\/);
   expect(text).not.toMatch(/\/home\//);
   expect(text).not.toMatch(/\bat\s+\//);
-  for (const key of [
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-    "GOOGLE_GENERATIVE_AI_API_KEY",
-  ]) {
+  for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"]) {
     const value = process.env[key];
     if (value && value.length >= 8) expect(text).not.toContain(value);
   }
@@ -181,9 +168,7 @@ describe("POST /api/chat — error handling (US3)", () => {
   });
 
   it(`rejects more than ${CHAT_MAX_MESSAGES} messages`, async () => {
-    const tooMany = Array.from({ length: CHAT_MAX_MESSAGES + 1 }, (_, i) =>
-      u(`msg ${i}`),
-    );
+    const tooMany = Array.from({ length: CHAT_MAX_MESSAGES + 1 }, (_, i) => u(`msg ${i}`));
     const response = await POST(makeRequest({ messages: tooMany }));
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: { message: string } };
@@ -204,9 +189,7 @@ describe("POST /api/chat — error handling (US3)", () => {
   it("returns HTTP 500 `provider_config_missing` when the model env is unset", async () => {
     process.env.OPENAI_MODEL = undefined;
     delete process.env.OPENAI_MODEL;
-    const response = await POST(
-      makeRequest({ messages: [u("hi")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("hi")] }));
     expect(response.status).toBe(500);
     const body = (await response.json()) as {
       error: { code: string; message: string };
@@ -217,9 +200,7 @@ describe("POST /api/chat — error handling (US3)", () => {
 
   it("returns HTTP 502 `mcp_unreachable` when getMcpClient rejects", async () => {
     listMcpToolsMock.mockRejectedValue(new Error("ECONNREFUSED /tmp/mcp.sock"));
-    const response = await POST(
-      makeRequest({ messages: [u("hi")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("hi")] }));
     expect(response.status).toBe(502);
     const body = (await response.json()) as {
       error: { code: string; message: string };
@@ -247,11 +228,9 @@ describe("POST /api/chat — error handling (US3)", () => {
       >;
       // Capture the tool result synchronously; the route only reads the
       // stream after streamText returns.
-      const pending = tools.search_products
-        .execute({}, { toolCallId: "c-tool" })
-        .then((r) => {
-          executeResult = r;
-        });
+      const pending = tools.search_products.execute({}, { toolCallId: "c-tool" }).then((r) => {
+        executeResult = r;
+      });
       const stream = new ReadableStream({
         async start(c) {
           await pending;
@@ -266,9 +245,7 @@ describe("POST /api/chat — error handling (US3)", () => {
       };
     });
 
-    const response = await POST(
-      makeRequest({ messages: [u("search")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("search")] }));
     expect(response.status).toBe(200);
     await readChunks(response);
 
@@ -293,13 +270,9 @@ describe("POST /api/chat — error handling (US3)", () => {
       finishReason: "tool-calls",
     });
 
-    const response = await POST(
-      makeRequest({ messages: [u("chain")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("chain")] }));
     const chunks = await readChunks(response);
-    const errChunk = chunks.find((c) => c.type === "error") as
-      | { type: "error"; errorText: string }
-      | undefined;
+    const errChunk = chunks.find((c) => c.type === "error") as { type: "error"; errorText: string } | undefined;
     if (!errChunk) throw new Error("expected an error chunk");
     const parsed = JSON.parse(errChunk.errorText) as {
       error: { code: string };
@@ -312,13 +285,9 @@ describe("POST /api/chat — error handling (US3)", () => {
     // No text-delta and no tool-call chunks — only a finish.
     fakeStreamResult({ chunks: [{ type: "finish" }], finishReason: "stop" });
 
-    const response = await POST(
-      makeRequest({ messages: [u("silent")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("silent")] }));
     const chunks = await readChunks(response);
-    const errChunk = chunks.find((c) => c.type === "error") as
-      | { type: "error"; errorText: string }
-      | undefined;
+    const errChunk = chunks.find((c) => c.type === "error") as { type: "error"; errorText: string } | undefined;
     if (!errChunk) throw new Error("expected an error chunk");
     const parsed = JSON.parse(errChunk.errorText) as {
       error: { code: string };
@@ -331,23 +300,16 @@ describe("POST /api/chat — error handling (US3)", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
     fakeStreamResult({
-      chunks: [
-        { type: "text-delta", id: "x", delta: "No tools, only text." },
-        { type: "finish" },
-      ],
+      chunks: [{ type: "text-delta", id: "x", delta: "No tools, only text." }, { type: "finish" }],
       finishReason: "stop",
     });
 
-    const response = await POST(
-      makeRequest({ messages: [u("hi")] }),
-    );
+    const response = await POST(makeRequest({ messages: [u("hi")] }));
     const chunks = await readChunks(response);
     expect(chunks.some((c) => c.type === "text-delta")).toBe(true);
     expect(chunks.some((c) => c.type === "error")).toBe(false);
 
-    const warnLines = logSpy.mock.calls
-      .map((c) => String(c[0]))
-      .filter((line) => line.includes("mcp_tool_list_empty"));
+    const warnLines = logSpy.mock.calls.map((c) => String(c[0])).filter((line) => line.includes("mcp_tool_list_empty"));
     expect(warnLines.length).toBeGreaterThan(0);
     logSpy.mockRestore();
   });
@@ -459,9 +421,7 @@ describe("POST /api/chat — error handling (US3)", () => {
       }),
     );
     const chunks = await readChunks(response);
-    const errChunk = chunks.find((c) => c.type === "error") as
-      | { type: "error"; errorText: string }
-      | undefined;
+    const errChunk = chunks.find((c) => c.type === "error") as { type: "error"; errorText: string } | undefined;
     if (!errChunk) throw new Error("expected an error chunk");
     const parsed = JSON.parse(errChunk.errorText) as {
       error: { code: string };

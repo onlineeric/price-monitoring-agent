@@ -1,6 +1,6 @@
 import { createServer as createTcpServer } from "node:net";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { spawnServer, type SpawnedServer } from "./helpers/spawn-server.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { type SpawnedServer, spawnServer } from "./helpers/spawn-server.js";
 
 /**
  * US1 — Web app calls the MCP server as a separate HTTP service.
@@ -194,31 +194,28 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
     expect(res.headers.get("allow")).toBe("GET");
   });
 
-  it(
-    "(f) port already in use → child exits non-zero within 2s with EADDRINUSE on stderr",
-    async () => {
-      const port = nextFreePort();
-      // Pre-bind the port so the MCP child cannot.
-      const blocker = createTcpServer();
-      await new Promise<void>((resolve, reject) => {
-        blocker.once("error", reject);
-        blocker.listen(port, HOST, () => resolve());
-      });
+  it("(f) port already in use → child exits non-zero within 2s with EADDRINUSE on stderr", async () => {
+    const port = nextFreePort();
+    // Pre-bind the port so the MCP child cannot.
+    const blocker = createTcpServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once("error", reject);
+      blocker.listen(port, HOST, () => resolve());
+    });
 
-      const child = spawnServer({
-        env: { MCP_TRANSPORT: "http", MCP_HTTP_PORT: String(port) },
-      });
-      try {
-        const exit = await child.waitForExit(2_500);
-        expect(exit.code).not.toBe(0);
-        const stderr = child.stderrLines.join("\n");
-        expect(stderr).toContain(String(port));
-        expect(stderr).toContain("EADDRINUSE");
-      } finally {
-        await new Promise<void>((resolve) => blocker.close(() => resolve()));
-      }
-    },
-  );
+    const child = spawnServer({
+      env: { MCP_TRANSPORT: "http", MCP_HTTP_PORT: String(port) },
+    });
+    try {
+      const exit = await child.waitForExit(2_500);
+      expect(exit.code).not.toBe(0);
+      const stderr = child.stderrLines.join("\n");
+      expect(stderr).toContain(String(port));
+      expect(stderr).toContain("EADDRINUSE");
+    } finally {
+      await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    }
+  });
 
   it("(g) per-request timeout fires with structured 504", async () => {
     // Override the 30 s default so the test runs in under a second.
@@ -297,9 +294,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
         params: {},
       });
       const stdioListPromise = stdioChild.waitForStdout(/"result"/, 5_000);
-      stdioChild.child.stdin.write(
-        `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`,
-      );
+      stdioChild.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
       const stdioListLine = await stdioListPromise;
       const stdioList = JSON.parse(stdioListLine) as JsonRpcResponse;
 
@@ -326,9 +321,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
       const stdioPingLine = await stdioPingPromise;
       const stdioPing = JSON.parse(stdioPingLine) as JsonRpcResponse;
 
-      expect(httpPing.json?.result?.content?.[0]?.text).toBe(
-        stdioPing.result?.content?.[0]?.text,
-      );
+      expect(httpPing.json?.result?.content?.[0]?.text).toBe(stdioPing.result?.content?.[0]?.text);
       expect(httpPing.json?.result?.content?.[0]?.text).toBe("pong pong pong");
     } finally {
       await stdioChild.close();
@@ -428,9 +421,7 @@ describe("US3 — GET /health", () => {
     const { server, port } = await spawnHttp();
     active = server;
     const res = await getUrl(port, "/health");
-    const body = res.json as
-      | { status: string; uptime: number; version: string; transport: string }
-      | undefined;
+    const body = res.json as { status: string; uptime: number; version: string; transport: string } | undefined;
     expect(body).toBeDefined();
     expect(body?.status).toBe("ok");
     expect(typeof body?.uptime).toBe("number");

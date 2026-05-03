@@ -1,6 +1,6 @@
 import { connect } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-import { spawnServer, type SpawnedServer } from "./helpers/spawn-server.js";
+import { type SpawnedServer, spawnServer } from "./helpers/spawn-server.js";
 
 /**
  * US2 — IDE-side stdio integration continues to work unchanged.
@@ -27,9 +27,7 @@ describe("US2 — stdio transport (no regression)", () => {
     await server.waitForStderr(/ready on stdio/, 5_000);
 
     const stdoutPromise = server.waitForStdout(/"result"/, 5_000);
-    server.child.stdin.write(
-      `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`,
-    );
+    server.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
     const line = await stdoutPromise;
     const parsed = JSON.parse(line) as {
       result?: { tools?: Array<{ name: string }> };
@@ -47,9 +45,7 @@ describe("US2 — stdio transport (no regression)", () => {
 
     // Drive the server with a couple of frames so the buffer is non-trivial.
     const wait1 = server.waitForStdout(/"id":1/, 5_000);
-    server.child.stdin.write(
-      `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`,
-    );
+    server.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
     await wait1;
     const wait2 = server.waitForStdout(/"id":2/, 5_000);
     server.child.stdin.write(
@@ -74,22 +70,24 @@ describe("US2 — stdio transport (no regression)", () => {
   it("(c) stderr received the startup line", async () => {
     const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
     active = server;
-    const line = await server.waitForStderr(
-      /\[mcp-server\] price-monitor-mcp-server ready on stdio/,
-      5_000,
-    );
+    const line = await server.waitForStderr(/\[mcp-server\] price-monitor-mcp-server ready on stdio/, 5_000);
     expect(line).toMatch(/\[mcp-server\] price-monitor-mcp-server ready on stdio/);
   });
 
-  it("(d) no HTTP listener bound on default port 3002 (FR-002, FR-006)", async () => {
-    const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
+  it("(d) no HTTP listener bound on the configured port (FR-002, FR-006)", async () => {
+    // Use an off-the-beaten-path port so we don't conflict with whatever the
+    // developer may have running on 3002 (the docker mcp-server container,
+    // for instance). The contract under test is "stdio mode opens no HTTP
+    // listener at all", which is independent of the specific port number.
+    const probePort = 51_888;
+    const server = spawnServer({ env: { MCP_TRANSPORT: undefined, MCP_HTTP_PORT: String(probePort) } });
     active = server;
     await server.waitForStderr(/ready on stdio/, 5_000);
 
-    // Try to connect to the default HTTP port. Must fail with ECONNREFUSED
+    // Try to connect to the configured HTTP port. Must fail with ECONNREFUSED
     // (or similar) — proving stdio mode never opens an HTTP listener.
     const probe = await new Promise<{ connected: boolean; code?: string }>((resolve) => {
-      const sock = connect({ host: "127.0.0.1", port: 3002 });
+      const sock = connect({ host: "127.0.0.1", port: probePort });
       sock.once("error", (err: NodeJS.ErrnoException) => {
         const result: { connected: boolean; code?: string } = { connected: false };
         if (err.code !== undefined) result.code = err.code;

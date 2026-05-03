@@ -7,8 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-import { GlobalProductSearchDialogProvider } from "./product-search/global-product-search-dialog-provider";
 import { ProductCreateDialogProvider } from "./product-create/product-create-dialog-provider";
+import { GlobalProductSearchDialogProvider } from "./product-search/global-product-search-dialog-provider";
 import { AccountSwitcher } from "./sidebar/account-switcher";
 import { LayoutControls } from "./sidebar/layout-controls";
 import { SearchDialog } from "./sidebar/search-dialog";

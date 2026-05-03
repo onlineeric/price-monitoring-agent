@@ -1,8 +1,8 @@
-import { Queue } from 'bullmq';
-import { Redis } from 'ioredis';
+import { Queue } from "bullmq";
+import { Redis } from "ioredis";
 
-const DEFAULT_QUEUE_NAME = 'price-monitor-queue';
-const DEFAULT_JOB_NAME = 'send-digest-scheduled';
+const DEFAULT_QUEUE_NAME = "price-monitor-queue";
+const DEFAULT_JOB_NAME = "send-digest-scheduled";
 
 function getArgValue(flag: string): string | null {
   const index = process.argv.indexOf(flag);
@@ -11,7 +11,7 @@ function getArgValue(flag: string): string | null {
   }
 
   const value = process.argv[index + 1];
-  if (!value || value.startsWith('--')) {
+  if (!value || value.startsWith("--")) {
     throw new Error(`Missing value for ${flag}`);
   }
 
@@ -21,12 +21,12 @@ function getArgValue(flag: string): string | null {
 async function main(): Promise<void> {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    throw new Error('REDIS_URL is required');
+    throw new Error("REDIS_URL is required");
   }
 
-  const queueName = getArgValue('--queue') || process.env.QUEUE_NAME || DEFAULT_QUEUE_NAME;
-  const jobName = getArgValue('--job-name') || DEFAULT_JOB_NAME;
-  const apply = process.argv.includes('--apply');
+  const queueName = getArgValue("--queue") || process.env.QUEUE_NAME || DEFAULT_QUEUE_NAME;
+  const jobName = getArgValue("--job-name") || DEFAULT_JOB_NAME;
+  const apply = process.argv.includes("--apply");
 
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queue = new Queue(queueName, { connection });
@@ -42,12 +42,12 @@ async function main(): Promise<void> {
 
     for (const job of digestJobs) {
       console.log(
-        `[cleanup] - key=${job.key} pattern=${job.pattern} tz=${job.tz || 'UTC'} next=${job.next ? new Date(job.next).toISOString() : 'n/a'}`
+        `[cleanup] - key=${job.key} pattern=${job.pattern} tz=${job.tz || "UTC"} next=${job.next ? new Date(job.next).toISOString() : "n/a"}`,
       );
     }
 
     if (!apply) {
-      console.log('[cleanup] Dry run complete. Re-run with --apply to remove these jobs.');
+      console.log("[cleanup] Dry run complete. Re-run with --apply to remove these jobs.");
       return;
     }
 
@@ -66,6 +66,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error('[cleanup] Failed:', error);
+  console.error("[cleanup] Failed:", error);
   process.exit(1);
 });
