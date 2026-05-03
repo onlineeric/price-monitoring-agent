@@ -39,6 +39,9 @@ importers:
       '@types/node':
         specifier: ^20.19.27
         version: 20.19.27
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -217,6 +220,9 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       globals:
         specifier: ^15.15.0
         version: 15.15.0

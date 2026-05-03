@@ -6,8 +6,12 @@
   "type": "module",
   "scripts": {
     "web:dev": "pnpm --filter @price-monitor/web dev",
-    "mcp:dev": "pnpm --filter @price-monitor/mcp-server dev",
+    "mcp:dev": "bash scripts/dev-mcp.sh",
     "mcp:build": "pnpm --filter @price-monitor/mcp-server build",
+    "mcp:up": "docker compose --profile mcp up -d --build mcp-server",
+    "mcp:down": "docker compose stop mcp-server",
+    "mcp:logs": "docker compose logs -f mcp-server",
+    "mcp:restart": "docker compose --profile mcp restart mcp-server",
     "worker:dev": "bash scripts/dev-worker.sh",
     "worker:up": "docker compose --profile worker up -d --build worker",
     "worker:down": "docker compose stop worker",

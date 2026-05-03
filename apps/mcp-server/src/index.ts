@@ -1,8 +1,14 @@
-// MUST be first: sets DOTENV_CONFIG_QUIET=true before @price-monitor/db
-// (transitively imported below) runs `dotenv.config()`. Without this, the
-// dotenv banner lands on stdout and corrupts the stdio JSON-RPC stream
-// (FR-002 / edge case "stdout pollution risk").
-import "./silence-dotenv.js";
+// Load the monorepo's root .env BEFORE anything else. In stdio mode the
+// JSON-RPC stream lives on stdout, so dotenv MUST be told to suppress its
+// banner (`quiet: true`); in HTTP mode it doesn't matter, but keeping the
+// flag consistent avoids surprises. In production (Coolify) the file does
+// not exist and dotenv silently no-ops — container env wins.
+import { config as loadDotenv } from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadDotenv({ path: resolve(__dirname, "../../../.env"), quiet: true });
+
 import { ConfigError, loadConfig } from "./config.js";
 import { createServer } from "./server.js";
 import { runHttp } from "./transports/http.js";

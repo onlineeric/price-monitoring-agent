@@ -23,6 +23,17 @@ AI-powered price monitoring system that tracks product prices from URLs, stores 
 
 **Database Access Rule:** Always use the Drizzle query builder (`db.select()`, `db.insert()`, `db.query.*`). Never use raw SQL via `db.execute()` unless unavoidable. Use `sql` template tag only for inline expressions (e.g. `COALESCE`).
 
+**Environment Loading Rule:** There is **one** `.env` file — the monorepo root `.env`. Each runnable component loads it directly at startup; nothing relies on side-effect imports.
+
+| Component | How it loads root `.env` |
+|---|---|
+| `apps/web` | `dotenv.config()` at the top of `next.config.mjs` (runs before Next.js evaluates config) |
+| `apps/worker` | `dotenv.config()` in `src/config.ts`, imported early by `src/index.ts` |
+| `apps/mcp-server` | `dotenv.config()` at the very top of `src/index.ts` (with `quiet: true` so the dotenv banner never reaches stdout in stdio mode) |
+| `packages/db` (drizzle-kit CLI only) | `dotenv.config()` in `drizzle.config.ts` for `pnpm --filter @price-monitor/db push/generate/studio` |
+
+The `packages/db` runtime library does **not** load env on its own — it expects `DATABASE_URL` to already be in `process.env`. In production (Coolify) the `.env` file does not exist, dotenv silently no-ops, and container env vars supplied by Coolify win.
+
 ---
 
 ## Repository Structure

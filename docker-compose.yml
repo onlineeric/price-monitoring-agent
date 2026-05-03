@@ -69,6 +69,31 @@ services:
       - redis
     restart: unless-stopped
 
+  # MCP server (use `docker compose --profile mcp up -d` or `pnpm mcp:up` to start)
+  mcp-server:
+    profiles:
+      - mcp
+    build:
+      context: .
+      dockerfile: apps/mcp-server/Dockerfile
+    ports:  # map host:container so the host-running web dev server can reach it
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      # Database - using local Postgres service name as host: postgresql://user:pw@host:5432/priceMonitor
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/priceMonitor
+      # Redis - using local Redis service name as host: redis://host:6379
+      REDIS_URL: redis://redis:6379
+      # Transport - HTTP mode for app-to-app runtime (stdio is reserved for IDE integration)
+      MCP_TRANSPORT: http
+      MCP_HTTP_PORT: "3001"
+      # Timezone used by any date-based tools
+      SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
   # Note: For local development, run web app directly in another terminal:
   #   pnpm --filter @price-monitor/web dev
   # This is faster and simpler than Docker. Web app will connect to this local Redis/Postgres.
