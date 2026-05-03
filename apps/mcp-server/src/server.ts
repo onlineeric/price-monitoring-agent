@@ -52,8 +52,10 @@ export function createServer(): McpServer {
     }),
   );
 
-  // Test-only: see the function-level comment above.
-  if (process.env.MCP_TEST_TOOLS === "1") {
+  // Test-only: see the function-level comment above. Hard-gated on
+  // NODE_ENV !== "production" so a stray env var on a production deploy
+  // cannot accidentally expose `slow_ping` (resource hog) or `throw_test`.
+  if (process.env.MCP_TEST_TOOLS === "1" && process.env.NODE_ENV !== "production") {
     server.registerTool(
       "slow_ping",
       {

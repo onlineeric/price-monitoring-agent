@@ -4,8 +4,9 @@ import pkg from "../package.json" with { type: "json" };
 /**
  * Hard-coded constants. These are not env-configurable on purpose:
  * - `0.0.0.0` matches both Coolify's internal-network expectation and the
- *   docker-compose `3001:3001` mapping in the local dev path (research.md
- *   Decision 4).
+ *   docker-compose `3002:3002` mapping in the local dev path (research.md
+ *   Decision 4). Port `3002` is chosen to avoid colliding with the worker
+ *   health server, which defaults to `3001`.
  * - The 10 s graceful-shutdown window matches the project's actual tool
  *   latency profile (every tool is a single Drizzle query or BullMQ
  *   enqueue) and stays inside the orchestrator's default 30 s `docker
@@ -27,7 +28,7 @@ const portSchema = z.coerce
   .int()
   .min(1)
   .max(65_535)
-  .default(3001);
+  .default(3002);
 
 // Test-only override (T010 case g, T025 cases a/d). Lets the integration
 // suite drive the per-request timeout in milliseconds rather than seconds.

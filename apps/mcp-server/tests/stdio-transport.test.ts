@@ -81,7 +81,7 @@ describe("US2 — stdio transport (no regression)", () => {
     expect(line).toMatch(/\[mcp-server\] price-monitor-mcp-server ready on stdio/);
   });
 
-  it("(d) no HTTP listener bound on default port 3001 (FR-002, FR-006)", async () => {
+  it("(d) no HTTP listener bound on default port 3002 (FR-002, FR-006)", async () => {
     const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
     active = server;
     await server.waitForStderr(/ready on stdio/, 5_000);
@@ -89,7 +89,7 @@ describe("US2 — stdio transport (no regression)", () => {
     // Try to connect to the default HTTP port. Must fail with ECONNREFUSED
     // (or similar) — proving stdio mode never opens an HTTP listener.
     const probe = await new Promise<{ connected: boolean; code?: string }>((resolve) => {
-      const sock = connect({ host: "127.0.0.1", port: 3001 });
+      const sock = connect({ host: "127.0.0.1", port: 3002 });
       sock.once("error", (err: NodeJS.ErrnoException) => {
         const result: { connected: boolean; code?: string } = { connected: false };
         if (err.code !== undefined) result.code = err.code;

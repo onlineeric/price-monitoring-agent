@@ -3,7 +3,7 @@
 #
 # Stops the background Docker MCP server before starting the dev MCP server,
 # and restarts it when the dev MCP server exits (Ctrl+C). This guarantees you
-# can never have two MCP servers competing for port 3001 on the host.
+# can never have two MCP servers competing for port 3002 on the host.
 
 set -euo pipefail
 

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-const MCP_HTTP_URL = process.env.MCP_HTTP_URL ?? "http://localhost:3001";
+// `MCP_HTTP_URL` is documented as the `/mcp` JSON-RPC endpoint URL (so
+// the web's MCP client can use it directly). Appending `/health` here
+// therefore probes `/mcp/health`, which the MCP server exposes alongside
+// `/health` for exactly this composition. Default mirrors `.env.example`.
+const MCP_HTTP_URL = process.env.MCP_HTTP_URL ?? "http://localhost:3002/mcp";
 
 export async function GET() {
   const controller = new AbortController();

@@ -95,8 +95,11 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     const url = req.url ?? "/";
     const path = url.split("?")[0] ?? "/";
 
-    // GET /health — server-owned, NOT delegated to the SDK.
-    if (path === "/health") {
+    // GET /health (orchestrator probes) and GET /mcp/health (web app probes
+    // that build the URL by appending `/health` to the documented
+    // `MCP_HTTP_URL=http://host:port/mcp`). Both are server-owned and NOT
+    // delegated to the SDK.
+    if (path === "/health" || path === "/mcp/health") {
       if (req.method !== "GET") {
         res.statusCode = 405;
         res.setHeader("Allow", "GET");

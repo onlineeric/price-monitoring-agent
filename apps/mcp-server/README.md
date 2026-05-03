@@ -9,7 +9,7 @@ The active transport is selected at startup from `MCP_TRANSPORT`; defaults to `s
 | Variable | Default | Notes |
 |---|---|---|
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `http`. Any other value fails fast on startup. |
-| `MCP_HTTP_PORT` | `3001` | Port for HTTP mode. Listener binds `0.0.0.0`. Ignored in stdio mode. |
+| `MCP_HTTP_PORT` | `3002` | Port for HTTP mode. Listener binds `0.0.0.0`. Ignored in stdio mode. Chosen as `3002` (not `3001`) so it does not collide with the worker's health server on the host. |
 | `DATABASE_URL` | (required) | Postgres connection string (used by the real tools). |
 | `REDIS_URL` | (required) | Redis connection string (used by `add_product`). |
 
@@ -56,19 +56,27 @@ MCP_TRANSPORT=http pnpm --filter @price-monitor/mcp-server start
 You should see one stderr line:
 
 ```
-[mcp-server] price-monitor-mcp-server ready on http :3001
+[mcp-server] price-monitor-mcp-server ready on http :3002
 ```
 
 ### Smoke test the health endpoint
 
+The server answers on **both** `GET /health` (used by orchestrator probes
+like Coolify) and `GET /mcp/health` (used by the web app, which composes
+its probe URL by appending `/health` to the documented `MCP_HTTP_URL`).
+Both return the same body.
+
 ```bash
-curl -s http://localhost:3001/health | jq
+curl -s http://localhost:3002/health | jq
 # {
 #   "status": "ok",
 #   "uptime": 4.218,
 #   "version": "1.0.0",
 #   "transport": "http"
 # }
+
+curl -s http://localhost:3002/mcp/health | jq
+# (identical response)
 ```
 
 ### Smoke test the MCP endpoint
@@ -76,7 +84,7 @@ curl -s http://localhost:3001/health | jq
 `tools/list`:
 
 ```bash
-curl -s -X POST http://localhost:3001/mcp \
+curl -s -X POST http://localhost:3002/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
@@ -91,7 +99,7 @@ curl -s -X POST http://localhost:3001/mcp \
 `tools/call` for `ping`:
 
 ```bash
-curl -s -X POST http://localhost:3001/mcp \
+curl -s -X POST http://localhost:3002/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ping","arguments":{"count":3}}}' \
@@ -127,7 +135,7 @@ Start the server in HTTP mode in one shell:
 MCP_TRANSPORT=http pnpm --filter @price-monitor/mcp-server start
 ```
 
-In another, launch Inspector and point its **Streamable HTTP** transport at `http://localhost:3001/mcp`.
+In another, launch Inspector and point its **Streamable HTTP** transport at `http://localhost:3002/mcp`.
 
 ## IDE Integration (VSCode / Cursor)
 
@@ -151,7 +159,7 @@ To register this server in your IDE, add the following to your MCP config (`.vsc
 
 - **Dispatcher** (`src/index.ts`): reads `MCP_TRANSPORT`, builds the McpServer, hands off to one of the two transports.
 - **Stdio transport** (`src/transports/stdio.ts`): connects the MCP server to `StdioServerTransport`. stdout = JSON-RPC; stderr = logs.
-- **HTTP transport** (`src/transports/http.ts`): bare `node:http` server (no framework — two endpoints would not justify the dependency cost). `POST /mcp` is delegated per-request to a fresh `StreamableHTTPServerTransport({ sessionIdGenerator: undefined })` (stateless mode — the SDK requires fresh per-request transports in this mode). `GET /health` is server-owned. `SIGTERM` / `SIGINT` triggers a 10 s graceful drain.
+- **HTTP transport** (`src/transports/http.ts`): bare `node:http` server (no framework — three endpoints would not justify the dependency cost). `POST /mcp` is delegated per-request to a fresh `StreamableHTTPServerTransport({ sessionIdGenerator: undefined })` (stateless mode — the SDK requires fresh per-request transports in this mode). `GET /health` and `GET /mcp/health` are server-owned (the second so the web app can reuse `MCP_HTTP_URL` as a base by appending `/health`). `SIGTERM` / `SIGINT` triggers a 10 s graceful drain.
 - **Tool registry** (`src/server.ts`): the same five tools (`search_products`, `get_product_history`, `get_price_summary`, `add_product`, `ping`) are registered for both transports. The transport choice is purely a wire-protocol concern.
 - **Logging**: `console.error` in both modes; the rule is "stderr only" everywhere so a future refactor cannot accidentally re-introduce stdout pollution in stdio mode.
 - **SDK**: `@modelcontextprotocol/sdk` with Zod for input validation.

@@ -1,7 +1,7 @@
 # MCP Server Dockerfile
 # This Dockerfile is built from the repository root
 # Build command: docker build -f apps/mcp-server/Dockerfile -t price-monitor-mcp-server .
-# Run command: docker run -p 3001:3001 -e DATABASE_URL="..." -e REDIS_URL="..." price-monitor-mcp-server
+# Run command: docker run -p 3002:3002 -e DATABASE_URL="..." -e REDIS_URL="..." price-monitor-mcp-server
 #
 # The MCP server only talks to Postgres + Redis (no Playwright), so a slim
 # node:20-alpine base is enough.
@@ -29,13 +29,13 @@ COPY apps/mcp-server ./apps/mcp-server
 # Build db package if needed (Drizzle schema compilation)
 RUN pnpm --filter @price-monitor/db build || true
 
-# Default to HTTP transport on port 3001 in production. Override
+# Default to HTTP transport on port 3002 in production. Override
 # MCP_TRANSPORT=stdio to use the IDE-style stdio transport.
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http
-ENV MCP_HTTP_PORT=3001
+ENV MCP_HTTP_PORT=3002
 
-EXPOSE 3001
+EXPOSE 3002
 
 # Change working directory to mcp-server app
 WORKDIR /app/apps/mcp-server

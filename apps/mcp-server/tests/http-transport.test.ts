@@ -18,7 +18,7 @@ const ACCEPT_HEADER = "application/json, text/event-stream";
 let nextPort = 4_100;
 function nextFreePort(): number {
   // Each test gets its own port so a flaky shutdown in one test cannot
-  // bleed into the next. Range is far enough above the 3001 default that
+  // bleed into the next. Range is far enough above the 3002 default that
   // collisions with a developer's local server are unlikely.
   const port = nextPort;
   nextPort += 1;
