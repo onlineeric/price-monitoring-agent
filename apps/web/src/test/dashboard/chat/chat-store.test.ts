@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChatStore } from "@/stores/chat/chat-store";
-import { __testing as streamTesting, consumeChatStream } from "@/stores/chat/chat-stream";
+import { consumeChatStream, __testing as streamTesting } from "@/stores/chat/chat-stream";
 import type { AssistantMessage, ChatState } from "@/stores/chat/types";
 
 // We re-fetch the store between tests to keep state isolated. The store is a
@@ -41,11 +41,7 @@ function makeOkResponse(): Response {
   return new Response(new ReadableStream<Uint8Array>(), { status: 200 });
 }
 
-function makePreStreamErrorResponse(
-  status: number,
-  code: string,
-  message: string,
-): Response {
+function makePreStreamErrorResponse(status: number, code: string, message: string): Response {
   return new Response(JSON.stringify({ error: { code, message } }), {
     status,
     headers: { "content-type": "application/json" },
@@ -122,24 +118,14 @@ describe("useChatStore.send", () => {
 
     await useChatStore.getState().send("hello there");
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "/api/chat",
-      expect.objectContaining({ method: "POST" }),
-    );
-    const body = JSON.parse(
-      (fetchSpy.mock.calls[0][1] as { body: string }).body,
-    );
-    expect(body.messages).toMatchObject([
-      { role: "user", parts: [{ type: "text", text: "hello there" }] },
-    ]);
+    expect(fetchSpy).toHaveBeenCalledWith("/api/chat", expect.objectContaining({ method: "POST" }));
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as { body: string }).body);
+    expect(body.messages).toMatchObject([{ role: "user", parts: [{ type: "text", text: "hello there" }] }]);
     expect(body.conversationId).toMatch(/[0-9a-f-]{36}/);
   });
 
   it("sends the full multi-turn history (text + completed tool calls) on a follow-up turn (FR-004a / task 3.6)", async () => {
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValueOnce(makeOkResponse())
-      .mockResolvedValueOnce(makeOkResponse());
+    const fetchSpy = vi.fn().mockResolvedValueOnce(makeOkResponse()).mockResolvedValueOnce(makeOkResponse());
     globalThis.fetch = fetchSpy;
 
     // First turn: stream consumer simulates a complete assistant turn that
@@ -187,9 +173,7 @@ describe("useChatStore.send", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(secondConvId).toBe(firstConvId);
 
-    const secondBody = JSON.parse(
-      (fetchSpy.mock.calls[1][1] as { body: string }).body,
-    );
+    const secondBody = JSON.parse((fetchSpy.mock.calls[1][1] as { body: string }).body);
     expect(secondBody.conversationId).toBe(firstConvId);
 
     // Multi-turn payload: prior user, prior assistant (text + dynamic-tool),
@@ -220,11 +204,7 @@ describe("useChatStore.send", () => {
   });
 
   it("marks the assistant errored on a pre-stream HTTP error", async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(
-        makePreStreamErrorResponse(500, "provider_config_missing", "no key"),
-      );
+    globalThis.fetch = vi.fn().mockResolvedValue(makePreStreamErrorResponse(500, "provider_config_missing", "no key"));
 
     await useChatStore.getState().send("hello");
 
@@ -253,9 +233,7 @@ describe("useChatStore.stop", () => {
             if (next[i].role === "assistant") {
               next[i] = {
                 ...(next[i] as AssistantMessage),
-                toolEvents: [
-                  { id: "t1", toolName: "search_products", status: "running" },
-                ],
+                toolEvents: [{ id: "t1", toolName: "search_products", status: "running" }],
               };
               break;
             }
@@ -295,9 +273,7 @@ describe("useChatStore.retry", () => {
     // First send fails pre-stream.
     globalThis.fetch = vi
       .fn()
-      .mockResolvedValueOnce(
-        makePreStreamErrorResponse(502, "mcp_unreachable", "unreachable"),
-      )
+      .mockResolvedValueOnce(makePreStreamErrorResponse(502, "mcp_unreachable", "unreachable"))
       .mockResolvedValueOnce(makeOkResponse());
 
     useChatStore.setState({
@@ -381,9 +357,7 @@ describe("stream reducer guards (post-stop / post-error)", () => {
           id: "a1",
           role: "assistant",
           text: "",
-          toolEvents: [
-            { id: "t1", toolName: "search_products", status: "completed", result: { rows: [] } },
-          ],
+          toolEvents: [{ id: "t1", toolName: "search_products", status: "completed", result: { rows: [] } }],
           state: "streaming",
         },
       ],
@@ -422,9 +396,7 @@ describe("stream reducer guards (post-stop / post-error)", () => {
           id: "a1",
           role: "assistant",
           text: "",
-          toolEvents: [
-            { id: "t1", toolName: "search_products", status: "running" },
-          ],
+          toolEvents: [{ id: "t1", toolName: "search_products", status: "running" }],
           state: "streaming",
         },
       ],
@@ -469,9 +441,7 @@ describe("stream reducer guards (post-stop / post-error)", () => {
           id: "a1",
           role: "assistant",
           text: "",
-          toolEvents: [
-            { id: "t1", toolName: "search_products", status: "running" },
-          ],
+          toolEvents: [{ id: "t1", toolName: "search_products", status: "running" }],
           state: "streaming",
         },
       ],

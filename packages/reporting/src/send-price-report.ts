@@ -5,13 +5,7 @@ import type { ReportSnapshotItem } from "./report-snapshot";
 
 interface ResendClient {
   emails: {
-    send: (payload: {
-      from: string;
-      to: string;
-      bcc?: string[];
-      subject: string;
-      html: string;
-    }) => Promise<{
+    send: (payload: { from: string; to: string; bcc?: string[]; subject: string; html: string }) => Promise<{
       data?: { id?: string } | null;
       error?: { message: string } | null;
     }>;
@@ -86,15 +80,11 @@ export async function sendPriceReportEmail(
             products: input.products,
           });
 
+    const [firstRecipient] = input.recipients;
     const destination: { to: string; bcc?: string[] } =
-      input.recipients.length === 1
-        ? {
-            to: input.recipients[0]!,
-          }
-        : {
-            to: senderAddress,
-            bcc: input.recipients,
-          };
+      input.recipients.length === 1 && firstRecipient
+        ? { to: firstRecipient }
+        : { to: senderAddress, bcc: input.recipients };
 
     const { data, error } = await (resend ?? getResendClient()).emails.send({
       from,

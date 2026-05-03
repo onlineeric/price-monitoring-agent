@@ -1,6 +1,7 @@
+import Link from "next/link";
+
 import { db, desc, eq, priceRecords, products } from "@price-monitor/db";
 import { Package } from "lucide-react";
-import Link from "next/link";
 
 import { formatPrice } from "@/lib/format";
 
@@ -73,9 +74,7 @@ export function ProductOverview({ products }: { products: ProductOverviewItem[] 
                   <Package className="size-8 text-muted-foreground" />
                 )}
               </div>
-              <p className="line-clamp-2 font-medium text-sm leading-tight">
-                {product.name || "Unnamed Product"}
-              </p>
+              <p className="line-clamp-2 font-medium text-sm leading-tight">{product.name || "Unnamed Product"}</p>
               <p className="mt-1 truncate text-muted-foreground text-xs">{getHostname(product.url)}</p>
               <p className="mt-1 font-semibold text-sm">
                 {product.price != null ? formatPrice(product.price, product.currency ?? "USD") : "N/A"}

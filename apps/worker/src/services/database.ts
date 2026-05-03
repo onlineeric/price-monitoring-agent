@@ -1,12 +1,4 @@
-import {
-  db,
-  products,
-  priceRecords,
-  runLogs,
-  eq,
-  sql,
-  type Product,
-} from "@price-monitor/db";
+import { db, eq, type Product, priceRecords, products, runLogs, sql } from "@price-monitor/db";
 import { validate as isValidUuid } from "uuid";
 
 /**
@@ -46,7 +38,7 @@ export async function updateProductTimestamp(productId: string): Promise<void> {
     .update(products)
     .set({
       lastSuccessAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
 }
@@ -59,7 +51,7 @@ export async function updateProductFailure(productId: string): Promise<void> {
     .update(products)
     .set({
       lastFailedAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
 }
@@ -92,9 +84,7 @@ export async function logRun(params: LogRunParams): Promise<void> {
  * Get a product by ID
  * Returns null if product not found or ID is invalid
  */
-export async function getProductById(
-  productId: string
-): Promise<Product | null> {
+export async function getProductById(productId: string): Promise<Product | null> {
   // Validate UUID format first
   if (!isValidUuid(productId)) {
     console.log(`[DB] Invalid UUID format: ${productId}`);
@@ -102,11 +92,7 @@ export async function getProductById(
   }
 
   try {
-    const result = await db
-      .select()
-      .from(products)
-      .where(eq(products.id, productId))
-      .limit(1);
+    const result = await db.select().from(products).where(eq(products.id, productId)).limit(1);
 
     return result[0] ?? null;
   } catch (error) {
@@ -125,7 +111,7 @@ export async function getProductById(
 export async function getOrCreateProductByUrl(
   url: string,
   extractedName: string,
-  imageUrl?: string | null
+  imageUrl?: string | null,
 ): Promise<Product> {
   try {
     // Atomic insert-or-update using ON CONFLICT

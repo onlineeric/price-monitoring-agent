@@ -218,7 +218,8 @@ export function ManualReportPageClient() {
             <CardTitle>Recipients</CardTitle>
             <CardDescription>
               Rolling limit: {availability?.rollingWindowUsed ?? 0}/{availability?.rollingWindowLimit ?? 3} sends ·
-              Daily limit: {availability?.dailyRecipientsUsed ?? 0}/{availability?.dailyRecipientsLimit ?? 99} recipients
+              Daily limit: {availability?.dailyRecipientsUsed ?? 0}/{availability?.dailyRecipientsLimit ?? 99}{" "}
+              recipients
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

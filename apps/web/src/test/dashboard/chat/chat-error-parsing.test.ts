@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isRetryable,
-  parseChatErrorPayload,
-} from "@/lib/chat/chat-error-parsing";
+import { isRetryable, parseChatErrorPayload } from "@/lib/chat/chat-error-parsing";
 import type { ChatErrorCode } from "@/stores/chat/types";
 
 const ALL_CODES: ChatErrorCode[] = [
@@ -24,18 +21,12 @@ const RETRYABLE: ChatErrorCode[] = [
   "empty_response",
 ];
 
-const NON_RETRYABLE: ChatErrorCode[] = [
-  "validation_error",
-  "provider_config_missing",
-];
+const NON_RETRYABLE: ChatErrorCode[] = ["validation_error", "provider_config_missing"];
 
 describe("parseChatErrorPayload", () => {
   it("parses every documented ChatErrorCode cleanly", () => {
     for (const code of ALL_CODES) {
-      const result = parseChatErrorPayload(
-        { error: { code, message: `oops: ${code}` } },
-        "pre-stream",
-      );
+      const result = parseChatErrorPayload({ error: { code, message: `oops: ${code}` } }, "pre-stream");
       expect(result.code).toBe(code);
       expect(result.message).toBe(`oops: ${code}`);
       expect(result.surface).toBe("pre-stream");
@@ -59,10 +50,7 @@ describe("parseChatErrorPayload", () => {
   });
 
   it("falls back to provider_error on unknown code", () => {
-    const result = parseChatErrorPayload(
-      { error: { code: "made_up_code", message: "nope" } },
-      "pre-stream",
-    );
+    const result = parseChatErrorPayload({ error: { code: "made_up_code", message: "nope" } }, "pre-stream");
     expect(result.code).toBe("provider_error");
   });
 
@@ -86,10 +74,7 @@ describe("parseChatErrorPayload", () => {
   });
 
   it("preserves a small valid message verbatim", () => {
-    const result = parseChatErrorPayload(
-      { error: { code: "provider_error", message: "short" } },
-      "pre-stream",
-    );
+    const result = parseChatErrorPayload({ error: { code: "provider_error", message: "short" } }, "pre-stream");
     expect(result.message).toBe("short");
   });
 });

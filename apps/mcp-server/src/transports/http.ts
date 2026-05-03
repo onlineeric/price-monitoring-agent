@@ -1,9 +1,4 @@
-import {
-  type IncomingMessage,
-  type Server as HttpServer,
-  type ServerResponse,
-  createServer,
-} from "node:http";
+import { createServer, type Server as HttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { ServerConfig } from "../config.js";
@@ -33,10 +28,7 @@ function buildStatelessTransport(): StreamableHTTPServerTransport {
  * `() => void` but the implementations expose them as the wider
  * `(() => void) | undefined`. The cast preserves runtime behavior.
  */
-async function connectTransport(
-  mcpServer: McpServer,
-  transport: StreamableHTTPServerTransport,
-): Promise<void> {
+async function connectTransport(mcpServer: McpServer, transport: StreamableHTTPServerTransport): Promise<void> {
   await mcpServer.connect(transport as unknown as Parameters<typeof mcpServer.connect>[0]);
 }
 
@@ -78,9 +70,7 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     void handleRequest(req, res).catch((err) => {
       // Defensive: if the router itself throws and the response has not been
       // sent, emit a 500. Log the error (NFR-003: no full stack).
-      console.error(
-        `[mcp-server] http handler error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      console.error(`[mcp-server] http handler error: ${err instanceof Error ? err.message : String(err)}`);
       if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -143,8 +133,8 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
       } finally {
         // Best-effort cleanup; SDK closes the transport on its own when the
         // request ends, but explicit close avoids relying on that.
-        await transport.close().catch(() => {});
-        await mcpServer.close().catch(() => {});
+        await transport.close().catch(() => undefined);
+        await mcpServer.close().catch(() => undefined);
       }
       return;
     }
@@ -190,8 +180,8 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
       abortController.abort();
       // Best-effort SDK teardown so `await transport.handleRequest(...)`
       // resolves promptly and the per-request resources are released.
-      transport?.close().catch(() => {});
-      mcpServer?.close().catch(() => {});
+      transport?.close().catch(() => undefined);
+      mcpServer?.close().catch(() => undefined);
     }, config.requestTimeoutMs);
     res.on("close", () => clearTimeout(timeoutHandle));
     res.on("finish", () => clearTimeout(timeoutHandle));
@@ -213,9 +203,7 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
       const method = parseFailed ? "-" : extractJsonRpcMethod(parsed);
       const tool = parseFailed ? "-" : extractToolName(parsed);
       const ms = Date.now() - startTs;
-      console.error(
-        `[mcp-server] http POST /mcp method=${method} tool=${tool} status=${res.statusCode} ms=${ms}`,
-      );
+      console.error(`[mcp-server] http POST /mcp method=${method} tool=${tool} status=${res.statusCode} ms=${ms}`);
     });
     res.on("close", () => {
       // If the client disconnected before `finish` (e.g., timeout destroyed
@@ -254,15 +242,15 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     // is already closed — skip the SDK call so we don't hand a fresh
     // transport an already-ended response.
     if (abortController.signal.aborted) {
-      await transport.close().catch(() => {});
-      await mcpServer.close().catch(() => {});
+      await transport.close().catch(() => undefined);
+      await mcpServer.close().catch(() => undefined);
       return;
     }
     try {
       await transport.handleRequest(req, res, parsed);
     } finally {
-      await transport.close().catch(() => {});
-      await mcpServer.close().catch(() => {});
+      await transport.close().catch(() => undefined);
+      await mcpServer.close().catch(() => undefined);
     }
   }
 
@@ -324,9 +312,7 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     }
 
     forceExitTimer = setTimeout(() => {
-      console.error(
-        `[mcp-server] grace period (${config.gracePeriodMs}ms) elapsed — forcing exit`,
-      );
+      console.error(`[mcp-server] grace period (${config.gracePeriodMs}ms) elapsed — forcing exit`);
       clearInterval(idleSweep);
       // Active sockets may still be holding the loop open — close them
       // too so the exit actually fires.
@@ -341,7 +327,7 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
 
   // Run forever. The function returns only when the process exits via the
   // shutdown handler.
-  await new Promise<void>(() => {});
+  await new Promise<void>(() => undefined);
 }
 
 // 1 MiB cap on POST /mcp request bodies. Tool inputs are JSON-RPC frames

@@ -71,15 +71,11 @@ export function spawnServer(options: SpawnServerOptions = {}): SpawnedServer {
     }
   }
 
-  const child = spawn(
-    process.execPath,
-    ["--import", `file://${TSX_LOADER}`, ENTRY, ...(options.args ?? [])],
-    {
-      env,
-      cwd: PACKAGE_ROOT,
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  ) as ChildProcessWithoutNullStreams;
+  const child = spawn(process.execPath, ["--import", `file://${TSX_LOADER}`, ENTRY, ...(options.args ?? [])], {
+    env,
+    cwd: PACKAGE_ROOT,
+    stdio: ["pipe", "pipe", "pipe"],
+  }) as ChildProcessWithoutNullStreams;
 
   const stderrLines: string[] = [];
   let stderrPartial = "";
@@ -106,8 +102,8 @@ export function spawnServer(options: SpawnServerOptions = {}): SpawnedServer {
       stderrPartial = stderrPartial.slice(idx + 1);
       stderrLines.push(line);
       for (let i = stderrWaiters.length - 1; i >= 0; i--) {
-        const waiter = stderrWaiters[i]!;
-        if (waiter.test(line)) {
+        const waiter = stderrWaiters[i];
+        if (waiter?.test(line)) {
           stderrWaiters.splice(i, 1);
           waiter.resolve(line);
         }
@@ -125,8 +121,8 @@ export function spawnServer(options: SpawnServerOptions = {}): SpawnedServer {
       const line = stdoutPartial.slice(0, idx);
       stdoutPartial = stdoutPartial.slice(idx + 1);
       for (let i = stdoutWaiters.length - 1; i >= 0; i--) {
-        const waiter = stdoutWaiters[i]!;
-        if (waiter.test(line)) {
+        const waiter = stdoutWaiters[i];
+        if (waiter?.test(line)) {
           stdoutWaiters.splice(i, 1);
           waiter.resolve(line);
         }
@@ -147,8 +143,7 @@ export function spawnServer(options: SpawnServerOptions = {}): SpawnedServer {
     predicate: RegExp | ((line: string) => boolean),
     timeoutMs: number,
   ): Promise<string> {
-    const test =
-      typeof predicate === "function" ? predicate : (line: string) => predicate.test(line);
+    const test = typeof predicate === "function" ? predicate : (line: string) => predicate.test(line);
 
     const lines = typeof bufferedLines === "function" ? bufferedLines() : bufferedLines;
     for (const line of lines) {
@@ -205,10 +200,7 @@ export function spawnServer(options: SpawnServerOptions = {}): SpawnedServer {
         if (child.exitCode === null) child.kill("SIGKILL");
       }, timeoutMs);
       try {
-        const [code, signal] = (await once(child, "exit")) as [
-          number | null,
-          NodeJS.Signals | null,
-        ];
+        const [code, signal] = (await once(child, "exit")) as [number | null, NodeJS.Signals | null];
         return { code, signal };
       } finally {
         clearTimeout(timer);

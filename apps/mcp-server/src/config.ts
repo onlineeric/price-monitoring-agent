@@ -19,16 +19,9 @@ const HTTP_HOST = "0.0.0.0" as const;
 const GRACE_PERIOD_MS = 10_000 as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000 as const;
 
-const transportSchema = z
-  .union([z.literal("stdio"), z.literal("http")])
-  .default("stdio");
+const transportSchema = z.union([z.literal("stdio"), z.literal("http")]).default("stdio");
 
-const portSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(65_535)
-  .default(3002);
+const portSchema = z.coerce.number().int().min(1).max(65_535).default(3002);
 
 // Test-only override (T010 case g, T025 cases a/d). Lets the integration
 // suite drive the per-request timeout in milliseconds rather than seconds.
@@ -56,25 +49,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const rawTransport = env.MCP_TRANSPORT;
   const transportResult = transportSchema.safeParse(rawTransport);
   if (!transportResult.success) {
-    throw new ConfigError(
-      `invalid MCP_TRANSPORT="${rawTransport}" (expected "stdio" or "http")`,
-    );
+    throw new ConfigError(`invalid MCP_TRANSPORT="${rawTransport}" (expected "stdio" or "http")`);
   }
 
   const rawPort = env.MCP_HTTP_PORT;
   const portResult = portSchema.safeParse(rawPort);
   if (!portResult.success) {
-    throw new ConfigError(
-      `invalid MCP_HTTP_PORT="${rawPort}" (expected positive integer in [1, 65535])`,
-    );
+    throw new ConfigError(`invalid MCP_HTTP_PORT="${rawPort}" (expected positive integer in [1, 65535])`);
   }
 
   const rawTimeout = env.MCP_REQUEST_TIMEOUT_MS;
   const timeoutResult = requestTimeoutSchema.safeParse(rawTimeout);
   if (!timeoutResult.success) {
-    throw new ConfigError(
-      `invalid MCP_REQUEST_TIMEOUT_MS="${rawTimeout}" (expected positive integer in [1, 600000])`,
-    );
+    throw new ConfigError(`invalid MCP_REQUEST_TIMEOUT_MS="${rawTimeout}" (expected positive integer in [1, 600000])`);
   }
 
   return {

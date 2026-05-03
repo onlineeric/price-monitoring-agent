@@ -1,6 +1,8 @@
+import { NextResponse } from "next/server";
+
 import { db } from "@price-monitor/db";
 import { sql } from "drizzle-orm";
-import { NextResponse } from "next/server";
+
 import { webVersion } from "@/lib/version";
 
 export async function GET() {

@@ -66,10 +66,7 @@ export function ToolCallIndicator({ event }: ToolCallIndicatorProps) {
         <span className="text-muted-foreground">{STATUS_LABEL[event.status]}</span>
         {canExpand ? (
           <ChevronRight
-            className={cn(
-              "ml-1 size-3 text-muted-foreground/70 transition-transform",
-              expanded && "rotate-90",
-            )}
+            className={cn("ml-1 size-3 text-muted-foreground/70 transition-transform", expanded && "rotate-90")}
             aria-hidden="true"
           />
         ) : null}
@@ -83,11 +80,7 @@ export function ToolCallIndicator({ event }: ToolCallIndicatorProps) {
         >
           <ToolCallDetailRow label="Arguments" payload={event.args} />
           {event.status === "failed" ? (
-            <ToolCallDetailRow
-              label="Error"
-              payload={event.errorEnvelope ?? event.result}
-              variant="error"
-            />
+            <ToolCallDetailRow label="Error" payload={event.errorEnvelope ?? event.result} variant="error" />
           ) : (
             <ToolCallDetailRow label="Result" payload={event.result} />
           )}

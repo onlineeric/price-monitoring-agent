@@ -39,8 +39,7 @@ export function useAutoScrollToBottom<
     if (!container) return;
 
     const measure = () => {
-      const distance =
-        container.scrollHeight - container.scrollTop - container.clientHeight;
+      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
       setIsAtBottom(distance <= NEAR_BOTTOM_THRESHOLD_PX);
     };
 

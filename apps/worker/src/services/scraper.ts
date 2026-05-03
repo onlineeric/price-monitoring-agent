@@ -1,6 +1,6 @@
+import type { ScraperResult } from "../types/scraper.js";
 import { fetchAndParse } from "./htmlFetcher.js";
 import { playwrightFetch } from "./playwrightFetcher.js";
-import type { ScraperResult } from "../types/scraper.js";
 
 /**
  * Check if debug mode is enabled for forcing AI extraction
@@ -39,9 +39,7 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
     console.log(`[Scraper] Going directly to Playwright + AI for: ${url}`);
 
     const result = await playwrightFetch(url);
-    console.log(
-      `[Scraper] Extraction ${result.success ? "succeeded" : "failed"} via: ${result.method}`
-    );
+    console.log(`[Scraper] Extraction ${result.success ? "succeeded" : "failed"} via: ${result.method}`);
     return result;
   }
 
@@ -77,7 +75,7 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
 }
 
 // Re-export types for convenience
-export type { ScraperResult, ScraperConfig } from "../types/scraper.js";
+export type { ScraperConfig, ScraperResult } from "../types/scraper.js";
 
 // Re-export browser cleanup for graceful shutdown
 export { closeBrowser } from "./playwrightFetcher.js";

@@ -1,6 +1,5 @@
-import { FlowProducer } from "bullmq";
-
 import { db, eq, products } from "@price-monitor/db";
+import { FlowProducer } from "bullmq";
 
 import { connection } from "../config.js";
 

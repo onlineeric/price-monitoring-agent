@@ -1,6 +1,5 @@
-import { subDays } from "date-fns";
-
 import { and, db, desc, eq, gte, inArray, priceRecords, products } from "@price-monitor/db";
+import { subDays } from "date-fns";
 
 export interface ReportSnapshotItem {
   productId: string;
@@ -41,11 +40,7 @@ function calculatePercentageChange(current: number | null, baseline: number | nu
   return ((current - baseline) / baseline) * 100;
 }
 
-function averageForWindow(
-  records: Array<{ price: number; scrapedAt: Date | null }>,
-  now: Date,
-  windowInDays: number,
-) {
+function averageForWindow(records: Array<{ price: number; scrapedAt: Date | null }>, now: Date, windowInDays: number) {
   const cutoff = subDays(now, windowInDays);
   const prices = records
     .filter((record) => record.scrapedAt !== null && record.scrapedAt >= cutoff)
@@ -54,10 +49,7 @@ function averageForWindow(
 }
 
 export function buildSnapshotItemFromRecords(
-  product: Pick<
-    typeof products.$inferSelect,
-    "id" | "name" | "url" | "imageUrl" | "lastSuccessAt" | "lastFailedAt"
-  >,
+  product: Pick<typeof products.$inferSelect, "id" | "name" | "url" | "imageUrl" | "lastSuccessAt" | "lastFailedAt">,
   records: Array<{ price: number; currency: string | null; scrapedAt: Date | null }>,
   now: Date,
 ): ReportSnapshotItem {
@@ -105,7 +97,10 @@ export async function buildActiveProductReportSnapshot(now = new Date()): Promis
     .from(priceRecords)
     .where(
       and(
-        inArray(priceRecords.productId, activeProducts.map((p) => p.id)),
+        inArray(
+          priceRecords.productId,
+          activeProducts.map((p) => p.id),
+        ),
         gte(priceRecords.scrapedAt, subDays(now, 180)),
       ),
     )

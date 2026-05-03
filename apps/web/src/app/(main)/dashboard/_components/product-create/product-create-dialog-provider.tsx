@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, type PropsWithChildren } from "react";
+import { createContext, type PropsWithChildren, useContext, useRef, useState } from "react";
+
 import { usePathname, useRouter } from "next/navigation";
 
 import { AddProductDialog } from "@/app/(main)/dashboard/products/_components/add-product-dialog";

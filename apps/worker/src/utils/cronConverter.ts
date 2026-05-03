@@ -12,7 +12,7 @@
  */
 
 export interface EmailScheduleSettings {
-  frequency: 'daily' | 'weekly';
+  frequency: "daily" | "weekly";
   hour: number; // 0-23
   minute?: number; // 0-59, defaults to 0 if not specified
   dayOfWeek?: number; // 1-7 (1 = Monday, 7 = Sunday)
@@ -36,13 +36,13 @@ export function settingsToCronPattern(settings: EmailScheduleSettings): string {
 
   // Cron pattern: minute hour day-of-month month day-of-week
 
-  if (frequency === 'daily') {
+  if (frequency === "daily") {
     // Daily at specified hour
     // Example: "0 9 * * *" = every day at 9:00 AM
     return `${minute} ${hour} * * *`;
   }
 
-  if (frequency === 'weekly') {
+  if (frequency === "weekly") {
     // Validate dayOfWeek
     if (!dayOfWeek || dayOfWeek < 1 || dayOfWeek > 7) {
       throw new Error(`Invalid dayOfWeek: ${dayOfWeek}. Must be between 1 (Monday) and 7 (Sunday).`);
@@ -60,7 +60,7 @@ export function settingsToCronPattern(settings: EmailScheduleSettings): string {
  * Parse cron pattern back to human-readable description (for logging)
  */
 export function cronPatternToDescription(cronPattern: string): string {
-  const parts = cronPattern.split(' ');
+  const parts = cronPattern.split(" ");
 
   if (parts.length !== 5) {
     return cronPattern;
@@ -73,10 +73,10 @@ export function cronPatternToDescription(cronPattern: string): string {
     return cronPattern;
   }
 
-  const hourStr = hour.padStart(2, '0');
-  const minuteStr = minute.padStart(2, '0');
+  const hourStr = hour.padStart(2, "0");
+  const minuteStr = minute.padStart(2, "0");
 
-  if (dayOfWeek === '*') {
+  if (dayOfWeek === "*") {
     return `Daily at ${hourStr}:${minuteStr}`;
   }
 
@@ -86,13 +86,13 @@ export function cronPatternToDescription(cronPattern: string): string {
   }
 
   const dayNames: Record<string, string> = {
-    '1': 'Monday',
-    '2': 'Tuesday',
-    '3': 'Wednesday',
-    '4': 'Thursday',
-    '5': 'Friday',
-    '6': 'Saturday',
-    '7': 'Sunday',
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+    "7": "Sunday",
   };
 
   const dayName = dayNames[dayOfWeek] || `day ${dayOfWeek}`;

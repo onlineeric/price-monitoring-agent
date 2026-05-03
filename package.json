@@ -17,9 +17,11 @@
     "worker:down": "docker compose stop worker",
     "worker:logs": "docker compose logs -f worker",
     "worker:restart": "docker compose --profile worker restart worker",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "pnpm -r --workspace-concurrency=1 test",
     "redeploy:coolify": "node scripts/redeploy-local.js",
-    "lint": "pnpm --filter @price-monitor/web lint",
+    "lint": "biome lint .",
+    "lint:fix": "biome check --write --unsafe .",
+    "format": "biome format --write .",
     "docker:ps": "docker compose ps",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
@@ -36,6 +38,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@biomejs/biome": "2.3.8",
     "dotenv": "^16.6.1"
   }
 }

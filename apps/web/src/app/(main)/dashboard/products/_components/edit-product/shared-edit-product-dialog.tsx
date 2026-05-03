@@ -21,9 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 import {
+  type EditProductFormInput,
   editProductFormSchema,
   getEditProductFormDefaultValues,
-  type EditProductFormInput,
 } from "./edit-product-form-schema";
 import { useEditProduct } from "./use-edit-product";
 

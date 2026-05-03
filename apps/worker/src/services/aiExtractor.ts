@@ -1,9 +1,9 @@
-import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
-import { z } from "zod";
+import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
 import * as cheerio from "cheerio";
+import { z } from "zod";
 import type { ScraperResult } from "../types/scraper.js";
 
 /**
@@ -11,18 +11,9 @@ import type { ScraperResult } from "../types/scraper.js";
  */
 const ProductDataSchema = z.object({
   title: z.string().nullable().describe("The product name/title"),
-  price: z
-    .number()
-    .nullable()
-    .describe("The current price as a decimal number (e.g., 19.99)"),
-  currency: z
-    .string()
-    .nullable()
-    .describe("The currency code (USD, EUR, GBP, NZD, AUD, etc.)"),
-  imageUrl: z
-    .string()
-    .nullable()
-    .describe("The main product image URL (full URL with https://, not relative path)"),
+  price: z.number().nullable().describe("The current price as a decimal number (e.g., 19.99)"),
+  currency: z.string().nullable().describe("The currency code (USD, EUR, GBP, NZD, AUD, etc.)"),
+  imageUrl: z.string().nullable().describe("The main product image URL (full URL with https://, not relative path)"),
 });
 
 /**
@@ -47,7 +38,6 @@ function getModelName(provider: AIProvider): string {
       modelName = process.env.ANTHROPIC_MODEL;
       envVarName = "ANTHROPIC_MODEL";
       break;
-    case "openai":
     default:
       modelName = process.env.OPENAI_MODEL;
       envVarName = "OPENAI_MODEL";
@@ -55,9 +45,7 @@ function getModelName(provider: AIProvider): string {
   }
 
   if (!modelName) {
-    throw new Error(
-      `${envVarName} environment variable is required for AI extraction`
-    );
+    throw new Error(`${envVarName} environment variable is required for AI extraction`);
   }
 
   return modelName;
@@ -75,7 +63,6 @@ function getModel(provider: AIProvider) {
       return google(modelName);
     case "anthropic":
       return anthropic(modelName);
-    case "openai":
     default:
       return openai(modelName);
   }
@@ -180,7 +167,7 @@ function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) {
     return text;
   }
-  return text.substring(0, maxLength) + "... [truncated]";
+  return `${text.substring(0, maxLength)}... [truncated]`;
 }
 
 /**
@@ -224,7 +211,6 @@ HTML content:
 ${html}`;
 }
 
-
 /**
  * AI-powered product data extraction using Vercel AI SDK
  *
@@ -234,7 +220,7 @@ ${html}`;
  * @param url - Product URL (for logging/context)
  * @param html - Fully-rendered HTML content (with JavaScript executed)
  */
-export async function aiExtract(url: string, html: string): Promise<ScraperResult> {
+export async function aiExtract(_url: string, html: string): Promise<ScraperResult> {
   const provider = getProvider();
   const modelName = getModelName(provider);
   console.log(`[AI Extractor] Using provider: ${provider}, model: ${modelName}`);
@@ -242,9 +228,7 @@ export async function aiExtract(url: string, html: string): Promise<ScraperResul
   try {
     const preparedHtml = prepareHtmlForAI(html);
 
-    console.log(
-      `[AI Extractor] Sending ${preparedHtml.length} chars to ${provider}...`
-    );
+    console.log(`[AI Extractor] Sending ${preparedHtml.length} chars to ${provider}...`);
 
     // Call AI with structured output
     const { object } = await generateObject({
@@ -268,7 +252,7 @@ export async function aiExtract(url: string, html: string): Promise<ScraperResul
     }
 
     // Convert price from decimal to cents (e.g., 19.99 -> 1999)
-    const priceInCents = hasPrice ? Math.round(object.price! * 100) : null;
+    const priceInCents = hasPrice && object.price != null ? Math.round(object.price * 100) : null;
 
     return {
       success: true,

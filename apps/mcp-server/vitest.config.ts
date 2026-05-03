@@ -9,6 +9,6 @@ export default defineConfig({
     // is the worst-case ceiling, not the typical case.
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
   },
 });

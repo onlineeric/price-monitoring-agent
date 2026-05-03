@@ -5,16 +5,14 @@ import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { ProductCreateForm } from "./product-create-form";
-import { productCreateFormDefaultValues, productCreateFormSchema, type ProductCreateFormInput } from "./product-create-form-schema";
+import {
+  type ProductCreateFormInput,
+  productCreateFormDefaultValues,
+  productCreateFormSchema,
+} from "./product-create-form-schema";
 import { useCreateProduct } from "./use-create-product";
 
 interface AddProductDialogProps {

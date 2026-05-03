@@ -20,27 +20,17 @@ export const CHAT_CONVERSATION_ID_MAX = 200;
 const DEFAULT_CHAT_MAX_STEPS = 5;
 const DEFAULT_CHAT_TURN_TIMEOUT_MS = 60_000;
 
-function parsePositiveInt(
-  raw: string | undefined,
-  fallback: number,
-  label: string,
-): number {
+function parsePositiveInt(raw: string | undefined, fallback: number, label: string): number {
   if (raw === undefined || raw.trim() === "") return fallback;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    console.warn(
-      `[chat] ignoring invalid ${label}="${raw}"; falling back to ${fallback}`,
-    );
+    console.warn(`[chat] ignoring invalid ${label}="${raw}"; falling back to ${fallback}`);
     return fallback;
   }
   return parsed;
 }
 
-export const CHAT_MAX_STEPS = parsePositiveInt(
-  process.env.CHAT_MAX_STEPS,
-  DEFAULT_CHAT_MAX_STEPS,
-  "CHAT_MAX_STEPS",
-);
+export const CHAT_MAX_STEPS = parsePositiveInt(process.env.CHAT_MAX_STEPS, DEFAULT_CHAT_MAX_STEPS, "CHAT_MAX_STEPS");
 
 export const CHAT_TURN_TIMEOUT_MS = parsePositiveInt(
   process.env.CHAT_TURN_TIMEOUT_MS,
@@ -62,9 +52,9 @@ export const CHAT_SYSTEM_PROMPT = [
   "",
   "## Scope",
   "Only help with the user's monitored products, their prices, price history, price trends, deal recommendations, and how to use the Price Monitor app itself.",
-  "Brief greetings and small talk are allowed (e.g., \"hi\", \"hello\", \"how are you?\", \"thanks\"). Reply with a short friendly greeting and then offer to help with a price-monitoring task.",
+  'Brief greetings and small talk are allowed (e.g., "hi", "hello", "how are you?", "thanks"). Reply with a short friendly greeting and then offer to help with a price-monitoring task.',
   "Anything else is off-topic. Examples of off-topic requests include cooking, recipes, fishing, hiking, travel, sports, shopping advice unrelated to monitored products, coding help, news, politics, opinions, jokes, math, weather, health, or questions about other apps or websites.",
-  "When a request is off-topic, do not answer it even partially. Reply with exactly this kind of message: \"Sorry, I can only assist with Price Monitor System issues — things like your monitored products, their prices, price history, trends, and deals. Is there a product you'd like me to look up or add?\" Adapt the wording lightly if needed, but keep the meaning the same and always end by offering a price-monitoring task.",
+  'When a request is off-topic, do not answer it even partially. Reply with exactly this kind of message: "Sorry, I can only assist with Price Monitor System issues — things like your monitored products, their prices, price history, trends, and deals. Is there a product you\'d like me to look up or add?" Adapt the wording lightly if needed, but keep the meaning the same and always end by offering a price-monitoring task.',
   "",
   "## Tools",
   "Prefer calling a tool over guessing. Available tools (exposed by the MCP server):",

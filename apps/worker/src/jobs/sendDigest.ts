@@ -1,6 +1,5 @@
-import { Job } from "bullmq";
-
 import { buildActiveProductReportSnapshot, sendPriceReportEmail } from "@price-monitor/reporting";
+import type { Job } from "bullmq";
 
 import { closeUpdatePricesFlowProducer, enqueueRefreshFlowForActiveProducts } from "../services/update-prices.js";
 
@@ -15,7 +14,7 @@ export async function sendDigestJob(job: Job) {
 
     if (!refreshResult.enqueued) {
       console.log(`[${job.id}] No products to check, skipping`);
-      return { success: true, message: 'No products to check' };
+      return { success: true, message: "No products to check" };
     }
 
     console.log(`[${job.id}] Created flow with ${refreshResult.activeProductCount} child jobs`);
@@ -44,7 +43,7 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
     const report = await buildActiveProductReportSnapshot();
 
     // Send digest email
-    const recipientEmail = process.env.ALERT_EMAIL || 'test@example.com';
+    const recipientEmail = process.env.ALERT_EMAIL || "test@example.com";
 
     const sendResult = await sendPriceReportEmail({
       recipients: [recipientEmail],
@@ -53,14 +52,14 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
     });
 
     if (sendResult.success) {
-      console.log('[Digest Flow] Email sent successfully');
+      console.log("[Digest Flow] Email sent successfully");
     } else {
-      console.error('[Digest Flow] Failed to send email:', sendResult.errorMessage);
+      console.error("[Digest Flow] Failed to send email:", sendResult.errorMessage);
     }
 
     return { success: sendResult.success, productCount: report.items.length };
   } catch (error) {
-    console.error('[Digest Flow] Error in completion callback:', error);
+    console.error("[Digest Flow] Error in completion callback:", error);
     throw error;
   }
 }

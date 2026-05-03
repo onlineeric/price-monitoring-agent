@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Body,
   Column,
@@ -217,7 +216,9 @@ export function PriceDigestEmail({ products, generatedAt }: PriceDigestEmailProp
                             </Link>
                             {isFailed && (
                               <div style={{ marginTop: "4px" }}>
-                                <span style={styles.failedBadge}>Failed since {formatDateTime(product.lastFailed)}</span>
+                                <span style={styles.failedBadge}>
+                                  Failed since {formatDateTime(product.lastFailed)}
+                                </span>
                               </div>
                             )}
                           </Column>

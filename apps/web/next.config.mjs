@@ -1,6 +1,7 @@
 import { config as loadDotenv } from "dotenv";
-import { fileURLToPath } from "node:url";
+
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Load the monorepo's root .env BEFORE Next.js evaluates this config so all
 // process.env reads — server-side code, NEXT_PUBLIC_* inlining, and the

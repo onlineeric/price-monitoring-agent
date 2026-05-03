@@ -9,7 +9,11 @@ export function AddProductButton() {
   const { openProductCreateDialog } = useProductCreateDialog();
 
   return (
-    <Button onClick={(event) => openProductCreateDialog("products-add-button", event.currentTarget)} size="lg" className="gap-2">
+    <Button
+      onClick={(event) => openProductCreateDialog("products-add-button", event.currentTarget)}
+      size="lg"
+      className="gap-2"
+    >
       <Plus className="size-4" />
       Add Product
     </Button>

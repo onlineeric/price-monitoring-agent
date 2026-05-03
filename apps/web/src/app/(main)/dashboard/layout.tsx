@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 
 import { cookies } from "next/headers";
 
+import { users } from "@/data/users";
 import { SIDEBAR_COLLAPSIBLE_VALUES, SIDEBAR_VARIANT_VALUES } from "@/lib/preferences/layout";
 import { getPreference } from "@/server/server-actions";
-
-import { users } from "@/data/users";
 
 import { DashboardClientShell } from "./_components/dashboard-client-shell";
 
@@ -18,12 +17,7 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
   ]);
 
   return (
-    <DashboardClientShell
-      defaultOpen={defaultOpen}
-      variant={variant}
-      collapsible={collapsible}
-      users={users}
-    >
+    <DashboardClientShell defaultOpen={defaultOpen} variant={variant} collapsible={collapsible} users={users}>
       {children}
     </DashboardClientShell>
   );

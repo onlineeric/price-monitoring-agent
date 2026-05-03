@@ -1,4 +1,4 @@
-import { db, settings, eq } from "@price-monitor/db";
+import { db, eq, settings } from "@price-monitor/db";
 
 /**
  * Email schedule configuration
@@ -14,11 +14,7 @@ export interface EmailSchedule {
  * Get a setting value by key
  */
 export async function getSetting(key: string): Promise<string | null> {
-  const [result] = await db
-    .select()
-    .from(settings)
-    .where(eq(settings.key, key))
-    .limit(1);
+  const [result] = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
 
   return result?.value || null;
 }

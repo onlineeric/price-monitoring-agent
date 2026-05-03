@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { ScraperResult, ScraperConfig } from "../types/scraper.js";
+import type { ScraperConfig, ScraperResult } from "../types/scraper.js";
 import { parsePrice, resolveImageUrl } from "../utils/priceParser.js";
 
 const DEFAULT_CONFIG: Required<ScraperConfig> = {
@@ -80,11 +80,7 @@ function extractProductData($: cheerio.CheerioAPI, baseUrl: string) {
     const element = $(selector).first();
     if (element.length) {
       // Try various image attributes
-      const rawUrl =
-        element.attr("src") ||
-        element.attr("data-src") ||
-        element.attr("data-old-hires") ||
-        null;
+      const rawUrl = element.attr("src") || element.attr("data-src") || element.attr("data-old-hires") || null;
 
       imageUrl = resolveImageUrl(rawUrl, baseUrl);
       if (imageUrl) break;
@@ -97,10 +93,7 @@ function extractProductData($: cheerio.CheerioAPI, baseUrl: string) {
 /**
  * Fetch a URL and parse the HTML to extract product data
  */
-export async function fetchAndParse(
-  url: string,
-  config?: ScraperConfig
-): Promise<ScraperResult> {
+export async function fetchAndParse(url: string, config?: ScraperConfig): Promise<ScraperResult> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
   try {
@@ -112,8 +105,7 @@ export async function fetchAndParse(
     const response = await fetch(url, {
       headers: {
         "User-Agent": mergedConfig.userAgent,
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
       },
       signal: controller.signal,
@@ -160,8 +152,7 @@ export async function fetchAndParse(
       method: "html",
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     // Handle specific error types
     if (errorMessage.includes("abort")) {

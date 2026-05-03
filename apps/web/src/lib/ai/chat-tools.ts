@@ -19,13 +19,13 @@
  * log a warning; the turn still serves as text-only chat (spec edge case).
  */
 
-import { tool, type Tool } from "ai";
+import { type Tool, tool } from "ai";
 import { z } from "zod";
 
 import { getMcpClient, listMcpTools } from "@/lib/mcp";
 
-import type { ChatLogger } from "./chat-logger";
 import { scrubMessage } from "./chat-errors";
+import type { ChatLogger } from "./chat-logger";
 
 type JsonSchemaObject = {
   type: "object";
@@ -105,9 +105,7 @@ export type BuildMcpToolsOptions = {
  * turns into a pre-stream 502). Individual tool-call failures at execution
  * time do NOT throw — they return a Phase 2.6 error envelope instead.
  */
-export async function buildMcpTools(
-  options: BuildMcpToolsOptions,
-): Promise<Record<string, Tool>> {
+export async function buildMcpTools(options: BuildMcpToolsOptions): Promise<Record<string, Tool>> {
   const { logger } = options;
   const mcpTools = await listMcpTools();
 
@@ -129,11 +127,7 @@ function bridgeMcpTool(mcpTool: McpTool, logger: ChatLogger): Tool {
   let parameters: z.ZodTypeAny;
   const rawSchema = mcpTool.inputSchema;
   try {
-    if (
-      !rawSchema ||
-      typeof rawSchema !== "object" ||
-      (rawSchema as JsonSchemaObject).type !== "object"
-    ) {
+    if (!rawSchema || typeof rawSchema !== "object" || (rawSchema as JsonSchemaObject).type !== "object") {
       throw new Error("inputSchema must be a JSON-Schema object");
     }
     parameters = jsonSchemaToZod(rawSchema as JsonSchemaObject);

@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 import { ChevronRight, PlusCircleIcon, SearchIcon } from "lucide-react";
 
-import { useGlobalProductSearchDialog } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
 import { useProductCreateDialog } from "@/app/(main)/dashboard/_components/product-create/product-create-dialog-provider";
+import { useGlobalProductSearchDialog } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {

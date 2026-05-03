@@ -3,9 +3,11 @@
 // banner (`quiet: true`); in HTTP mode it doesn't matter, but keeping the
 // flag consistent avoids surprises. In production (Coolify) the file does
 // not exist and dotenv silently no-ops — container env wins.
-import { config as loadDotenv } from "dotenv";
-import { fileURLToPath } from "node:url";
+
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { config as loadDotenv } from "dotenv";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: resolve(__dirname, "../../../.env"), quiet: true });
 

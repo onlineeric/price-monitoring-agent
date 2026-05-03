@@ -53,11 +53,7 @@ export function createChatLogger(ctx: ChatLoggerContext): ChatLogger {
   const base: Record<string, unknown> = { turnId: ctx.turnId };
   if (ctx.conversationId) base.conversationId = ctx.conversationId;
 
-  function emit(
-    stream: "log" | "error",
-    event: string,
-    fields: Record<string, unknown> = {},
-  ) {
+  function emit(stream: "log" | "error", event: string, fields: Record<string, unknown> = {}) {
     const line = `[chat] ${event} ${serializeFields({ ...base, ...fields })}`.trim();
     if (stream === "error") console.error(line);
     else console.log(line);

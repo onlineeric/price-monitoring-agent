@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SharedEditProductDialog } from "@/app/(main)/dashboard/products/_components/edit-product/shared-edit-product-dialog";
 
 vi.mock("next/image", () => ({
+  // biome-ignore lint/performance/noImgElement: jsdom mock for next/image — Image optimization is irrelevant in tests
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img alt={props.alt} {...props} />,
 }));
 

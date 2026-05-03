@@ -160,6 +160,25 @@ pnpm worker:up    # rebuilds image (--build) and starts container
 pnpm worker:down  # stop without rebuild
 ```
 
+### Lint and tests
+
+Lint and tests run across all workspaces from the repository root:
+
+```bash
+pnpm lint          # Biome lint over web, worker, mcp-server, packages, scripts
+pnpm lint:fix      # apply Biome's safe + unsafe fixes (always review the diff)
+pnpm test          # vitest run in every workspace that has a `test` script
+```
+
+Tests live alongside the code they cover (e.g. `src/lib/format.ts` →
+`src/lib/format.test.ts`). The web workspace also has integration-flavoured
+tests under `src/test/` for the dashboard pages and API routes.
+
+The test suite is intentionally **not** wired into CI — it is meant to be run
+locally before pushing. Whenever you change application code, also add or
+update a colocated `*.test.ts` (or `*.test.tsx`) and run `pnpm test` to
+confirm nothing regressed.
+
 ## Deployment
 
 Deployment is automated through GitHub Actions and Coolify.
