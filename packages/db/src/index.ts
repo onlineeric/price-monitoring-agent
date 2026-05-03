@@ -1,14 +1,5 @@
-import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray } from 'drizzle-orm';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-
-// Resolve .env path relative to this file's location (works from any cwd)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-config({ path: resolve(__dirname, '../../../.env') });
-
 import postgres from 'postgres';
 import * as schema from './schema';
 

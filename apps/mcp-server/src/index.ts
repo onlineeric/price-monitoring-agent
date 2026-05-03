@@ -1,45 +1,42 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
-import { registerSearchProducts } from "./tools/search-products.js";
-import { registerGetProductHistory } from "./tools/get-product-history.js";
-import { registerGetPriceSummary } from "./tools/get-price-summary.js";
-import { registerAddProduct } from "./tools/add-product.js";
-import { withErrorHandling } from "./tools/_wrap.js";
+// Load the monorepo's root .env BEFORE anything else. In stdio mode the
+// JSON-RPC stream lives on stdout, so dotenv MUST be told to suppress its
+// banner (`quiet: true`); in HTTP mode it doesn't matter, but keeping the
+// flag consistent avoids surprises. In production (Coolify) the file does
+// not exist and dotenv silently no-ops — container env wins.
+import { config as loadDotenv } from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadDotenv({ path: resolve(__dirname, "../../../.env"), quiet: true });
 
-const server = new McpServer({
-  name: "price-monitor-mcp-server",
-  version: "0.1.0",
-});
+import { ConfigError, loadConfig } from "./config.js";
+import { createServer } from "./server.js";
+import { runHttp } from "./transports/http.js";
+import { runStdio } from "./transports/stdio.js";
 
-// --- Real tools ---
-registerSearchProducts(server);
-registerGetProductHistory(server);
-registerGetPriceSummary(server);
-registerAddProduct(server);
+// Top-level await is fine here: the package targets ESM (see package.json
+// "type": "module") and is launched via `tsx`. The dispatcher's only job is
+// to read config, build the McpServer, and hand off to the right transport.
+//
+// stdio uses the shared `createServer()` here once and connects it to the
+// stdio transport. HTTP mode also calls `createServer()` so the dispatcher
+// stays uniform, but `runHttp` builds a fresh server+transport per request
+// internally — the SDK requires that for stateless mode (see http.ts).
+try {
+  const config = loadConfig();
+  const server = createServer();
 
-// --- Dev/debug tools ---
-server.registerTool(
-  "ping",
-  {
-    title: "Ping",
-    description: "Health check tool — returns 'pong'.",
-    inputSchema: z.object({
-      count: z.number().int().min(1).optional(),
-    }),
-  },
-  withErrorHandling("ping", async ({ count }) => {
-    const parsedCount = Number(count);
-    const safeCount = Number.isInteger(parsedCount) && parsedCount > 0 ? parsedCount : 1;
-
-    return {
-      content: [{ type: "text", text: "pong ".repeat(safeCount).trim() }],
-    };
-  }),
-);
-
-// stdio transport: stdout is reserved for JSON-RPC frames. Any logging must go
-// to stderr (console.error) — console.log would corrupt the protocol stream.
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("[mcp-server] price-monitor-mcp-server ready on stdio");  // normal logging
+  if (config.transport === "stdio") {
+    await runStdio(server, config);
+  } else {
+    await runHttp(server, config);
+  }
+} catch (err) {
+  if (err instanceof ConfigError) {
+    console.error(`[mcp-server] FATAL: ${err.message}`);
+  } else {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[mcp-server] FATAL: ${message}`);
+  }
+  process.exit(1);
+}

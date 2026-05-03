@@ -72,6 +72,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Step 7: Build and push mcp-server image
+      # Image name format: ghcr.io/<owner>/<repo>/mcp-server:<tag>
+      - name: Build and push mcp-server image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/mcp-server/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/mcp-server:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       # ===================================
       # Production Auto-Deployment
       # ===================================
@@ -80,7 +92,8 @@ jobs:
       # Webhook URLs are configured in GitHub Secrets:
       #   - COOLIFY_WEBHOOK_WEB_PROD
       #   - COOLIFY_WEBHOOK_WORKER_PROD
-      # Get these URLs from production Coolify (tasks 2.14-2.15)
+      #   - COOLIFY_WEBHOOK_MCP_PROD
+      # Get these URLs from production Coolify (tasks 2.14-2.15, 3.18)
       #
       # GitHub Secrets Required (set these in repository settings):
       #
@@ -93,6 +106,9 @@ jobs:
       #
       #    Name: COOLIFY_WEBHOOK_WORKER_PROD
       #    Value: <webhook URL from production Coolify worker app>
+      #
+      #    Name: COOLIFY_WEBHOOK_MCP_PROD
+      #    Value: <webhook URL from production Coolify mcp-server app>
       #
       #    Name: COOLIFY_WEBHOOK_TOKEN_PROD
       #    Value: <authentication token for Coolify webhooks>
@@ -142,4 +158,25 @@ jobs:
             fi
           else
             echo "⚠️ COOLIFY_WEBHOOK_WORKER_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
+          fi
+
+      # Step 9: Trigger Production Deployment (MCP)
+      - name: Trigger Production Deployment (MCP)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "${{ secrets.COOLIFY_WEBHOOK_MCP_PROD }}" ] && [ -n "${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" ]; then
+            echo "Triggering Coolify webhook for mcp-server app..."
+            HTTP_CODE=$(curl -X POST "${{ secrets.COOLIFY_WEBHOOK_MCP_PROD }}" \
+              -H "Authorization: Bearer ${{ secrets.COOLIFY_WEBHOOK_TOKEN_PROD }}" \
+              --silent \
+              --max-time 30 \
+              --write-out "%{http_code}" \
+              --output /dev/null)
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "✅ MCP deployment triggered successfully (HTTP $HTTP_CODE)"
+            else
+              echo "⚠️ MCP webhook failed with HTTP $HTTP_CODE (non-blocking)"
+            fi
+          else
+            echo "⚠️ COOLIFY_WEBHOOK_MCP_PROD or COOLIFY_WEBHOOK_TOKEN_PROD secret not set, skipping webhook"
           fi

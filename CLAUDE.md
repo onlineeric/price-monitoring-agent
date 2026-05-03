@@ -23,6 +23,17 @@ AI-powered price monitoring system that tracks product prices from URLs, stores 
 
 **Database Access Rule:** Always use the Drizzle query builder (`db.select()`, `db.insert()`, `db.query.*`). Never use raw SQL via `db.execute()` unless unavoidable. Use `sql` template tag only for inline expressions (e.g. `COALESCE`).
 
+**Environment Loading Rule:** There is **one** `.env` file — the monorepo root `.env`. Each runnable component loads it directly at startup; nothing relies on side-effect imports.
+
+| Component | How it loads root `.env` |
+|---|---|
+| `apps/web` | `dotenv.config()` at the top of `next.config.mjs` (runs before Next.js evaluates config) |
+| `apps/worker` | `dotenv.config()` in `src/config.ts`, imported early by `src/index.ts` |
+| `apps/mcp-server` | `dotenv.config()` at the very top of `src/index.ts` (with `quiet: true` so the dotenv banner never reaches stdout in stdio mode) |
+| `packages/db` (drizzle-kit CLI only) | `dotenv.config()` in `drizzle.config.ts` for `pnpm --filter @price-monitor/db push/generate/studio` |
+
+The `packages/db` runtime library does **not** load env on its own — it expects `DATABASE_URL` to already be in `process.env`. In production (Coolify) the `.env` file does not exist, dotenv silently no-ops, and container env vars supplied by Coolify win.
+
 ---
 
 ## Repository Structure
@@ -152,6 +163,6 @@ Only create commits when explicitly requested.
 - TypeScript 5.9 + Next.js 16 (App Router), React 19, Tailwind CSS v4, Shadcn UI, TanStack Query/Table, Zustand, Drizzle ORM, PostgreSQL 18, Redis 8, BullMQ, Playwright, Vercel AI SDK (OpenAI / Anthropic / Google), `@modelcontextprotocol/sdk`, `streamdown` (Markdown rendering), Resend + React Email
 
 ## Recent Changes
+- 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` + `GET /mcp/health` on port 3002) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown. Test-only tools (`slow_ping`, `throw_test`) are gated on `NODE_ENV !== "production"` so a stray `MCP_TEST_TOOLS=1` cannot leak them into a prod deploy.
 - 005-chat-page-ui: Dashboard chat page streaming `/api/chat` responses with sanitized markdown, inline tool-call indicators, and per-tab in-memory conversation state
 - 004-chat-streaming-api: Add `/api/chat` streaming route with MCP tool-calling, provider abstraction, and structured error taxonomy
-- 003-send-report-email: Introduce manual report preview/send flow with Redis-backed safeguards and shared `packages/reporting`
