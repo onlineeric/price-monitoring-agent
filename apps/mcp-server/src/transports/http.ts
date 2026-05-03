@@ -156,35 +156,52 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     const startTs = Date.now();
     let parsed: unknown;
     let parseFailed = false;
+    let bodyTooLarge = false;
+    // Track the per-request transport+server so the timeout callback can
+    // tear them down. This unwinds `transport.handleRequest`'s awaited
+    // promise so the in-flight tool work releases its connection-pool slot
+    // instead of accumulating zombie operations (FR-011a "MUST abort it").
+    let transport: StreamableHTTPServerTransport | null = null;
+    let mcpServer: McpServer | null = null;
+    const abortController = new AbortController();
 
     // Per-request timeout (FR-011a): a JS-level `setTimeout` rather than
     // `req.setTimeout()`. The socket-level `req.setTimeout` triggers Node's
     // default socket-destroy behavior alongside the user callback, so the
     // 504 response often loses to the socket teardown and clients see
     // "other side closed". A plain timer lets us write the structured
-    // response cleanly while the SDK's in-flight handler abandons its own
-    // write (writes on an ended response are no-ops).
+    // response cleanly, fires the AbortController, and tears down the SDK
+    // transport so the awaited handler unwinds.
     const timeoutHandle = setTimeout(() => {
-      if (res.headersSent || res.writableEnded) return;
-      const body = JSON.stringify({
-        error: {
-          code: "request_timeout",
-          message: `MCP request exceeded ${config.requestTimeoutMs}ms timeout`,
-        },
-      });
-      res.statusCode = 504;
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.end(body);
+      if (!res.headersSent && !res.writableEnded) {
+        const body = JSON.stringify({
+          error: {
+            code: "request_timeout",
+            message: `MCP request exceeded ${config.requestTimeoutMs}ms timeout`,
+          },
+        });
+        res.statusCode = 504;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(body);
+      }
+      abortController.abort();
+      // Best-effort SDK teardown so `await transport.handleRequest(...)`
+      // resolves promptly and the per-request resources are released.
+      transport?.close().catch(() => {});
+      mcpServer?.close().catch(() => {});
     }, config.requestTimeoutMs);
     res.on("close", () => clearTimeout(timeoutHandle));
     res.on("finish", () => clearTimeout(timeoutHandle));
 
-    // Buffer the request body. We rely on Node defaults for max body size —
-    // tightening that here would push beyond FR-015's "minimal surface".
+    // Buffer the request body with a 1 MiB cap. Node's `http` has no default
+    // body-size limit, so an unbounded accumulator is an OOM pathway. Tool
+    // results in this project are well under 1 MiB; anything larger is a
+    // misconfigured peer or hostile traffic.
     try {
-      parsed = await readJsonBody(req);
-    } catch {
+      parsed = await readJsonBody(req, MAX_BODY_BYTES);
+    } catch (err) {
       parseFailed = true;
+      if (err instanceof BodyTooLargeError) bodyTooLarge = true;
     }
 
     // Access-log line (FR-013a) — wired up *before* delegating so it fires
@@ -211,18 +228,33 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
     });
 
     if (parseFailed) {
-      res.statusCode = 400;
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("Invalid JSON-RPC body");
+      if (res.headersSent || res.writableEnded) return;
+      if (bodyTooLarge) {
+        res.statusCode = 413;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Request body too large");
+      } else {
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Invalid JSON-RPC body");
+      }
       return;
     }
 
     // Stateless mode: build a fresh transport + McpServer per request
     // (SDK-documented pattern). Tool registration is cheap — it just
     // populates an in-memory registry — so the per-request cost is small.
-    const transport = buildStatelessTransport();
-    const mcpServer = buildMcpServer();
+    transport = buildStatelessTransport();
+    mcpServer = buildMcpServer();
     await connectTransport(mcpServer, transport);
+    // If the timeout fired while we were waiting on the body, the request
+    // is already closed — skip the SDK call so we don't hand a fresh
+    // transport an already-ended response.
+    if (abortController.signal.aborted) {
+      await transport.close().catch(() => {});
+      await mcpServer.close().catch(() => {});
+      return;
+    }
     try {
       await transport.handleRequest(req, res, parsed);
     } finally {
@@ -309,11 +341,30 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
   await new Promise<void>(() => {});
 }
 
-function readJsonBody(req: IncomingMessage): Promise<unknown> {
+// 1 MiB cap on POST /mcp request bodies. Tool inputs are JSON-RPC frames
+// listing tool names and small argument objects; nothing legitimate
+// approaches this. Without a cap, `data += chunk` is an OOM pathway.
+const MAX_BODY_BYTES = 1024 * 1024;
+
+class BodyTooLargeError extends Error {
+  constructor(limit: number) {
+    super(`request body exceeded ${limit} bytes`);
+    this.name = "BodyTooLargeError";
+  }
+}
+
+function readJsonBody(req: IncomingMessage, maxBytes: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let data = "";
+    let bytes = 0;
     req.setEncoding("utf8");
     req.on("data", (chunk: string) => {
+      bytes += Buffer.byteLength(chunk, "utf8");
+      if (bytes > maxBytes) {
+        req.destroy();
+        reject(new BodyTooLargeError(maxBytes));
+        return;
+      }
       data += chunk;
     });
     req.on("end", () => {

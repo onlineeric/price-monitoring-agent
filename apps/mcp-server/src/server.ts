@@ -1,6 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import pkg from "../package.json" with { type: "json" };
 import { registerAddProduct } from "./tools/add-product.js";
 import { registerGetPriceSummary } from "./tools/get-price-summary.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
@@ -22,7 +23,7 @@ import { ToolError, withErrorHandling } from "./tools/_wrap.js";
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "price-monitor-mcp-server",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   // --- Real tools (stable across both transports) ---
