@@ -157,6 +157,13 @@ export default async function DashboardPage() {
           accurately. Price history is stored in PostgreSQL, and automated email digests with trend analysis are sent on
           a configurable schedule.
         </p>
+        <h3 className="mt-2 mb-2 font-semibold text-lg">AI Chat with MCP Tool-Calling</h3>
+        <p className="mb-4 text-muted-foreground">
+          The built-in <a href="/dashboard/chat" className="text-primary underline underline-offset-4 hover:text-primary/80">AI Chat</a> lets
+          you ask natural-language questions about your products and price history. It streams responses from an LLM
+          (OpenAI / Anthropic / Google) that calls typed tools on a dedicated <strong>Model Context Protocol (MCP)</strong> server,
+          which safely queries the database — no direct SQL access from the model, so every action is bounded by validated tool schemas.
+        </p>
         <p className="mb-4 text-muted-foreground">
           This project is a portfolio project demonstrating my full-stack development, AI Agent integration, background job processing and production deployment skills.
         </p>
@@ -186,6 +193,7 @@ export default async function DashboardPage() {
           <img src="https://img.shields.io/badge/-TypeScript-007ACC?logo=typescript&logoColor=white&style=for-the-badge" alt="TypeScript" />
           <img src="https://img.shields.io/badge/-Playwright-2EAD33?logo=playwright&logoColor=white&style=for-the-badge" alt="Playwright" />
           <img src="https://img.shields.io/badge/-AI%20Agent-FF6F00?logo=openai&logoColor=white&style=for-the-badge" alt="AI Agent" />
+          <img src="https://img.shields.io/badge/-MCP-8B5CF6?logo=anthropic&logoColor=white&style=for-the-badge" alt="Model Context Protocol" />
           <img src="https://img.shields.io/badge/-BullMQ-DC382C?logo=redis&logoColor=white&style=for-the-badge" alt="BullMQ" />
           <img src="https://img.shields.io/badge/-PostgreSQL-4169E1?logo=postgresql&logoColor=white&style=for-the-badge" alt="PostgreSQL" />
           <img src="https://img.shields.io/badge/-Resend-7C3AED?logo=resend&logoColor=white&style=for-the-badge" alt="Resend" />

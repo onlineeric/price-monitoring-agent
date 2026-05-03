@@ -42,7 +42,7 @@ The `packages/db` runtime library does **not** load env on its own — it expect
 apps/
   web/         # Next.js app — dashboard UI, chat page, REST + /api/chat streaming API
   worker/      # BullMQ consumer — extraction, DB writes, email
-  mcp-server/  # Custom MCP server (stdio) exposing typed tools to the chat agent
+  mcp-server/  # Custom MCP server exposing typed tools to the chat agent (stdio for IDE, HTTP for app-to-app)
 packages/
   db/          # Shared Drizzle schema + DB client (@price-monitor/db)
 specs/         # Feature specs, plans, tasks per feature (e.g. 001-*, 002-*)
@@ -131,8 +131,12 @@ Global product search is implemented as a dialog provider in `_components/produc
 
 ### AI Chat Agent + MCP
 
-- **MCP server (`apps/mcp-server/`)** — standalone Node process over stdio using `@modelcontextprotocol/sdk`. Exposes typed tools (`search_products`, `get_product_history`, `get_price_summary`, `add_product`) backed by Drizzle queries and the BullMQ queue. Direct SQL access from the agent is intentionally not exposed. All tool errors flow through `tools/_wrap.ts` into a structured `{ error: { code, message } }` shape.
-- **MCP client (`apps/web/src/lib/mcp/client.ts`)** — singleton stdio client that spawns the MCP server via `pnpm --filter @price-monitor/mcp-server start`. Override with `MCP_SERVER_COMMAND` / `MCP_SERVER_ARGS` env vars.
+- **Three-app topology** — In production, `web`, `worker`, and `mcp-server` are three independent Coolify applications on the same internal Docker network. The chat path is: browser → `web` (Next.js `/api/chat`) → `mcp-server` (HTTP) → Postgres / Redis. The MCP server is internal-only — no public domain, no HTTPS termination.
+- **Dev/prod transport split** — The MCP server speaks two transports selected by `MCP_TRANSPORT`:
+  - `stdio` (default) — spawned as a child process by the **IDE** (VSCode / Cursor) for local development. Stdout is reserved for JSON-RPC frames; all logs go to stderr.
+  - `http` — Streamable HTTP on `MCP_HTTP_PORT` (default `3002`). Used by `web → mcp-server` in **both dev (Docker container) and prod (Coolify app)**. Stateless: every request creates a fresh `StreamableHTTPServerTransport` so no per-session state lingers, which makes the service horizontally scalable and lets `web` and `mcp-server` scale independently.
+- **MCP server (`apps/mcp-server/`)** — standalone Node process using `@modelcontextprotocol/sdk`. Exposes typed tools (`search_products`, `get_product_history`, `get_price_summary`, `add_product`, `ping`) backed by Drizzle queries and the BullMQ queue. Direct SQL access from the agent is intentionally not exposed. All tool errors flow through `tools/_wrap.ts` into a structured `{ error: { code, message } }` shape. HTTP mode also exposes `GET /health` (Coolify health probe) and `GET /mcp/health` (alias used by web's MCP-health proxy route). Test-only tools (`slow_ping`, `throw_test`) are hard-gated on `NODE_ENV !== "production"`.
+- **MCP client (`apps/web/src/lib/mcp/client.ts`)** — singleton client that picks the transport at first connect: `StreamableHTTPClientTransport(MCP_HTTP_URL)` when `MCP_HTTP_URL` is set (production + Docker dev), otherwise `StdioClientTransport` spawning `pnpm --filter @price-monitor/mcp-server start` (the IDE-style fallback). Override the stdio command via `MCP_SERVER_COMMAND` / `MCP_SERVER_ARGS`.
 - **Chat API (`apps/web/src/app/api/chat/route.ts`)** — Node-runtime route using Vercel AI SDK `streamText` with MCP tools bridged via `buildMcpTools` (in `apps/web/src/lib/ai/chat-tools.ts`). Enforces `CHAT_MAX_STEPS` (5-step tool budget) and `CHAT_TURN_TIMEOUT_MS` (60s). Errors surface as documented `ChatErrorCode` values: `validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`.
 - **Provider selection** — same `AI_PROVIDER` env var as the worker (`openai` | `anthropic` | `google`).
 - **Domain guardrail** — `CHAT_SYSTEM_PROMPT` restricts the agent to product / price / monitor topics.

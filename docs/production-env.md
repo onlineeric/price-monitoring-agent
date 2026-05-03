@@ -5,8 +5,9 @@ This document lists all environment variables required for production deployment
 ## Overview
 
 Environment variables are set in the Coolify dashboard for each application:
-- **Web Application:** Contains UI and API
-- **Worker Application:** Processes background jobs
+- **Web Application:** Contains UI and API (Next.js, public-facing)
+- **Worker Application:** Processes background jobs (BullMQ consumer)
+- **MCP Server Application:** Exposes typed tools to the chat agent over HTTP (internal-only, no public domain)
 
 **Important:** Do NOT commit sensitive values to the repository.
 
@@ -226,6 +227,68 @@ true
 
 ---
 
+### MCP Server Configuration
+
+The MCP server is the third Coolify application. The web app talks to it over the internal Docker network via HTTP; the IDE-facing stdio transport is **dev-only** and not deployed.
+
+#### MCP_TRANSPORT
+
+**Description:** Selects the wire protocol the MCP server speaks.
+
+**Values:**
+- `http` — production (Streamable HTTP, stateless, scales horizontally)
+- `stdio` — local development (IDE integration with VSCode / Cursor)
+
+**Production Value:**
+```
+http
+```
+
+**Where to Set:**
+- Coolify → MCP App → Environment Variables
+
+#### MCP_HTTP_PORT
+
+**Description:** Port the HTTP listener binds to. The container exposes this port; Coolify's "Ports Exposes" field must match.
+
+**Production Value:**
+```
+3002
+```
+
+**Notes:**
+- Default `3002` (chosen to avoid host-port collision with the worker's `3001` health server during local dev).
+- Listener binds `0.0.0.0` so the Coolify network proxy can reach it.
+
+**Where to Set:**
+- Coolify → MCP App → Environment Variables
+- Coolify → MCP App → "Ports Exposes" field (also `3002`)
+
+#### MCP_HTTP_URL
+
+**Description:** Full URL of the `/mcp` endpoint that the **web application** uses to reach the MCP server. Read by `apps/web/src/lib/mcp/client.ts` to switch from stdio to HTTP transport.
+
+**Production Value (Coolify Internal DNS):**
+```
+http://price-monitor-mcp-prod:3002/mcp
+```
+
+**Notes:**
+- Hostname is the MCP app's network alias (or its UUID). Both apps must be on the same Coolify network for DNS to resolve.
+- If `MCP_HTTP_URL` is empty/unset, the client falls back to stdio (which won't work in prod — there's no `pnpm` and no MCP source in the web image), so this var is **required** in prod.
+- Web's MCP-health proxy route (`/api/mcp-server/health`) appends `/health` to this URL — i.e., it probes `http://price-monitor-mcp-prod:3002/mcp/health`. The MCP server exposes both `GET /health` and `GET /mcp/health` (the latter is an alias) so the health proxy and Coolify's container health check both work.
+
+**Where to Set:**
+- Coolify → **Web App** → Environment Variables (NOT on the MCP app — this is a client config)
+
+#### MCP Server — DATABASE_URL / REDIS_URL / SCHEDULER_TIMEZONE / NODE_ENV
+
+Use the same values as the worker (Coolify internal DNS for Postgres + Redis, same business timezone, `NODE_ENV=production`). The MCP tools query the DB via Drizzle and `add_product` enqueues a BullMQ job.
+
+`AI_PROVIDER` and the matching API key are **optional** today — no current MCP tool calls an LLM. Add them only when one does.
+
+---
+
 ### Node Environment
 
 #### NODE_ENV
@@ -290,6 +353,7 @@ Use this checklist when configuring production environment:
 - [ ] RESEND_API_KEY (your key)
 - [ ] EMAIL_FROM (sender identity for direct manual sends)
 - [ ] NODE_ENV (`production`)
+- [ ] MCP_HTTP_URL (`http://price-monitor-mcp-prod:3002/mcp` — required for chat tool calls)
 - [ ] SCHEDULER_TIMEZONE (recommended for daily quota reset behavior)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
 
@@ -307,6 +371,18 @@ Use this checklist when configuring production environment:
 - [ ] SCHEDULER_TIMEZONE (scheduler + quota day-boundary timezone)
 - [ ] NODE_ENV (`production`)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
+
+### MCP Server Application
+
+- [ ] DATABASE_URL (Coolify internal DNS — same as worker)
+- [ ] REDIS_URL (Coolify internal DNS — same as worker)
+- [ ] MCP_TRANSPORT (`http`)
+- [ ] MCP_HTTP_PORT (`3002` — must match Coolify "Ports Exposes")
+- [ ] NODE_ENV (`production` — also gates test-only tools off)
+- [ ] SCHEDULER_TIMEZONE (recommended for any future date-based tools)
+- [ ] Network alias (e.g. `price-monitor-mcp-prod`) so the web app can resolve the hostname
+- [ ] Health check path: `/health` on port `3002`
+- [ ] Internal-only — no public domain, no HTTPS termination
 
 ---
 
