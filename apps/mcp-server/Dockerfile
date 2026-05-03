@@ -10,6 +10,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install curl for the Coolify / Docker HEALTHCHECK probe (alpine ships without it)
+RUN apk add --no-cache curl
+
 # Install pnpm (specific version for consistency with the rest of the monorepo)
 RUN npm install -g pnpm@10.26.2
 
