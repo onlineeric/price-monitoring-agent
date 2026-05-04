@@ -1,5 +1,5 @@
 import { connect } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type SpawnedServer, spawnServer } from "./helpers/spawn-server.js";
 
 /**
@@ -10,23 +10,42 @@ import { type SpawnedServer, spawnServer } from "./helpers/spawn-server.js";
  * response is well-formed, (b) stdout received only valid JSON-RPC frames,
  * (c) the startup log line appears on stderr, (d) no HTTP listener was
  * opened.
+ *
+ * Tests (a) (b) (c) share one stdio child — they are read-only probes whose
+ * assertions snapshot their own slice of stdout/stderr. Test (d) opens a
+ * different MCP_HTTP_PORT to assert no listener binds, so it spawns its own.
  */
 
 describe("US2 — stdio transport (no regression)", () => {
-  let active: SpawnedServer | null = null;
+  let shared: SpawnedServer | null = null;
+  let perTest: SpawnedServer | null = null;
+  function useShared(): SpawnedServer {
+    if (!shared) throw new Error("US2 shared stdio server not initialized in beforeAll");
+    return shared;
+  }
+
+  beforeAll(async () => {
+    shared = spawnServer({ env: { MCP_TRANSPORT: undefined } });
+    await shared.waitForStderr(/ready on stdio/, 5_000);
+  });
+
+  afterAll(async () => {
+    if (shared) {
+      await shared.close();
+      shared = null;
+    }
+  });
+
   afterEach(async () => {
-    if (active) {
-      await active.close();
-      active = null;
+    if (perTest) {
+      await perTest.close();
+      perTest = null;
     }
   });
 
   it("(a) tools/list over stdin returns the five expected tool names", async () => {
-    const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
-    active = server;
-    await server.waitForStderr(/ready on stdio/, 5_000);
-
-    const stdoutPromise = server.waitForStdout(/"result"/, 5_000);
+    const server = useShared();
+    const stdoutPromise = server.waitForStdout(/"id":1/, 5_000);
     server.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
     const line = await stdoutPromise;
     const parsed = JSON.parse(line) as {
@@ -39,19 +58,19 @@ describe("US2 — stdio transport (no regression)", () => {
   });
 
   it("(b) stdout receives only valid JSON-RPC frames (stdout-purity guard)", async () => {
-    const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
-    active = server;
-    await server.waitForStderr(/ready on stdio/, 5_000);
-
-    // Drive the server with a couple of frames so the buffer is non-trivial.
-    const wait1 = server.waitForStdout(/"id":1/, 5_000);
-    server.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
+    const server = useShared();
+    // Drive the server with two frames using ids that are unique to this test
+    // so the waiter does not match a frame from a previous test.
+    const wait1 = server.waitForStdout(/"id":1001/, 5_000);
+    server.child.stdin.write(
+      `${JSON.stringify({ jsonrpc: "2.0", id: 1001, method: "tools/list", params: {} })}\n`,
+    );
     await wait1;
-    const wait2 = server.waitForStdout(/"id":2/, 5_000);
+    const wait2 = server.waitForStdout(/"id":1002/, 5_000);
     server.child.stdin.write(
       `${JSON.stringify({
         jsonrpc: "2.0",
-        id: 2,
+        id: 1002,
         method: "tools/call",
         params: { name: "ping", arguments: { count: 2 } },
       })}\n`,
@@ -68,8 +87,7 @@ describe("US2 — stdio transport (no regression)", () => {
   });
 
   it("(c) stderr received the startup line", async () => {
-    const server = spawnServer({ env: { MCP_TRANSPORT: undefined } });
-    active = server;
+    const server = useShared();
     const line = await server.waitForStderr(/\[mcp-server\] price-monitor-mcp-server ready on stdio/, 5_000);
     expect(line).toMatch(/\[mcp-server\] price-monitor-mcp-server ready on stdio/);
   });
@@ -81,7 +99,7 @@ describe("US2 — stdio transport (no regression)", () => {
     // listener at all", which is independent of the specific port number.
     const probePort = 51_888;
     const server = spawnServer({ env: { MCP_TRANSPORT: undefined, MCP_HTTP_PORT: String(probePort) } });
-    active = server;
+    perTest = server;
     await server.waitForStderr(/ready on stdio/, 5_000);
 
     // Try to connect to the configured HTTP port. Must fail with ECONNREFUSED

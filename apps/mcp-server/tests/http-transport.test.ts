@@ -1,5 +1,5 @@
 import { createServer as createTcpServer } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type SpawnedServer, spawnServer } from "./helpers/spawn-server.js";
 
 /**
@@ -123,17 +123,42 @@ async function spawnHttp(
 }
 
 describe("US1 — HTTP transport (POST /mcp)", () => {
-  let active: SpawnedServer | null = null;
+  // One shared server is reused across the read-only probes (a/b/c/d/e/h/k/l/m).
+  // Tests that need a different env (g, n) or whose contract is the lifecycle
+  // event itself (f port-collision, i misconfigured transport, j cross-transport
+  // parity) still spawn their own — they cannot share. Sharing where safe cuts
+  // ~9 child-process boots (≈ 1 s each) off this file's wall time without
+  // weakening any contract: each test snapshots `stderrLines.length` before
+  // asserting on its own delta, so prior tests' log lines do not bleed in.
+  let shared: { server: SpawnedServer; port: number } | null = null;
+  let perTest: SpawnedServer | null = null;
+  // Typed accessor avoids `shared!` non-null assertions at every callsite —
+  // beforeAll guarantees the server exists, but TS / Biome can't see that.
+  function useShared(): { server: SpawnedServer; port: number } {
+    if (!shared) throw new Error("US1 shared HTTP server not initialized in beforeAll");
+    return shared;
+  }
+
+  beforeAll(async () => {
+    shared = await spawnHttp();
+  });
+
+  afterAll(async () => {
+    if (shared) {
+      await shared.server.close();
+      shared = null;
+    }
+  });
+
   afterEach(async () => {
-    if (active) {
-      await active.close();
-      active = null;
+    if (perTest) {
+      await perTest.close();
+      perTest = null;
     }
   });
 
   it("(a) tools/list returns the five expected tool names", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await postMcp(port, {
       jsonrpc: "2.0",
       id: 1,
@@ -149,8 +174,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(b) tools/call ping with count: 3 returns 'pong pong pong'", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await postMcp(port, {
       jsonrpc: "2.0",
       id: 2,
@@ -162,8 +186,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(c) malformed JSON yields HTTP 400 and the server keeps serving", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const bad = await postMcp(port, undefined, { rawBody: "{not-json" });
     expect(bad.status).toBe(400);
 
@@ -179,16 +202,14 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(d) GET on an unknown path yields 404 with body 'Not Found'", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await getUrl(port, "/unknown");
     expect(res.status).toBe(404);
     expect(res.text).toBe("Not Found");
   });
 
   it("(e) POST /health yields 405 with Allow: GET header", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await postMcp(port, {}, { path: "/health" });
     expect(res.status).toBe(405);
     expect(res.headers.get("allow")).toBe("GET");
@@ -218,12 +239,13 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(g) per-request timeout fires with structured 504", async () => {
-    // Override the 30 s default so the test runs in under a second.
+    // Own spawn: the contract under test is the request-timeout config —
+    // sharing a 30 s-default server would force the test to wait 30 s.
     const { server, port } = await spawnHttp({
       MCP_TEST_TOOLS: "1",
       MCP_REQUEST_TIMEOUT_MS: "200",
     });
-    active = server;
+    perTest = server;
     const slow = await postMcp(port, {
       jsonrpc: "2.0",
       id: 7,
@@ -247,8 +269,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(h) concurrent requests carry their own correct responses", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const a = postMcp(port, {
       jsonrpc: "2.0",
       id: 100,
@@ -277,10 +298,12 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(j) cross-transport parity: stdio and http return identical tools/list and ping", async () => {
-    // Spawn both children in this single test so we can compare their
-    // responses side by side (FR-007 / SC-001).
+    // Own spawn: the test compares two transports side-by-side and needs a
+    // fresh stdio child whose stdout buffer is empty (the shared server
+    // would not help because it is HTTP-only, and the assertion compares
+    // protocol parity between the two children).
     const { server: httpServer, port } = await spawnHttp();
-    active = httpServer;
+    perTest = httpServer;
 
     const stdioChild = spawnServer({ env: { MCP_TRANSPORT: undefined } });
     try {
@@ -329,8 +352,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(k) one access-log line per POST /mcp; none for GET /health", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { server, port } = useShared();
     const startCount = server.stderrLines.length;
 
     await postMcp(port, {
@@ -355,18 +377,16 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(l) HTTP startup log line appears on stderr within 5s", async () => {
-    const port = nextFreePort();
-    const server = spawnServer({
-      env: { MCP_TRANSPORT: "http", MCP_HTTP_PORT: String(port) },
-    });
-    active = server;
+    // The shared server already emitted the startup line when beforeAll
+    // booted it; the assertion is satisfied by the buffered line. No new
+    // spawn needed.
+    const { server, port } = useShared();
     const line = await server.waitForStderr(/ready on http :\d+/, 5_000);
     expect(line).toContain(String(port));
   });
 
   it("(m) GET /mcp is delegated to the SDK (not pre-intercepted by our router)", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await getUrl(port, "/mcp");
     // Our router would respond with status 405 + body "Method Not Allowed"
     // if it pre-intercepted GET /mcp. The SDK in stateless mode answers
@@ -378,12 +398,11 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
   });
 
   it("(n) tool error envelope round-trips the _wrap.ts { error: { code, message } } shape", async () => {
-    // Use the test-only `throw_test` tool to exercise the wrapper without
-    // depending on DB/Redis failure states. `add_product` with an invalid
-    // URL would be rejected by the SDK's Zod input validation *before* the
-    // wrapper runs, which is the SDK's own envelope, not _wrap.ts (FR-008).
+    // Own spawn: the wrapper assertion targets the test-only `throw_test`
+    // tool, which is gated behind MCP_TEST_TOOLS=1 and not enabled on the
+    // shared server.
     const { server, port } = await spawnHttp({ MCP_TEST_TOOLS: "1" });
-    active = server;
+    perTest = server;
     const res = await postMcp(port, {
       jsonrpc: "2.0",
       id: 14,
@@ -400,17 +419,28 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
 });
 
 describe("US3 — GET /health", () => {
-  let active: SpawnedServer | null = null;
-  afterEach(async () => {
-    if (active) {
-      await active.close();
-      active = null;
+  // All five tests are read-only probes against /health. They share one
+  // server (~4 fewer spawns); each test asserts on its own snapshot so
+  // accumulated state from prior tests cannot affect them.
+  let shared: { server: SpawnedServer; port: number } | null = null;
+  function useShared(): { server: SpawnedServer; port: number } {
+    if (!shared) throw new Error("US3 shared HTTP server not initialized in beforeAll");
+    return shared;
+  }
+
+  beforeAll(async () => {
+    shared = await spawnHttp();
+  });
+
+  afterAll(async () => {
+    if (shared) {
+      await shared.server.close();
+      shared = null;
     }
   });
 
   it("(a) returns 200 with Content-Type: application/json", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await getUrl(port, "/health");
     expect(res.status).toBe(200);
     const ct = res.headers.get("content-type") ?? "";
@@ -418,8 +448,7 @@ describe("US3 — GET /health", () => {
   });
 
   it("(b) JSON body has the four documented fields with right types", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const res = await getUrl(port, "/health");
     const body = res.json as { status: string; uptime: number; version: string; transport: string } | undefined;
     expect(body).toBeDefined();
@@ -432,8 +461,7 @@ describe("US3 — GET /health", () => {
   });
 
   it("(c) uptime grows between two probes", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     const a = await getUrl(port, "/health");
     await new Promise((r) => setTimeout(r, 60));
     const b = await getUrl(port, "/health");
@@ -444,8 +472,7 @@ describe("US3 — GET /health", () => {
   });
 
   it("(d) round-trip latency on localhost is under 50ms (SC-003)", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { port } = useShared();
     // Warm one request first to prime any per-process JIT.
     await getUrl(port, "/health");
     const start = Date.now();
@@ -455,8 +482,7 @@ describe("US3 — GET /health", () => {
   });
 
   it("(e) /health did NOT add an access-log line on stderr", async () => {
-    const { server, port } = await spawnHttp();
-    active = server;
+    const { server, port } = useShared();
     const before = server.stderrLines.length;
     await getUrl(port, "/health");
     await new Promise((r) => setTimeout(r, 50));
