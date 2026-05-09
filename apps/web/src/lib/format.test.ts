@@ -28,4 +28,16 @@ describe("formatPrice", () => {
     expect(formatPrice(-500, "USD")).toContain("5.00");
     expect(formatPrice(-500, "USD").startsWith("-")).toBe(true);
   });
+
+  it("falls back to a plain string when the currency is not a valid ISO 4217 code", () => {
+    // Regression: a row with currency "$" (literal symbol) crashed SSR with
+    // RangeError and took down the dashboard. Formatter must not throw.
+    expect(formatPrice(1999, "$")).toBe("$ 19.99");
+    expect(formatPrice(1999, "not-a-code")).toBe("not-a-code 19.99");
+  });
+
+  it("treats null / undefined currency as the default rather than crashing", () => {
+    expect(formatPrice(1999, null)).toBe("A$19.99");
+    expect(formatPrice(1999, undefined)).toBe("A$19.99");
+  });
 });

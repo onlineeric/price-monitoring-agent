@@ -5,6 +5,7 @@ import { generateObject } from "ai";
 import * as cheerio from "cheerio";
 import { z } from "zod";
 import type { ScraperResult } from "../types/scraper.js";
+import { normalizeCurrency } from "../utils/priceParser.js";
 
 /**
  * Zod schema for structured product data extraction
@@ -259,7 +260,7 @@ export async function aiExtract(_url: string, html: string): Promise<ScraperResu
       data: {
         title: object.title,
         price: priceInCents,
-        currency: object.currency,
+        currency: normalizeCurrency(object.currency),
         imageUrl: object.imageUrl,
       },
       method: "ai",

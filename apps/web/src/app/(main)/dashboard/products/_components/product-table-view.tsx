@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatPrice } from "@/lib/format";
 
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
@@ -35,13 +36,6 @@ export function ProductTableView({ products }: ProductTableViewProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
-
-  const formatPrice = (cents: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(cents / 100);
-  };
 
   const columns: ColumnDef<ProductWithStats>[] = [
     {

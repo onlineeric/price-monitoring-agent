@@ -18,6 +18,27 @@ export const CURRENCY_MAP: Record<string, string> = {
 };
 
 /**
+ * Normalize an arbitrary currency string into a 3-letter ISO 4217 code.
+ *
+ * Returns the uppercased code when the input already looks like ISO (e.g.
+ * "usd" -> "USD"), maps known symbols (e.g. "$" -> "USD") via CURRENCY_MAP,
+ * and returns null for anything we can't confidently classify. We persist
+ * `null` rather than a guess so the price-check job fails loudly instead of
+ * writing data that crashes `Intl.NumberFormat` downstream.
+ */
+export function normalizeCurrency(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  if (/^[A-Za-z]{3}$/.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  return CURRENCY_MAP[trimmed] ?? null;
+}
+
+/**
  * Parse price text into cents and currency
  * @param priceText - Raw price text (e.g., "$19.99", "€1.234,56", "£19.99")
  * @returns Object with price in cents and currency code, or null if parsing fails

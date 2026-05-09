@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CURRENCY_MAP, parsePrice, resolveImageUrl } from "./priceParser";
+import { CURRENCY_MAP, normalizeCurrency, parsePrice, resolveImageUrl } from "./priceParser";
 
 /**
  * priceParser is hit by every successful Tier-1 (HTML) extraction and most
@@ -56,6 +56,35 @@ describe("parsePrice", () => {
   it("exports the documented currency map as a runtime value", () => {
     expect(CURRENCY_MAP.$).toBe("USD");
     expect(CURRENCY_MAP["€"]).toBe("EUR");
+  });
+});
+
+describe("normalizeCurrency", () => {
+  it("returns null for empty / null / whitespace input", () => {
+    expect(normalizeCurrency(null)).toBeNull();
+    expect(normalizeCurrency(undefined)).toBeNull();
+    expect(normalizeCurrency("")).toBeNull();
+    expect(normalizeCurrency("   ")).toBeNull();
+  });
+
+  it("uppercases 3-letter ISO-shaped input", () => {
+    expect(normalizeCurrency("usd")).toBe("USD");
+    expect(normalizeCurrency("NZD")).toBe("NZD");
+    expect(normalizeCurrency(" eur ")).toBe("EUR");
+  });
+
+  it("maps known currency symbols to ISO codes (the reason this exists)", () => {
+    expect(normalizeCurrency("$")).toBe("USD");
+    expect(normalizeCurrency("€")).toBe("EUR");
+    expect(normalizeCurrency("£")).toBe("GBP");
+    expect(normalizeCurrency("A$")).toBe("AUD");
+  });
+
+  it("returns null for anything we can't classify so callers fail loudly", () => {
+    // Critical: we must not guess — saving an unknown string crashes Intl.NumberFormat downstream.
+    expect(normalizeCurrency("dollars")).toBeNull();
+    expect(normalizeCurrency("US$")).toBeNull();
+    expect(normalizeCurrency("USDX")).toBeNull();
   });
 });
 
