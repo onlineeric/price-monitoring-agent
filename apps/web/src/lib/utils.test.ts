@@ -56,4 +56,10 @@ describe("formatCurrency", () => {
   it("forwards explicit min/maxFractionDigits when noDecimals is unset", () => {
     expect(formatCurrency(1, { minimumFractionDigits: 4, maximumFractionDigits: 4 })).toBe("$1.0000");
   });
+
+  it("falls back to a plain string when the currency is not valid ISO 4217", () => {
+    // Regression: passing "$" to Intl.NumberFormat throws RangeError and crashes SSR.
+    expect(formatCurrency(19.99, { currency: "$" })).toBe("$ 19.99");
+    expect(formatCurrency(1234.56, { currency: "bogus", noDecimals: true })).toBe("bogus 1235");
+  });
 });

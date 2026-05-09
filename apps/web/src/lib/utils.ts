@@ -38,5 +38,12 @@ export function formatCurrency(
     maximumFractionDigits: noDecimals ? 0 : maximumFractionDigits,
   };
 
-  return new Intl.NumberFormat(locale, formatOptions).format(amount);
+  try {
+    return new Intl.NumberFormat(locale, formatOptions).format(amount);
+  } catch {
+    // Intl.NumberFormat throws RangeError for non-ISO 4217 currency codes.
+    // Fall back to a plain string so callers don't crash on bad data.
+    const digits = noDecimals ? 0 : (minimumFractionDigits ?? 2);
+    return `${currency} ${amount.toFixed(digits)}`;
+  }
 }

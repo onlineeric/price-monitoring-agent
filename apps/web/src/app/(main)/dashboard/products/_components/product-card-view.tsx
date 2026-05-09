@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatPrice } from "@/lib/format";
 
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
@@ -32,13 +33,6 @@ export function ProductCardView({ products }: ProductCardViewProps) {
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
-
-  const formatPrice = (cents: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(cents / 100);
-  };
 
   const calculatePriceChange = (history: Array<{ date: Date; price: number }>) => {
     if (history.length < 2) return null;
