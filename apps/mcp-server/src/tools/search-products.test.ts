@@ -73,24 +73,27 @@ describe("search_products tool", () => {
         id: "p2",
         name: "Widget Mini",
         url: "https://shop/widget-mini",
-        priceRecords: [], // never scraped successfully — currentPrice should be null
+        priceRecords: [], // never scraped successfully — currentPrice* should be null
       },
     ]);
     const handler = captureHandler();
     const result = await handler({ query: "Widget" });
     const parsed = JSON.parse(result.content[0]?.text ?? "[]") as Array<{
       id: string;
-      currentPrice: number | null;
+      currentPriceCents: number | null;
+      currentPriceFormatted: string | null;
       currency: string | null;
     }>;
     expect(parsed[0]).toEqual({
       id: "p1",
       name: "Widget Pro",
       url: "https://shop/widget-pro",
-      currentPrice: 2999,
+      currentPriceCents: 2999,
+      currentPriceFormatted: "USD 29.99",
       currency: "USD",
     });
-    expect(parsed[1]?.currentPrice).toBeNull();
+    expect(parsed[1]?.currentPriceCents).toBeNull();
+    expect(parsed[1]?.currentPriceFormatted).toBeNull();
     expect(parsed[1]?.currency).toBeNull();
   });
 });

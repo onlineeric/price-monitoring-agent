@@ -3,6 +3,7 @@ import { db, priceRecords } from "@price-monitor/db";
 import { subDays } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
+import { formatPriceCents } from "./_format.js";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
@@ -37,7 +38,8 @@ export function registerGetPriceSummary(server: McpServer) {
     {
       title: "Get Price Summary",
       description:
-        "Summarize a product's price over a window of days: current, min, max, average, trend direction, and sample count.",
+        "Summarize a product's price over a window of days: current, min, max, average, trend direction, and sample count. " +
+        "Each amount is returned as both `<field>Cents` (raw integer cents) and `<field>Formatted` (display string, e.g. \"NZD 585.00\") — show the formatted values to the user verbatim.",
       inputSchema,
     },
     withErrorHandling("get_price_summary", async ({ productId, days }) => {
@@ -75,16 +77,21 @@ export function registerGetPriceSummary(server: McpServer) {
       const avg = average(prices);
       const trend = computeTrend(prices);
 
+      const currency = latest.currency;
       const summary = {
         productId,
         windowDays,
-        current: latest.price,
-        min,
-        max,
-        avg,
+        currentCents: latest.price,
+        currentFormatted: formatPriceCents(latest.price, currency),
+        minCents: min,
+        minFormatted: formatPriceCents(min, currency),
+        maxCents: max,
+        maxFormatted: formatPriceCents(max, currency),
+        avgCents: avg,
+        avgFormatted: formatPriceCents(avg, currency),
         trend,
         sampleCount: records.length,
-        currency: latest.currency,
+        currency,
       };
 
       return {

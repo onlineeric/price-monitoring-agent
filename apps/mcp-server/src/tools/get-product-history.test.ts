@@ -71,7 +71,7 @@ describe("get_product_history tool", () => {
     expect(result.content[0]?.text).toMatch(/90 days/);
   });
 
-  it("returns the records as JSON inside a text content block (the MCP-friendly envelope)", async () => {
+  it("returns each record with cents + formatted display string so the agent never divides by 100 itself", async () => {
     const rows: Row[] = [
       { price: 1500, currency: "USD", scrapedAt: new Date("2026-01-15") },
       { price: 1400, currency: "USD", scrapedAt: new Date("2026-01-10") },
@@ -82,11 +82,19 @@ describe("get_product_history tool", () => {
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
       productId: string;
       days: number;
-      records: Row[];
+      records: Array<{ priceCents: number; priceFormatted: string; currency: string | null; scrapedAt: string }>;
     };
     expect(parsed.productId).toBe(PRODUCT_ID);
     expect(parsed.days).toBe(30);
     expect(parsed.records.length).toBe(2);
-    expect(parsed.records[0]?.price).toBe(1500);
+    expect(parsed.records[0]).toMatchObject({
+      priceCents: 1500,
+      priceFormatted: "USD 15.00",
+      currency: "USD",
+    });
+    expect(parsed.records[1]).toMatchObject({
+      priceCents: 1400,
+      priceFormatted: "USD 14.00",
+    });
   });
 });

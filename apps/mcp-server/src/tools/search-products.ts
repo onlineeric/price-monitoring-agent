@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { db, priceRecords, products } from "@price-monitor/db";
 import { desc, ilike } from "drizzle-orm";
 import { z } from "zod";
+import { formatPriceCents } from "./_format.js";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
@@ -15,7 +16,9 @@ export function registerSearchProducts(server: McpServer) {
     "search_products",
     {
       title: "Search Products",
-      description: "Search for monitored products by name. Returns matching products with their current price.",
+      description:
+        "Search for monitored products by name. Returns matching products with their latest price. " +
+        "`currentPriceCents` is the raw integer cents from the DB; `currentPriceFormatted` is the display string (e.g. \"NZD 585.00\") — show that to the user verbatim and do not divide cents yourself.",
       inputSchema,
     },
     withErrorHandling("search_products", async ({ query }) => {
@@ -38,13 +41,19 @@ export function registerSearchProducts(server: McpServer) {
         };
       }
 
-      const results = matched.map((p) => ({
-        id: p.id,
-        name: p.name,
-        url: p.url,
-        currentPrice: p.priceRecords[0]?.price ?? null,
-        currency: p.priceRecords[0]?.currency ?? null,
-      }));
+      const results = matched.map((p) => {
+        const latest = p.priceRecords[0];
+        const cents = latest?.price ?? null;
+        const currency = latest?.currency ?? null;
+        return {
+          id: p.id,
+          name: p.name,
+          url: p.url,
+          currentPriceCents: cents,
+          currentPriceFormatted: formatPriceCents(cents, currency),
+          currency,
+        };
+      });
 
       return {
         content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }],

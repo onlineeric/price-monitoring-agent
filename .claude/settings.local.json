@@ -37,7 +37,9 @@
       "Bash(chmod:*)",
       "Bash(git:*)",
       "Bash(pnpm --filter @price-monitor/web test --run)",
-      "Bash(pnpm --filter @price-monitor/worker test --run)"
+      "Bash(pnpm --filter @price-monitor/worker test --run)",
+      "Bash(pnpm --filter @price-monitor/mcp-server test)",
+      "Bash(pnpm --filter @price-monitor/web test)"
     ]
   }
 }
