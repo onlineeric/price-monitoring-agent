@@ -1,6 +1,6 @@
 {
   "name": "@price-monitor/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "MCP server exposing price-monitor tools to AI agents over stdio",
   "scripts": {

@@ -34,6 +34,17 @@ type Handler = (args: { query: string }) => Promise<{
   content: { type: string; text: string }[];
 }>;
 
+type ToolMetadata = {
+  description: string;
+  inputSchema: {
+    shape: {
+      query: {
+        description?: string;
+      };
+    };
+  };
+};
+
 function captureHandler(): Handler {
   let captured: Handler | undefined;
   registerSearchProducts({
@@ -42,6 +53,17 @@ function captureHandler(): Handler {
     },
   } as unknown as Parameters<typeof registerSearchProducts>[0]);
   if (!captured) throw new Error("Handler not captured");
+  return captured;
+}
+
+function captureMetadata(): ToolMetadata {
+  let captured: ToolMetadata | undefined;
+  registerSearchProducts({
+    registerTool: (_n: string, m: ToolMetadata) => {
+      captured = m;
+    },
+  } as unknown as Parameters<typeof registerSearchProducts>[0]);
+  if (!captured) throw new Error("Metadata not captured");
   return captured;
 }
 
@@ -54,6 +76,17 @@ afterEach(() => {
 });
 
 describe("search_products tool", () => {
+  it("documents empty-query listing and the maximum result cap for MCP clients", () => {
+    const metadata = captureMetadata();
+
+    expect(metadata.description).toContain('Use an empty string ("") to list monitored products');
+    expect(metadata.description).toContain("capped at 200 records");
+    expect(metadata.inputSchema.shape.query.description).toContain(
+      'Use an empty string ("") to list monitored products',
+    );
+    expect(metadata.inputSchema.shape.query.description).toContain("capped at 200 records");
+  });
+
   it("returns a friendly empty-result message when nothing matches", async () => {
     dbMock.findMany.mockResolvedValueOnce([]);
     const handler = captureHandler();
@@ -73,24 +106,27 @@ describe("search_products tool", () => {
         id: "p2",
         name: "Widget Mini",
         url: "https://shop/widget-mini",
-        priceRecords: [], // never scraped successfully — currentPrice should be null
+        priceRecords: [], // never scraped successfully — currentPrice* should be null
       },
     ]);
     const handler = captureHandler();
     const result = await handler({ query: "Widget" });
     const parsed = JSON.parse(result.content[0]?.text ?? "[]") as Array<{
       id: string;
-      currentPrice: number | null;
+      currentPriceCents: number | null;
+      currentPriceFormatted: string | null;
       currency: string | null;
     }>;
     expect(parsed[0]).toEqual({
       id: "p1",
       name: "Widget Pro",
       url: "https://shop/widget-pro",
-      currentPrice: 2999,
+      currentPriceCents: 2999,
+      currentPriceFormatted: "USD 29.99",
       currency: "USD",
     });
-    expect(parsed[1]?.currentPrice).toBeNull();
+    expect(parsed[1]?.currentPriceCents).toBeNull();
+    expect(parsed[1]?.currentPriceFormatted).toBeNull();
     expect(parsed[1]?.currency).toBeNull();
   });
 });

@@ -69,7 +69,7 @@ describe("get_price_summary tool", () => {
     expect(result.isError).toBeUndefined();
   });
 
-  it("aggregates min/max/avg from the windowed sample and reports the latest as `current`", async () => {
+  it("aggregates min/max/avg as both raw cents and formatted strings, and reports the latest as `current`", async () => {
     dbMock.setRows([
       { price: 100, currency: "USD", scrapedAt: new Date("2026-01-01") },
       { price: 200, currency: "USD", scrapedAt: new Date("2026-01-02") },
@@ -80,10 +80,14 @@ describe("get_price_summary tool", () => {
     const summary = JSON.parse(result.content[0]?.text ?? "{}");
     expect(summary).toMatchObject({
       productId: PRODUCT_ID,
-      current: 150,
-      min: 100,
-      max: 200,
-      avg: 150,
+      currentCents: 150,
+      currentFormatted: "USD 1.50",
+      minCents: 100,
+      minFormatted: "USD 1.00",
+      maxCents: 200,
+      maxFormatted: "USD 2.00",
+      avgCents: 150,
+      avgFormatted: "USD 1.50",
       sampleCount: 3,
       currency: "USD",
     });

@@ -3,6 +3,7 @@ import { db, priceRecords } from "@price-monitor/db";
 import { subDays } from "date-fns";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
+import { formatPriceCents } from "./_format.js";
 import { withErrorHandling } from "./_wrap.js";
 
 const inputSchema = z.object({
@@ -18,7 +19,8 @@ export function registerGetProductHistory(server: McpServer) {
     {
       title: "Get Product History",
       description:
-        "Retrieve historical price records for a product, ordered by most recent first. Optionally filter by a date range in days.",
+        "Retrieve historical price records for a product, ordered by most recent first. Optionally filter by a date range in days. " +
+        "Each record includes `priceCents` (raw integer cents) and `priceFormatted` (display string, e.g. \"NZD 585.00\") — show the formatted value to the user verbatim.",
       inputSchema,
     },
     withErrorHandling("get_product_history", async ({ productId, days }) => {
@@ -46,11 +48,18 @@ export function registerGetProductHistory(server: McpServer) {
         };
       }
 
+      const formattedRecords = records.map((r) => ({
+        priceCents: r.price,
+        priceFormatted: formatPriceCents(r.price, r.currency),
+        currency: r.currency,
+        scrapedAt: r.scrapedAt,
+      }));
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({ productId, days: windowDays, records }, null, 2),
+            text: JSON.stringify({ productId, days: windowDays, records: formattedRecords }, null, 2),
           },
         ],
       };

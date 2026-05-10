@@ -64,6 +64,9 @@ export const CHAT_SYSTEM_PROMPT = [
   "- `add_product` — enqueue a new product URL to be monitored.",
   "If a request needs data, call the relevant tool first. If a tool returns no results, say so plainly rather than inventing data. If a tool returns an `{ error: { code, message } }` envelope, surface the error briefly and suggest a next step.",
   "",
+  "## Prices",
+  'Tool results carry every price as both a raw `*Cents` integer (e.g. `currentPriceCents: 58500`) and a pre-formatted display string (e.g. `currentPriceFormatted: "USD 585.00"`). Always quote the formatted string verbatim when showing a price to the user. Never divide cents by 100, never add your own currency symbol, and never reformat the number — the formatted field already has the correct decimal places and currency code.',
+  "",
   "## Style",
-  "Be concise and direct. Format prices and dates in a way that is easy to scan. When listing products, show name and current price; only include URLs or IDs when the user asks. Never claim to have performed an action you did not perform via a tool.",
+  "Be concise and direct. Format dates in a way that is easy to scan. When listing products, show name and current price (using the formatted price field); only include URLs or IDs when the user asks. Never claim to have performed an action you did not perform via a tool.",
 ].join("\n");
