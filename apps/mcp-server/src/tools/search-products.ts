@@ -5,11 +5,15 @@ import { z } from "zod";
 import { formatPriceCents } from "./_format.js";
 import { withErrorHandling } from "./_wrap.js";
 
-const inputSchema = z.object({
-  query: z.string().describe("Search term to match against product names (case-insensitive)"),
-});
+const MAX_RESULTS = 200;
 
-const MAX_RESULTS = 20;
+const inputSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      `Search term to match against product names case-insensitively. Use an empty string ("") to list monitored products, capped at ${MAX_RESULTS} records.`,
+    ),
+});
 
 export function registerSearchProducts(server: McpServer) {
   server.registerTool(
@@ -17,7 +21,8 @@ export function registerSearchProducts(server: McpServer) {
     {
       title: "Search Products",
       description:
-        "Search for monitored products by name. Returns matching products with their latest price. " +
+        `Search for monitored products by name. Use an empty string ("") to list monitored products, capped at ${MAX_RESULTS} records. ` +
+        "Returns matching products with their latest price. " +
         "`currentPriceCents` is the raw integer cents from the DB; `currentPriceFormatted` is the display string (e.g. \"NZD 585.00\") — show that to the user verbatim and do not divide cents yourself.",
       inputSchema,
     },

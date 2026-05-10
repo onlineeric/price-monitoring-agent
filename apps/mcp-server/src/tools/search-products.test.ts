@@ -34,6 +34,17 @@ type Handler = (args: { query: string }) => Promise<{
   content: { type: string; text: string }[];
 }>;
 
+type ToolMetadata = {
+  description: string;
+  inputSchema: {
+    shape: {
+      query: {
+        description?: string;
+      };
+    };
+  };
+};
+
 function captureHandler(): Handler {
   let captured: Handler | undefined;
   registerSearchProducts({
@@ -42,6 +53,17 @@ function captureHandler(): Handler {
     },
   } as unknown as Parameters<typeof registerSearchProducts>[0]);
   if (!captured) throw new Error("Handler not captured");
+  return captured;
+}
+
+function captureMetadata(): ToolMetadata {
+  let captured: ToolMetadata | undefined;
+  registerSearchProducts({
+    registerTool: (_n: string, m: ToolMetadata) => {
+      captured = m;
+    },
+  } as unknown as Parameters<typeof registerSearchProducts>[0]);
+  if (!captured) throw new Error("Metadata not captured");
   return captured;
 }
 
@@ -54,6 +76,17 @@ afterEach(() => {
 });
 
 describe("search_products tool", () => {
+  it("documents empty-query listing and the maximum result cap for MCP clients", () => {
+    const metadata = captureMetadata();
+
+    expect(metadata.description).toContain('Use an empty string ("") to list monitored products');
+    expect(metadata.description).toContain("capped at 200 records");
+    expect(metadata.inputSchema.shape.query.description).toContain(
+      'Use an empty string ("") to list monitored products',
+    );
+    expect(metadata.inputSchema.shape.query.description).toContain("capped at 200 records");
+  });
+
   it("returns a friendly empty-result message when nothing matches", async () => {
     dbMock.findMany.mockResolvedValueOnce([]);
     const handler = captureHandler();
