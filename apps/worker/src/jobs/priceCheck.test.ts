@@ -124,16 +124,35 @@ describe("priceCheckJob — failure handling", () => {
     );
   });
 
-  it("throws and logs FAILED when required price/currency are missing from the scrape", async () => {
+  it("throws and logs FAILED when price is missing from the scrape", async () => {
     scraperMocks.scrapeProduct.mockResolvedValueOnce({
       success: true,
       method: "html",
-      data: { title: "x", price: null, currency: null, imageUrl: null },
+      data: { title: "x", price: null, currency: "USD", imageUrl: null },
     });
     await expect(priceCheckJob(makeJob({ productId: "prod-5", url: "https://shop/p" }))).rejects.toThrow(
-      /Incomplete data: missing price, currency/,
+      /Incomplete data: missing price/,
     );
     expect(dbMocks.updateProductFailure).toHaveBeenCalledWith("prod-5");
+  });
+
+  it("saves the record with null currency when only currency is missing (currency is optional)", async () => {
+    scraperMocks.scrapeProduct.mockResolvedValueOnce({
+      success: true,
+      method: "ai",
+      data: { title: "No-currency widget", price: 4999, currency: null, imageUrl: null },
+    });
+    dbMocks.getOrCreateProductByUrl.mockResolvedValueOnce({ id: "prod-nc", url: "https://shop/nc" });
+
+    const result = await priceCheckJob(makeJob({ url: "https://shop/nc" }));
+
+    expect(dbMocks.savePriceRecord).toHaveBeenCalledWith({
+      productId: "prod-nc",
+      price: 4999,
+      currency: null,
+    });
+    expect(dbMocks.logRun).toHaveBeenCalledWith({ productId: "prod-nc", status: "SUCCESS" });
+    expect("success" in result && result.success).toBe(true);
   });
 
   it("re-throws DB errors after attempting failure logging — surfaces issues to BullMQ retry", async () => {

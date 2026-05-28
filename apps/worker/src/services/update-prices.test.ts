@@ -80,14 +80,29 @@ describe("enqueueRefreshFlowForActiveProducts", () => {
       name: string;
       queueName: string;
       data: { triggerType: string };
-      children: Array<{ name: string; queueName: string; data: { url: string } }>;
+      children: Array<{
+        name: string;
+        queueName: string;
+        data: { url: string };
+        opts: { ignoreDependencyOnFailure: boolean };
+      }>;
     };
     expect(payload.name).toBe("send-digest-flow");
     expect(payload.queueName).toBe("price-monitor-queue");
     expect(payload.data).toEqual({ triggerType: "scheduled" });
     expect(payload.children).toEqual([
-      { name: "check-price", queueName: "price-monitor-queue", data: { url: "https://shop/x" } },
-      { name: "check-price", queueName: "price-monitor-queue", data: { url: "https://shop/y" } },
+      {
+        name: "check-price",
+        queueName: "price-monitor-queue",
+        data: { url: "https://shop/x" },
+        opts: { ignoreDependencyOnFailure: true },
+      },
+      {
+        name: "check-price",
+        queueName: "price-monitor-queue",
+        data: { url: "https://shop/y" },
+        opts: { ignoreDependencyOnFailure: true },
+      },
     ]);
   });
 

@@ -29,6 +29,9 @@ export async function enqueueRefreshFlowForActiveProducts(triggerType: "manual" 
     name: "check-price",
     data: { url: product.url },
     queueName: "price-monitor-queue",
+    // Without this, a single failed scrape leaves the parent stuck in
+    // `waiting-children` forever and the digest email is never sent.
+    opts: { ignoreDependencyOnFailure: true },
   }));
 
   await getFlowProducer().add({
