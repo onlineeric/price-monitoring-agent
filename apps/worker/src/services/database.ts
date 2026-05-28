@@ -7,7 +7,7 @@ import { validate as isValidUuid } from "uuid";
 interface SavePriceParams {
   productId: string;
   price: number; // In cents
-  currency: string;
+  currency: string | null;
 }
 
 /**

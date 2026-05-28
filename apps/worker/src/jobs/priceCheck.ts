@@ -66,7 +66,7 @@ async function savePriceData(
   url: string,
   title: string | null,
   price: number,
-  currency: string,
+  currency: string | null,
   imageUrl: string | null,
   jobId: string,
 ): Promise<string | null> {
@@ -156,16 +156,13 @@ export default async function priceCheckJob(job: Job<PriceCheckJobData>): Promis
     throw new Error(errorMessage);
   }
 
-  // Validate all required fields are present
-  if (result.data.price === null || result.data.currency === null) {
-    const missing = [];
-    if (result.data.price === null) missing.push("price");
-    if (result.data.currency === null) missing.push("currency");
-
-    const errorMessage = `Incomplete data: missing ${missing.join(", ")}`;
+  // Only `price` is genuinely required — DB schema makes price NOT NULL but
+  // allows currency to be null (defaults to "USD" at the column level). A scrape
+  // with a price but no currency is still useful, so we keep it.
+  if (result.data.price === null) {
+    const errorMessage = "Incomplete data: missing price";
     console.error(`[${jobId}] ${errorMessage}`);
 
-    // Log failure if we have productId
     if (productId) {
       try {
         await updateProductFailure(productId);
@@ -180,6 +177,10 @@ export default async function priceCheckJob(job: Job<PriceCheckJobData>): Promis
     }
 
     throw new Error(errorMessage);
+  }
+
+  if (result.data.currency === null) {
+    console.warn(`[${jobId}] Currency missing from scrape, saving without currency`);
   }
 
   // All required fields present, save the data
