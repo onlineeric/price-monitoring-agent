@@ -1,3 +1,9 @@
+// React must be in scope so the file works under the classic JSX runtime
+// (tsx/esbuild defaults to `jsx: "transform"` when the per-file tsconfig
+// resolution doesn't pick up `react-jsx`). Safe no-op under the automatic
+// runtime.
+import React from "react";
+
 import {
   Body,
   Column,
@@ -15,6 +21,9 @@ import {
 } from "@react-email/components";
 
 import type { ReportSnapshotItem } from "./report-snapshot";
+
+// Reference React so strict bundlers don't strip the import as unused.
+void React;
 
 export interface PriceDigestEmailProps {
   products: ReportSnapshotItem[];
