@@ -177,6 +177,17 @@ export default async function DashboardPage() {
         <table className="mb-4 text-base text-muted-foreground">
           <tbody>
             <tr>
+              <td className="whitespace-nowrap py-0.5 pr-3 text-right">About this app:</td>
+              <td className="py-0.5">
+                <a
+                  href="/dashboard/about"
+                  className="text-primary underline underline-offset-4 hover:text-primary/80"
+                >
+                  What this project demonstrates, tech stack &amp; system architecture
+                </a>
+              </td>
+            </tr>
+            <tr>
               <td className="whitespace-nowrap py-0.5 pr-3 text-right">My GitHub profile:</td>
               <td className="py-0.5">
                 <a
