@@ -9,6 +9,8 @@ https://price-monitor.onlineeric.net/
 
 ## What this project demonstrates
 
+![Price Monitoring Agent system architecture — web app, data layer, background services, and external integrations, with synchronous request/response and asynchronous BullMQ job flows](docs/architecture.svg)
+
 - Full-stack application design with Next.js 16, React 19, TypeScript, PostgreSQL, Redis, and BullMQ
 - Practical AI integration using the Vercel AI SDK with typed structured output, not just free-form prompting
 - Conversational AI agent with tool calling over a custom Model Context Protocol (MCP) server, streaming UI, and multi-turn chat history
@@ -80,17 +82,18 @@ Browser (chat UI, streamed)
 Next.js /api/chat  (Vercel AI SDK streamText, multi-step tool calls)
         |
         v
-MCP client (stdio)  --->  apps/mcp-server  (typed tools, Zod-validated)
-                                  |
-                                  v
-                          PostgreSQL  +  BullMQ queue
+MCP client  --->  apps/mcp-server  (typed tools, Zod-validated)
+ (HTTP / stdio)            |
+                          v
+                  PostgreSQL  +  BullMQ queue
 ```
 
-- **Custom MCP server (`apps/mcp-server/`):** standalone Node process exposed over stdio, using `@modelcontextprotocol/sdk`. Tools: `search_products`, `get_product_history`, `get_price_summary`, and `add_product` (which enqueues a `check-price` BullMQ job, reusing the existing extraction pipeline). All tool inputs are Zod schemas; failures are wrapped into a structured `{ error: { code, message } }` shape.
-- **Streaming chat API:** `apps/web/src/app/api/chat/route.ts` runs on Node runtime (stdio transport requires it), bridges live MCP tools into AI SDK `tool()` instances, enforces a 5-step tool budget and 60-second per-turn timeout, and returns the AI SDK v6 UI-message protocol with a structured error taxonomy (`validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`).
+- **Custom MCP server (`apps/mcp-server/`):** standalone Node process using `@modelcontextprotocol/sdk`, speaking two transports selected by `MCP_TRANSPORT` — stateless Streamable HTTP (web → mcp-server in Docker dev and production) and stdio (spawned by the IDE for local tool inspection). Tools: `search_products`, `get_product_history`, `get_price_summary`, and `add_product` (which enqueues a `check-price` BullMQ job, reusing the existing extraction pipeline). All tool inputs are Zod schemas; failures are wrapped into a structured `{ error: { code, message } }` shape.
+- **Streaming chat API:** `apps/web/src/app/api/chat/route.ts` runs on the Node runtime, bridges live MCP tools into AI SDK `tool()` instances, enforces a 5-step tool budget and 60-second per-turn timeout, and returns the AI SDK v6 UI-message protocol with a structured error taxonomy (`validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`).
 - **Provider abstraction:** the same `AI_PROVIDER` env var that drives the worker's extraction fallback (`openai` | `anthropic` | `google`) selects the chat model.
 - **Multi-turn UI:** Zustand-backed in-memory chat state, sanitized markdown rendering via `streamdown`, and inline tool-call indicators that show which tool ran, the arguments, and the result for demo transparency.
 - **Domain guardrail:** the system prompt restricts the agent to product / price / monitor topics so it politely declines off-topic requests.
+- **Transport selection:** the web MCP client (`apps/web/src/lib/mcp/client.ts`) picks `StreamableHTTPClientTransport` when `MCP_HTTP_URL` is set (production and Docker dev), otherwise falls back to spawning the server over stdio for the IDE workflow.
 - **Local dev:** the same MCP server is registered in VSCode/Cursor, so the tools can be inspected with `npx @modelcontextprotocol/inspector` or driven directly from the IDE.
 
 ## Tech stack
@@ -185,7 +188,7 @@ Deployment is automated through GitHub Actions and Coolify.
 
 - Pushes to `dev` build `web:dev` and `worker:dev` images for CI validation.
 - Pushes to `main` build `web:latest` and `worker:latest`, push them to GHCR, and trigger Coolify webhooks.
-- The production setup runs separate web and worker containers plus PostgreSQL and Redis.
+- The production setup runs three independent containers — `web`, `worker`, and the internal-only `mcp-server` — on the same Docker network, plus PostgreSQL and Redis.
 - Only one production worker should have `ENABLE_SCHEDULER=true` to avoid duplicate scheduled emails.
 
 ## Repository structure
