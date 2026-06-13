@@ -37,6 +37,41 @@ postgresql://postgres:STRONG_PASSWORD_HERE@price-monitor-postgres-prod:5432/pric
 - Coolify → Web App → Environment Variables
 - Coolify → Worker App → Environment Variables
 
+#### pgvector Extension (Semantic Search / RAG)
+
+Semantic product search (Phase 4) stores vector embeddings in Postgres using the
+[`pgvector`](https://github.com/pgvector/pgvector) extension. The database image
+must ship the extension and the extension must be created once in the
+`priceMonitor` database.
+
+**Local development** (`docker-compose.yml`):
+- Image is `pgvector/pgvector:pg18` (Postgres 18 with pgvector preinstalled).
+- `scripts/db-init/01-enable-pgvector.sql` runs `CREATE EXTENSION IF NOT EXISTS vector;`
+  automatically on a **fresh** data volume. On an existing volume, run it manually:
+  ```bash
+  docker compose exec postgres psql -U postgres -d priceMonitor -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  ```
+
+> **Note on the alpine → pgvector image swap (existing volumes only):** the old
+> `postgres:18-alpine` image is musl-based; `pgvector/pgvector:pg18` is glibc-based.
+> The data files are compatible (same PG major version), but if the database has a
+> **recorded** collation version (`SELECT datcollversion FROM pg_database WHERE
+> datname='priceMonitor'` returns non-empty), rebuild indexes once:
+> `REINDEX DATABASE "priceMonitor";`. If `datcollversion` is **empty** (the typical
+> case for a DB created under the alpine image), Postgres records no version, emits
+> no mismatch warning, and no reindex is needed.
+
+**Production (Coolify):**
+- The managed Postgres service must use a pgvector-capable image. Switch the
+  Coolify Postgres app's image to `pgvector/pgvector:pg18` (same major version as
+  prod — 18) so the data files stay compatible.
+- After the DB is up, create the extension once:
+  ```bash
+  psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  ```
+- `CREATE EXTENSION` is idempotent (`IF NOT EXISTS`), so it is safe to re-run and
+  safe to include in a future Drizzle migration.
+
 ---
 
 ### Redis Configuration

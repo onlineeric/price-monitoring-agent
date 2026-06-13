@@ -49,7 +49,8 @@ We are integrating an end-to-end AI Agent into our Price Monitor app. The goal i
 
 ## 5. Implementation Roadmap (Task List)
 
-This list is the resumable guideline. Each sub-task is sized to be independently testable and small enough to learn in one sitting. After each coding sub-task is implemented, the assistant will stop and explain the change in detail before moving on.
+This list is the resumable guideline. Each sub-task is sized to be independently testable and small enough to learn in one sitting. 
+After each coding sub-task is implemented, the AI assistant will stop and explain the change in detail before moving on, **help the developer (me) to fully understand** what have been done, what are they, how they works, in a simple, easy to understand way, so I can fully understand and learn about what we did.
 
 ### Legend
 
@@ -122,10 +123,17 @@ Three issues surfaced during the PR #47 code review of the 3.9–3.16 work. Reso
 ### Phase 4 — Semantic Search with pgvector (RAG)
 Goal: Users query in natural language; the chatbot retrieves relevant products via vector similarity.
 
-- [ ] 4.1 **[Manual]** Enable `pgvector` extension in the local Docker Postgres image (update `docker-compose.yml` image or init script) and document for prod
-- [ ] 4.2 **[Code+Speckit]** Design the embedding pipeline end-to-end — table shape (`productEmbeddings` with vector column, dimension choice, index type HNSW vs IVFFlat), what text to embed, which provider model, re-embed triggers — produces the spec that Drizzle schema + later tasks follow
+**Decisions locked before 4.2 (rationale recorded here so the spec and later tasks stay consistent):**
+
+- **Embedding model — LOCAL via Transformers.js.** Use `@huggingface/transformers` running `all-MiniLM-L6-v2` (**384-dim**, quantized int8) **on-box in the mcp-server process**, lazy-loaded on first use. Chosen over a paid API because: (a) zero cost, (b) zero external dependency / fully private, (c) strongest portfolio/interview story, (d) it **fits the production droplet** — 14-day RAM history shows a stable 67–69% / 72% peak on the $24/mo 2 vCPU · 4 GB DigitalOcean droplet (peak already includes daily Playwright runs), and MiniLM adds ~300 MB resident → ~76% baseline / ~79–82% peak, leaving ~750–850 MB free. No upgrade needed.
+- **NOT the Vercel AI SDK `embed()` for the default path.** Transformers.js is called **directly** (it is not a Vercel AI SDK provider). The AI SDK `embed`/`embedMany` is only relevant if/when the API fallback is used.
+- **Provider abstraction — `EMBEDDING_PROVIDER` env** (mirrors the existing `AI_PROVIDER` pattern): `local` (default) · `openai` (`text-embedding-3-small`, 1536-dim) · `google` (`text-embedding-004`, 768-dim). Switching providers is supported but **NOT a free runtime toggle**: vectors from different models live in different spaces and have different dimensions, so a switch requires (1) change env, (2) Drizzle migration resizing the `vector(N)` column, (3) re-run the backfill script to re-embed all products, (4) rebuild the HNSW index. Cheap on our small dataset (~10–15 min scripted), but a deliberate operation.
+- **Vector dimension is fixed by the chosen model** — `vector(384)` for the `local` default.
+
+- [x] 4.1 **[Manual]** Enable `pgvector` extension in the local Docker Postgres image (update `docker-compose.yml` image or init script) and document for prod
+- [ ] 4.2 **[Code+Speckit]** Design the embedding pipeline end-to-end — table shape (`productEmbeddings` with vector column, dimension choice, index type HNSW vs IVFFlat), what text to embed, re-embed triggers — produces the spec that Drizzle schema + later tasks follow. (Embedding model + provider decided above.)
 - [ ] 4.3 **[Code]** Drizzle schema + migration for the embedding table (follows 4.2's spec)
-- [ ] 4.4 **[Code]** Embedding service in `packages/db` or `apps/web/src/lib/embeddings/` using Vercel AI SDK `embed` / `embedMany`
+- [ ] 4.4 **[Code]** Embedding service (default: local Transformers.js `all-MiniLM-L6-v2` called directly; behind the `EMBEDDING_PROVIDER` abstraction with optional Vercel AI SDK `embed`/`embedMany` API providers as fallback)
 - [ ] 4.5 **[Code]** Backfill script (`scripts/backfill-embeddings.ts`) that embeds every existing product once
 - [ ] 4.6 **[Code]** Auto-embed hook: regenerate embedding on product create / name update (extension point in the existing product save path)
 - [ ] 4.7 **[Code]** Add `semantic_search_products` MCP tool — vector similarity query via Drizzle `sql` template using `<=>` cosine distance operator
