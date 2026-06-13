@@ -205,8 +205,10 @@ Only create commits when explicitly requested.
 
 ## Active Technologies
 - TypeScript 5.9 + Next.js 16 (App Router), React 19, Tailwind CSS v4, Shadcn UI, TanStack Query/Table, Zustand, Drizzle ORM, PostgreSQL 18, Redis 8, BullMQ, Playwright, Vercel AI SDK (OpenAI / Anthropic / Google), `@modelcontextprotocol/sdk`, `streamdown` (Markdown rendering), Resend + React Email
+- 007-extend-product-info: Versioned Drizzle migrations (`generate` → committed `packages/db/drizzle/` → `migrate`) replacing `push`; additive product metadata columns (description / category / brand / country_of_origin / `attributes` JSONB ≤100 pairs / `info_updated_at`).
 
 ## Recent Changes
+- 007-extend-product-info: Rich product metadata (description, category, brand, country, key/value specs) via a new `update-product-info` operation (on add / on demand / batch info+price digest mode) that uses the AI tier and overwrites metadata; reusable product detail dialog; backfill script. Schema delivered as versioned, additive migrations auto-applied on deploy by a single gated instance (`RUN_MIGRATIONS`), with a manual apply fallback.
 - 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` + `GET /mcp/health` on port 3002) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown. Test-only tools (`slow_ping`, `throw_test`) are gated on `NODE_ENV !== "production"` so a stray `MCP_TEST_TOOLS=1` cannot leak them into a prod deploy.
 - 005-chat-page-ui: Dashboard chat page streaming `/api/chat` responses with sanitized markdown, inline tool-call indicators, and per-tab in-memory conversation state
 - 004-chat-streaming-api: Add `/api/chat` streaming route with MCP tool-calling, provider abstraction, and structured error taxonomy
