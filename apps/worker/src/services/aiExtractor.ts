@@ -23,16 +23,24 @@ const ProductDataSchema = z.object({
  * ProductDataSchema (price fields unchanged) plus optional metadata. The model
  * returns only what it finds — every new field is nullable.
  */
-const ProductInfoSchema = ProductDataSchema.extend({
+export const ProductInfoSchema = ProductDataSchema.extend({
   description: z.string().nullable().describe("A concise product description (plain text, no HTML)"),
   category: z.string().nullable().describe("The product category, e.g. 'Kitchen appliances'"),
   brand: z.string().nullable().describe("The brand or manufacturer name"),
   countryOfOrigin: z.string().nullable().describe("The country of origin / where it is made"),
+  // NOT nullable on purpose. A nullable array compiles to a JSON-Schema
+  // `anyOf: [{array…}, {null}]`, and the AI SDK's OpenAI strict-mode
+  // post-processor (`addAdditionalPropertiesToJsonSchema`) only walks
+  // object→properties and array→items — it never descends into `anyOf`
+  // branches. The inner {key,value} object would then ship without the
+  // required `additionalProperties: false`, and OpenAI rejects the request
+  // with `invalid_json_schema`. Keeping it a plain (required) array means the
+  // model returns `[]` for "none found", which `sanitizeProductAttributes`
+  // already coerces correctly.
   attributes: z
     .array(z.object({ key: z.string(), value: z.string() }))
-    .nullable()
     .describe(
-      `Key/value product specifications (e.g. {key:"Material", value:"Steel"}). Return at most the ${MAX_PRODUCT_ATTRIBUTES} most relevant, most important first. Omit anything not present — never invent values.`,
+      `Key/value product specifications (e.g. {key:"Material", value:"Steel"}). Return at most the ${MAX_PRODUCT_ATTRIBUTES} most relevant, most important first. Return an empty array if none are present. Omit anything not present — never invent values.`,
     ),
 });
 
@@ -246,7 +254,7 @@ Instructions:
   not the unit price, not a crossed-out price.
 - For imageUrl, extract the main product image as a complete https:// URL (construct it from a relative path if needed).
 - For attributes, return at most the ${MAX_PRODUCT_ATTRIBUTES} most relevant specifications as {key, value} pairs,
-  most important first (e.g. {"key":"Material","value":"Stainless steel"}).
+  most important first (e.g. {"key":"Material","value":"Stainless steel"}); return an empty array if there are none.
 - Omit any field you cannot find rather than inventing a value; use null for missing scalar fields.
 
 HTML content:

@@ -20,7 +20,8 @@ vi.mock("@ai-sdk/openai", () => ({ openai: aiMocks.openai }));
 vi.mock("@ai-sdk/anthropic", () => ({ anthropic: aiMocks.anthropic }));
 vi.mock("@ai-sdk/google", () => ({ google: aiMocks.google }));
 
-import { aiExtract, aiExtractProductInfo } from "./aiExtractor";
+import { z } from "zod";
+import { aiExtract, aiExtractProductInfo, ProductInfoSchema } from "./aiExtractor";
 
 const ENV_KEYS = ["AI_PROVIDER", "OPENAI_MODEL", "ANTHROPIC_MODEL", "GOOGLE_MODEL", "DEBUG_LOG"] as const;
 const originalEnv: Record<string, string | undefined> = {};
@@ -352,5 +353,58 @@ describe("aiExtractProductInfo — rich metadata path", () => {
     expect(prompt).toMatch(/brand/i);
     expect(prompt).toMatch(/country of origin/i);
     expect(prompt).toContain("100");
+  });
+});
+
+/**
+ * OpenAI strict structured outputs require `additionalProperties: false` on
+ * EVERY object node. The AI SDK adds that automatically, but its post-processor
+ * (`addAdditionalPropertiesToJsonSchema`) only walks object→properties and
+ * array→items — it never descends into `anyOf`/`oneOf`/`allOf` branches. So any
+ * object nested under a combinator (which is what `.nullable()` on an
+ * array-of-objects produces) ships non-strict and OpenAI rejects the request
+ * with `invalid_json_schema`. These tests mock the SDK, so they can't catch
+ * that — this one converts the schema the same way the SDK does and guards the
+ * invariant directly.
+ */
+describe("ProductInfoSchema OpenAI strict-mode compatibility", () => {
+  /** Collect dotted paths of every `type: "object"` node reachable only through a combinator. */
+  function objectsUnreachableByStrictPatch(
+    node: unknown,
+    path: string[] = [],
+    underCombinator = false,
+    found: string[] = [],
+  ): string[] {
+    if (node == null || typeof node !== "object") return found;
+    const schema = node as Record<string, unknown>;
+
+    if (underCombinator && schema.type === "object") found.push(path.join("."));
+
+    for (const key of ["anyOf", "oneOf", "allOf"] as const) {
+      const branches = schema[key];
+      if (Array.isArray(branches)) {
+        branches.forEach((b, i) => {
+          objectsUnreachableByStrictPatch(b, [...path, key, String(i)], true, found);
+        });
+      }
+    }
+    if (schema.properties && typeof schema.properties === "object") {
+      for (const [name, child] of Object.entries(schema.properties)) {
+        objectsUnreachableByStrictPatch(child, [...path, "properties", name], underCombinator, found);
+      }
+    }
+    if (schema.items != null) {
+      const items = Array.isArray(schema.items) ? schema.items : [schema.items];
+      items.forEach((it, i) => {
+        objectsUnreachableByStrictPatch(it, [...path, "items", String(i)], underCombinator, found);
+      });
+    }
+    return found;
+  }
+
+  it("emits no object nested under a combinator (so the SDK can mark all objects strict)", () => {
+    // Same conversion the AI SDK performs for Zod 4 schemas before the strict patch.
+    const jsonSchema = z.toJSONSchema(ProductInfoSchema, { target: "draft-7", io: "input" });
+    expect(objectsUnreachableByStrictPatch(jsonSchema)).toEqual([]);
   });
 });
