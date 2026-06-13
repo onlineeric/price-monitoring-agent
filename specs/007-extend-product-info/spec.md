@@ -13,13 +13,22 @@ currency, and image. This makes the product tracker feel thin and, critically,
 caps the quality of any future "understands meaning, not keywords" semantic search:
 there is nothing rich to search over.
 
-This feature captures and stores **rich product metadata** (a short description,
+This feature captures and stores **rich product metadata** (a description,
 category, brand/manufacturer, country of origin, and a flexible set of key/value
 specifications) alongside the price, and surfaces it in the UI. The guiding
 principle is to **decouple slow-changing metadata from fast-changing price**: price
 keeps being refreshed cheaply and frequently, while the more expensive metadata
 extraction runs only when it adds value (when a product is first added, or on
 explicit demand).
+
+## Clarifications
+
+### Session 2026-06-13
+
+- Q: On a re-run of "update product info", what happens to a metadata field that was previously captured but the page no longer provides? → A: Overwrite — a successful run replaces the full metadata set; fields not found this run are blanked, even if previously populated. (Price-only "check price now" never touches metadata.)
+- Q: What is the maximum number of key/value spec attributes kept per product? → A: At most 100; if the page yields more, the extractor is instructed to return only the 100 most important / most relevant attributes.
+- Q: How are the flexible key/value spec attributes persisted? → A: A single additive JSONB column on the `products` table (no separate child table).
+- Q: What length bound applies to the stored description? → A: No hard limit — store the full extracted description; the UI clamps/truncates it for display.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -57,7 +66,8 @@ now" still only adds a price record and leaves metadata untouched.
    and a price.
 4. **Given** a product page that only lists some of the fields, **When** "Update
    product info" runs, **Then** the fields that are found are stored and the
-   remaining fields are left empty (no failure).
+   remaining fields are written empty (overwrite semantics — any previously
+   captured value for a now-missing field is blanked), with no failure.
 
 ---
 
@@ -162,14 +172,16 @@ beyond refreshing the data.
 
 ### Edge Cases
 
-- **Page provides no metadata at all**: extraction succeeds but finds nothing — the
-  metadata fields stay empty, a price is still recorded, and "info last updated" is
-  still set (the attempt happened).
+- **Page provides no metadata at all**: extraction succeeds but finds nothing — under
+  overwrite semantics the metadata fields are written empty (any previously captured
+  values are blanked), a price is still recorded, and "info last updated" is still set
+  (the attempt happened).
 - **Page is unreachable / extraction fails entirely**: treated like a failed check
-  (failure recorded), metadata and "info last updated" are left unchanged, no
-  partial/garbage data is written.
-- **Unusually large spec list**: only a small, bounded set of key specifications is
-  kept so a single product cannot bloat storage or the UI.
+  (failure recorded), metadata and "info last updated" are left unchanged (no
+  overwrite), no partial/garbage data is written.
+- **Unusually large spec list**: at most 100 key/value spec attributes are kept per
+  product; if the page yields more, the extractor is instructed to return only the 100
+  most important / most relevant, so a single product cannot bloat storage or the UI.
 - **Product with no price history**: the detail dialog still opens and shows current
   price (or a placeholder) with an empty/short trend rather than breaking.
 - **Click target ambiguity**: clicking the actions menu trigger opens only the menu;
@@ -191,14 +203,17 @@ beyond refreshing the data.
 
 **Data capture**
 
-- **FR-001**: System MUST store, per product, the following optional fields: a short
-  description, a category, a brand/manufacturer, a country of origin, and a flexible
-  set of key/value specification attributes.
+- **FR-001**: System MUST store, per product, the following optional fields: a
+  description (stored in full, no hard length limit — the UI is responsible for
+  clamping/truncating it for display), a category, a brand/manufacturer, a country of
+  origin, and a flexible set of key/value specification attributes (at most 100 per
+  product) persisted as a single JSONB column on the `products` table.
 - **FR-002**: System MUST record, per product, when its information (metadata) was
   last extracted, separately from when its price was last checked.
 - **FR-003**: The information extraction MUST attempt to capture the new fields from
   the product page and MUST treat every new field as optional, returning only what
-  it can find.
+  it can find. When the page exposes more than 100 spec attributes, the extractor
+  MUST return only the 100 most important / most relevant.
 - **FR-004**: Existing price, title, currency, and image extraction behaviour MUST
   remain unchanged.
 
@@ -210,9 +225,13 @@ beyond refreshing the data.
   refreshes the full metadata **and** records a new price in the same run.
 - **FR-007**: When a new product is first added to tracking, the system MUST run the
   "update product info" operation once so the product starts enriched.
-- **FR-008**: The "update product info" operation MUST be best-effort: store
-  whichever fields are found, leave the rest empty, record a price, and set the
-  "info last updated" timestamp when the page was successfully processed.
+- **FR-008**: The "update product info" operation MUST be best-effort and use
+  overwrite semantics: on a successfully processed page it replaces the full metadata
+  set — storing whichever fields are found and writing the rest empty, blanking any
+  previously captured value for a field the page no longer provides — records a price,
+  and sets the "info last updated" timestamp. A run that fails entirely (page
+  unreachable / extraction error) leaves the metadata fields and the "info last
+  updated" timestamp unchanged.
 
 **Per-product action**
 
@@ -279,10 +298,11 @@ beyond refreshing the data.
 ### Key Entities *(include if feature involves data)*
 
 - **Product (extended)**: the tracked item. Existing attributes (URL, name, image,
-  active flag, last success/failure timestamps) gain optional **description**,
-  **category**, **brand/manufacturer**, **country of origin**, a flexible
-  **attributes** set of key/value specifications, and an **info-last-updated**
-  timestamp.
+  active flag, last success/failure timestamps) gain an optional **description**
+  (full text, no hard length limit), **category**, **brand/manufacturer**, **country
+  of origin**, a flexible **attributes** set of key/value specifications (at most 100,
+  stored as a single JSONB column on the `products` table), and an
+  **info-last-updated** timestamp.
 - **Price record (unchanged)**: a timestamped price (with currency) for a product;
   both "check price" and "update product info" append one.
 - **Product info refresh (new operation/concept)**: a request to extract full
@@ -296,7 +316,8 @@ beyond refreshing the data.
   supporting API route, digest trigger payload), `scripts/` (backfill), and
   `specs/`.
 - **Data and Contracts Impact**: new optional product fields plus a flexible
-  attributes store and an info-last-updated timestamp; extraction output gains the
+  attributes store (a single additive JSONB column on the `products` table, capped at
+  100 key/value pairs) and an info-last-updated timestamp; extraction output gains the
   new optional fields; a new background job type for metadata refresh on the existing
   queue; a new per-product "update info" API route mirroring the existing check-price
   route; the digest trigger payload gains a refresh "mode" (price-only vs
@@ -355,10 +376,14 @@ beyond refreshing the data.
 - **On-add enrichment**: adding a new product triggers the full "update product info"
   operation once (per the idea spec's "once on add, then on demand only"), replacing
   a plain price-only first check, so products start enriched.
-- **Best-effort extraction**: partial results are acceptable and expected; only a
-  total page/extraction failure leaves metadata untouched and records a failure.
-- **Bounded attributes**: the flexible specification set is limited to a small number
-  of the most relevant key/value pairs per product to avoid storage/UI bloat.
+- **Best-effort extraction**: partial results are acceptable and expected. A
+  successfully processed page overwrites the full metadata set (storing what is found
+  and blanking fields the page no longer provides); only a total page/extraction
+  failure leaves metadata untouched and records a failure.
+- **Bounded attributes**: the flexible specification set is limited to at most 100 of
+  the most important/relevant key/value pairs per product (stored as a single JSONB
+  column on the `products` table) to avoid storage/UI bloat; if the page exposes more,
+  the extractor returns only the top 100.
 - **No auth on new routes**: consistent with the rest of the app, the new route(s)
   are unauthenticated for now (deferred app-wide).
 - **Reuse existing infrastructure**: the new operation reuses the existing extraction
