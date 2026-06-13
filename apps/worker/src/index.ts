@@ -1,4 +1,4 @@
-import { runMigrations } from "@price-monitor/db";
+import { runMigrations } from "@price-monitor/db/migrate";
 import { Queue } from "bullmq";
 import { connection, QUEUE_NAME } from "./config.js";
 import { closeFlowProducer } from "./jobs/sendDigest.js";

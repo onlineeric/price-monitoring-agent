@@ -31,8 +31,10 @@ export * from "./schema";
 // Re-export the shared product-attribute type + Zod validation
 export * from "./attributes";
 
-// Re-export the programmatic migrator (used by the gated worker on startup)
-export { runMigrations } from "./migrate";
+// NOTE: runMigrations is intentionally NOT re-exported here. It lives behind the
+// dedicated "@price-monitor/db/migrate" subpath so the migrator (postgres-js +
+// drizzle migrator + a ../drizzle URL) never gets pulled into web's bundle.
+// Only the worker imports it.
 
 // Re-export drizzle-orm utilities for use in other packages
 export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray };

@@ -5,7 +5,8 @@
   "description": "",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate",
