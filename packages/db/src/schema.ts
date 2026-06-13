@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
-import { boolean, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import type { ProductAttribute } from "./attributes";
 
 // Products table
 export const products = pgTable("products", {
@@ -12,6 +13,17 @@ export const products = pgTable("products", {
   lastFailedAt: timestamp("last_failed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // --- Rich product metadata (feature 007) -------------------------------
+  // All additive + nullable. Populated only by the `update-product-info`
+  // operation (AI tier); never touched by the cheap `check-price` path.
+  description: text("description"),
+  category: text("category"),
+  brand: text("brand"),
+  countryOfOrigin: text("country_of_origin"),
+  // Ordered key/value spec list, capped at 100 (see packages/db/src/attributes.ts).
+  attributes: jsonb("attributes").$type<ProductAttribute[]>(),
+  // When metadata was last extracted — distinct from last_success_at (price).
+  infoUpdatedAt: timestamp("info_updated_at"),
 });
 
 // Price records table

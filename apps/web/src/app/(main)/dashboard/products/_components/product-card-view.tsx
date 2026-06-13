@@ -5,7 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, Pencil, RefreshCw, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { MoreVertical, Pencil, RefreshCw, Sparkles, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,10 @@ import { formatPrice } from "@/lib/format";
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import { MiniPriceChart } from "./mini-price-chart";
+import { ProductDetailDialog } from "./product-detail-dialog";
 import type { ProductWithStats } from "./products-view";
 import { useCheckPrice } from "./use-check-price";
+import { useUpdateInfo } from "./use-update-info";
 
 interface ProductCardViewProps {
   products: ProductWithStats[];
@@ -31,8 +33,10 @@ interface ProductCardViewProps {
 export function ProductCardView({ products }: ProductCardViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
+  const [detailProduct, setDetailProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
+  const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
 
   const calculatePriceChange = (history: Array<{ date: Date; price: number }>) => {
     if (history.length < 2) return null;
@@ -49,7 +53,11 @@ export function ProductCardView({ products }: ProductCardViewProps) {
           const priceChange = calculatePriceChange(product.priceHistory);
 
           return (
-            <Card key={product.id} className="overflow-hidden">
+            <Card
+              key={product.id}
+              className="cursor-pointer overflow-hidden transition-colors hover:bg-muted/40"
+              onClick={() => setDetailProduct(product)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -60,6 +68,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                       href={product.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="mt-1 line-clamp-1 text-muted-foreground text-xs hover:underline"
                     >
                       {(() => {
@@ -77,13 +86,22 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="size-4" />
+                          <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handleCheckPrice(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckPrice(product.id);
+                          }}
                           disabled={checkingPriceId === product.id}
                         >
                           <RefreshCw
@@ -92,7 +110,20 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           {checkingPriceId === product.id ? "Checking..." : "Check price now"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateInfo(product.id);
+                          }}
+                          disabled={updatingInfoId === product.id}
+                        >
+                          <Sparkles
+                            className={`mr-2 size-4 ${updatingInfoId === product.id ? "animate-spin" : ""}`}
+                          />
+                          {updatingInfoId === product.id ? "Updating..." : "Update product info"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingProduct(product);
                           }}
                         >
@@ -100,7 +131,8 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDeletingProduct(product);
                             setIsDeleteDialogOpen(true);
                           }}
@@ -166,6 +198,13 @@ export function ProductCardView({ products }: ProductCardViewProps) {
       </div>
 
       {/* Dialogs */}
+      <ProductDetailDialog
+        product={detailProduct}
+        open={detailProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailProduct(null);
+        }}
+      />
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}

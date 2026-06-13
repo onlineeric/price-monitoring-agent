@@ -29,9 +29,9 @@ Monorepo: `packages/db/`, `apps/worker/src/`, `apps/web/src/`, `scripts/`.
 
 **Purpose**: Shared types and migration tooling every later phase depends on
 
-- [ ] T001 [P] Create shared attribute type + Zod schema (`ProductAttribute`, `productAttributesSchema`, `MAX_PRODUCT_ATTRIBUTES = 100`) in `packages/db/src/attributes.ts` and re-export them from `packages/db/src/index.ts`
-- [ ] T002 [P] Add programmatic migrator `packages/db/src/migrate.ts` (Drizzle `postgres-js` migrator pointed at `./drizzle`, reads `DATABASE_URL`, logs start/applied/up-to-date, exits non-zero on error) and add a `"migrate"` script to `packages/db/package.json`
-- [ ] T003 [P] Declare the new `RUN_MIGRATIONS` flag: add it to the root `.env`, and to the `worker` service in `docker-compose.yml` next to `ENABLE_SCHEDULER` (set `"true"` for the single local gated worker)
+- [X] T001 [P] Create shared attribute type + Zod schema (`ProductAttribute`, `productAttributesSchema`, `MAX_PRODUCT_ATTRIBUTES = 100`) in `packages/db/src/attributes.ts` and re-export them from `packages/db/src/index.ts` (also added `sanitizeProductAttributes` + colocated `attributes.test.ts` — the attributes half of T009)
+- [X] T002 [P] Add programmatic migrator `packages/db/src/migrate.ts` (Drizzle `postgres-js` migrator pointed at `./drizzle`, reads `DATABASE_URL`, logs start/applied/up-to-date, exits non-zero on error) and add a `"migrate"` script to `packages/db/package.json` (+ `tsx` devDep, `runMigrations` exported from index)
+- [X] T003 [P] Declare the new `RUN_MIGRATIONS` flag: add it to the root `.env`, and to the `worker` service in `docker-compose.yml` next to `ENABLE_SCHEDULER` (set `"true"` for the single local gated worker)
 
 ---
 
@@ -42,12 +42,12 @@ before any story can read/write the new fields
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Generate the baseline migration from the **unchanged** schema: `pnpm --filter @price-monitor/db generate` → `packages/db/drizzle/0000_*.sql`; hand-edit its DDL so every `CREATE TABLE`/index/constraint uses `IF NOT EXISTS` (no-op on existing DBs). Commit `drizzle/` incl. `meta/_journal.json`
-- [ ] T005 Extend the `products` table in `packages/db/src/schema.ts` with `description` (text), `category` (text), `brand` (text), `countryOfOrigin` → `country_of_origin` (text), `attributes` → `jsonb("attributes").$type<ProductAttribute[]>()`, and `infoUpdatedAt` → `info_updated_at` (timestamp); all nullable (depends on T001, T004)
-- [ ] T006 Generate the additive feature migration: `pnpm --filter @price-monitor/db generate` → `packages/db/drizzle/0001_*.sql`; confirm it only `ALTER TABLE products ADD COLUMN …` and tighten each to `ADD COLUMN IF NOT EXISTS`; commit (depends on T005)
-- [ ] T007 Apply locally and verify: `pnpm --filter @price-monitor/db migrate` against the existing dev DB; confirm existing products + full price history are intact and new columns are `NULL`; run it a second time to confirm a no-op (depends on T002, T006)
-- [ ] T008 Wire gated auto-migrate into worker startup in `apps/worker/src/index.ts`: when `RUN_MIGRATIONS === "true"`, run the migrator (T002) and await completion **before** the BullMQ worker/scheduler start consuming; on failure log and `process.exit(1)` (depends on T002, T006)
-- [ ] T009 [P] Verification — schema/type tests: assert the six new columns and types in `packages/db/src/schema.test.ts`, and add `packages/db/src/attributes.test.ts` covering `productAttributesSchema` validation + the 100-item cap (depends on T001, T005)
+- [X] T004 Generate the baseline migration from the **unchanged** schema: `pnpm --filter @price-monitor/db generate` → `packages/db/drizzle/0000_icy_thena.sql`; hand-edited so every `CREATE TABLE` uses `IF NOT EXISTS` and the FK `ADD CONSTRAINT` is wrapped in a `DO $$ … duplicate_object` block (no-op on existing DBs). Committed `drizzle/` incl. `meta/_journal.json`
+- [X] T005 Extend the `products` table in `packages/db/src/schema.ts` with `description`/`category`/`brand`/`country_of_origin` (text), `attributes` → `jsonb("attributes").$type<ProductAttribute[]>()`, `info_updated_at` (timestamp); all nullable (depends on T001, T004)
+- [X] T006 Generate the additive feature migration → `packages/db/drizzle/0001_special_adam_warlock.sql`; confirmed `ALTER TABLE products ADD COLUMN …` only and tightened each to `ADD COLUMN IF NOT EXISTS`; committed (depends on T005)
+- [X] T007 Applied locally and verified: existing 8 products + 409 price records intact, 6 new columns added as NULL, second run is a true no-op (journal records both) (depends on T002, T006)
+- [X] T008 Wired gated auto-migrate into worker startup in `apps/worker/src/index.ts`: when `RUN_MIGRATIONS === "true"`, runs `runMigrations()` and awaits completion **before** `worker.run()` (BullMQ Worker switched to `autorun:false` in `queue/worker.ts`); on failure logs + `process.exit(1)` (depends on T002, T006)
+- [X] T009 [P] Verification — schema/type tests assert the six new columns + types in `packages/db/src/schema.test.ts`; `packages/db/src/attributes.test.ts` covers validation + the 100-item cap (added in T001) (depends on T001, T005)
 
 **Checkpoint**: Schema migrated everywhere; shared types ready — stories can begin
 
@@ -65,24 +65,24 @@ price; "Check price now" still only adds a price and leaves metadata untouched.
 
 ### Verification for User Story 1 ⚠️
 
-- [ ] T010 [P] [US1] Test `aiExtractProductInfo` (mocked AI SDK) returns the extended fields and caps attributes at 100, in `apps/worker/src/services/aiExtractor.test.ts`
-- [ ] T011 [P] [US1] Test the `update-product-info` job for success-overwrite (found fields stored, missing blanked, `info_updated_at` set, price appended), partial page, and total failure (metadata + `info_updated_at` untouched, failure logged), in `apps/worker/src/jobs/updateProductInfo.test.ts`
-- [ ] T012 [P] [US1] Test `POST /api/products/[id]/update-info` (200 enqueues, 400 invalid id, 404 missing) in `apps/web/src/app/api/products/[id]/update-info/route.test.ts`
+- [X] T010 [P] [US1] Test `aiExtractProductInfo` (mocked AI SDK) returns the extended fields and caps attributes at 100, in `apps/worker/src/services/aiExtractor.test.ts`
+- [X] T011 [P] [US1] Test the `update-product-info` job for success-overwrite (found fields stored, missing blanked, `info_updated_at` set, price appended), partial page, and total failure (metadata + `info_updated_at` untouched, failure logged), in `apps/worker/src/jobs/updateProductInfo.test.ts`
+- [X] T012 [P] [US1] Test `POST /api/products/[id]/update-info` (200 enqueues, 400 invalid id, 404 missing) in `apps/web/src/app/api/products/[id]/update-info/route.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Add the richer extraction output shape (price fields + `description`/`category`/`brand`/`countryOfOrigin`/`attributes`) to `apps/worker/src/types/scraper.ts`
-- [ ] T014 [US1] Implement `aiExtractProductInfo(url, html)` in `apps/worker/src/services/aiExtractor.ts`: extended Zod `ProductInfoSchema` + enriched prompt (request top-100 attributes, omit unknowns), convert price to cents, validate/cap attributes (depends on T001, T013)
-- [ ] T015 [US1] Expose a rendered-HTML path in `apps/worker/src/services/playwrightFetcher.ts` so the metadata route can reuse the singleton browser render without duplicating navigation logic
-- [ ] T016 [US1] Implement `scrapeProductInfo(url)` in `apps/worker/src/services/scraper.ts`: render via Playwright (T015) then `aiExtractProductInfo`; keep the existing `scrapeProduct` price path untouched (depends on T014, T015)
-- [ ] T017 [P] [US1] Implement `saveProductInfo(productId, metadata)` in `apps/worker/src/services/database.ts` using Drizzle update: overwrite all metadata (blank missing fields), set `info_updated_at = now`, validate + cap `attributes` via `productAttributesSchema` (depends on T001, T005)
-- [ ] T018 [US1] Implement the `update-product-info` job processor in `apps/worker/src/jobs/updateProductInfo.ts`: resolve URL → `scrapeProductInfo`; on success append price record + `saveProductInfo` + success log; on total failure record failure + leave metadata untouched (depends on T016, T017)
-- [ ] T019 [US1] Register the `update-product-info` case in `apps/worker/src/queue/worker.ts` (depends on T018)
-- [ ] T020 [US1] Change on-add behaviour in `apps/web/src/app/api/products/route.ts` to enqueue `update-product-info` instead of `check-price` so new products start enriched (FR-007)
-- [ ] T021 [P] [US1] Create `POST /api/products/[id]/update-info` route at `apps/web/src/app/api/products/[id]/update-info/route.ts` mirroring check-price (enqueue `update-product-info`)
-- [ ] T022 [P] [US1] Create the `useUpdateInfo` hook in `apps/web/src/app/(main)/dashboard/products/_components/use-update-info.ts` mirroring `use-check-price.ts` (loading/disabled/toast + `router.refresh()`)
-- [ ] T023 [US1] Add an "Update product info" dropdown item directly beneath "Check price now" in `apps/web/src/app/(main)/dashboard/products/_components/product-card-view.tsx` (depends on T022)
-- [ ] T024 [US1] Add the same "Update product info" dropdown item beneath "Check price now" in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx` (depends on T022)
+- [X] T013 [P] [US1] Add the richer extraction output shape (price fields + `description`/`category`/`brand`/`countryOfOrigin`/`attributes`) to `apps/worker/src/types/scraper.ts`
+- [X] T014 [US1] Implement `aiExtractProductInfo(url, html)` in `apps/worker/src/services/aiExtractor.ts`: extended Zod `ProductInfoSchema` + enriched prompt (request top-100 attributes, omit unknowns), convert price to cents, validate/cap attributes (depends on T001, T013)
+- [X] T015 [US1] Expose a rendered-HTML path in `apps/worker/src/services/playwrightFetcher.ts` so the metadata route can reuse the singleton browser render without duplicating navigation logic
+- [X] T016 [US1] Implement `scrapeProductInfo(url)` in `apps/worker/src/services/scraper.ts`: render via Playwright (T015) then `aiExtractProductInfo`; keep the existing `scrapeProduct` price path untouched (depends on T014, T015)
+- [X] T017 [P] [US1] Implement `saveProductInfo(productId, metadata)` in `apps/worker/src/services/database.ts` using Drizzle update: overwrite all metadata (blank missing fields), set `info_updated_at = now`, validate + cap `attributes` via `productAttributesSchema` (depends on T001, T005)
+- [X] T018 [US1] Implement the `update-product-info` job processor in `apps/worker/src/jobs/updateProductInfo.ts`: resolve URL → `scrapeProductInfo`; on success append price record + `saveProductInfo` + success log; on total failure record failure + leave metadata untouched (depends on T016, T017)
+- [X] T019 [US1] Register the `update-product-info` case in `apps/worker/src/queue/worker.ts` (depends on T018)
+- [X] T020 [US1] Change on-add behaviour in `apps/web/src/app/api/products/route.ts` to enqueue `update-product-info` instead of `check-price` so new products start enriched (FR-007)
+- [X] T021 [P] [US1] Create `POST /api/products/[id]/update-info` route at `apps/web/src/app/api/products/[id]/update-info/route.ts` mirroring check-price (enqueue `update-product-info`)
+- [X] T022 [P] [US1] Create the `useUpdateInfo` hook in `apps/web/src/app/(main)/dashboard/products/_components/use-update-info.ts` mirroring `use-check-price.ts` (loading/disabled/toast + `router.refresh()`)
+- [X] T023 [US1] Add an "Update product info" dropdown item directly beneath "Check price now" in `apps/web/src/app/(main)/dashboard/products/_components/product-card-view.tsx` (depends on T022)
+- [X] T024 [US1] Add the same "Update product info" dropdown item beneath "Check price now" in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx` (depends on T022)
 
 **Checkpoint**: US1 fully functional — enrich on add + on demand; price check unchanged
 
@@ -99,15 +99,15 @@ open the dialog and all existing actions still work.
 
 ### Verification for User Story 2 ⚠️
 
-- [ ] T025 [P] [US2] Test `product-detail-dialog` rendering (metadata + attributes list, graceful empty fields, both timestamps shown) and that an actions-menu click does not open the dialog, in `apps/web/src/app/(main)/dashboard/products/_components/product-detail-dialog.test.tsx`
+- [X] T025 [P] [US2] Test `product-detail-dialog` rendering (metadata + attributes list, graceful empty fields, both timestamps shown) and that an actions-menu click does not open the dialog, in `apps/web/src/app/(main)/dashboard/products/_components/product-detail-dialog.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Extend the `ProductWithStats` type with the six new metadata fields in `apps/web/src/app/(main)/dashboard/products/_components/products-view.tsx` (the `products/page.tsx` query already spreads all product columns, so confirm they flow through)
-- [ ] T027 [P] [US2] Create the reusable `product-detail-dialog.tsx` in `apps/web/src/app/(main)/dashboard/products/_components/`: image, name, source link, current price + currency, price trend, description (UI-clamped), category/brand/country, attributes key/value list, `info_updated_at` + `lastChecked` timestamps, and "Check price now"/"Update product info" actions; placeholder/hide for missing fields (depends on T022, T026)
-- [ ] T028 [US2] Open the dialog on card click and add `e.stopPropagation()` to the dropdown trigger + delete/edit handlers in `product-card-view.tsx` so the menu never opens the dialog (depends on T027)
-- [ ] T029 [US2] Open the dialog on row click and stop propagation on the actions cell in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx` (depends on T027)
-- [ ] T030 [US2] Satisfy the cross-page reuse requirement (FR-014): import `product-detail-dialog.tsx` from the dashboard product listing in `apps/web/src/app/(main)/dashboard/default/page.tsx` (and its `_components/`), or, if that page still uses placeholder `data.json`, add a code comment documenting the placeholder and that the dialog is the shared component to wire in (depends on T027)
+- [X] T026 [US2] Extend the `ProductWithStats` type with the six new metadata fields in `apps/web/src/app/(main)/dashboard/products/_components/products-view.tsx` (the `products/page.tsx` query already spreads all product columns, so confirm they flow through)
+- [X] T027 [P] [US2] Create the reusable `product-detail-dialog.tsx` in `apps/web/src/app/(main)/dashboard/products/_components/`: image, name, source link, current price + currency, price trend, description (UI-clamped), category/brand/country, attributes key/value list, `info_updated_at` + `lastChecked` timestamps, and "Check price now"/"Update product info" actions; placeholder/hide for missing fields (depends on T022, T026)
+- [X] T028 [US2] Open the dialog on card click and add `e.stopPropagation()` to the dropdown trigger + delete/edit handlers in `product-card-view.tsx` so the menu never opens the dialog (depends on T027)
+- [X] T029 [US2] Open the dialog on row click and stop propagation on the actions cell in `apps/web/src/app/(main)/dashboard/products/_components/product-table-view.tsx` (depends on T027)
+- [X] T030 [US2] Satisfy the cross-page reuse requirement (FR-014): import `product-detail-dialog.tsx` from the dashboard product listing in `apps/web/src/app/(main)/dashboard/default/page.tsx` (and its `_components/`), or, if that page still uses placeholder `data.json`, add a code comment documenting the placeholder and that the dialog is the shared component to wire in (depends on T027)
 
 **Checkpoint**: US1 + US2 both work — data is captured and viewable from any list
 
@@ -127,16 +127,16 @@ metadata refresh per product before the email; default keeps price-only behaviou
 
 ### Verification for User Story 3 ⚠️
 
-- [ ] T031 [P] [US3] Test `POST /api/digest/trigger` mode handling (defaults to `price`, accepts `info`) in `apps/web/src/app/api/digest/trigger/route.test.ts`
-- [ ] T032 [P] [US3] Test `enqueueRefreshFlowForActiveProducts` child-job selection by mode (`check-price` vs `update-product-info`) in `apps/worker/src/services/update-prices.test.ts`
-- [ ] T033 [P] [US3] Test `manual-trigger-button` shows the two-option control (no "(Feature under construction)" caption) and posts the selected mode, in `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.test.tsx`
+- [X] T031 [P] [US3] Test `POST /api/digest/trigger` mode handling (defaults to `price`, accepts `info`) in `apps/web/src/app/api/digest/trigger/route.test.ts`
+- [X] T032 [P] [US3] Test `enqueueRefreshFlowForActiveProducts` child-job selection by mode (`check-price` vs `update-product-info`) in `apps/worker/src/services/update-prices.test.ts`
+- [X] T033 [P] [US3] Test `manual-trigger-button` shows the two-option control (no "(Feature under construction)" caption) and posts the selected mode, in `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Add a `mode: "price" | "info"` parameter to `enqueueRefreshFlowForActiveProducts` in `apps/worker/src/services/update-prices.ts`, selecting child job name `check-price` vs `update-product-info` (default `price`) (depends on T019)
-- [ ] T035 [US3] Pass `mode` from `job.data` through `sendDigestJob` to `enqueueRefreshFlowForActiveProducts` in `apps/worker/src/jobs/sendDigest.ts` (scheduled digests default to `price`) (depends on T034)
-- [ ] T036 [US3] Accept an optional `{ mode }` body in `apps/web/src/app/api/digest/trigger/route.ts`, coerce anything but `"info"` to `"price"`, and include it in the `send-digest` job data (depends on T035)
-- [ ] T037 [US3] Replace the disabled Switch + "(Feature under construction)" caption in `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.tsx` with a two-option RadioGroup (default "Refresh all products' price"; second "Refresh all products info (info + price)") that posts `mode` (depends on T036)
+- [X] T034 [US3] Add a `mode: "price" | "info"` parameter to `enqueueRefreshFlowForActiveProducts` in `apps/worker/src/services/update-prices.ts`, selecting child job name `check-price` vs `update-product-info` (default `price`) (depends on T019)
+- [X] T035 [US3] Pass `mode` from `job.data` through `sendDigestJob` to `enqueueRefreshFlowForActiveProducts` in `apps/worker/src/jobs/sendDigest.ts` (scheduled digests default to `price`) (depends on T034)
+- [X] T036 [US3] Accept an optional `{ mode }` body in `apps/web/src/app/api/digest/trigger/route.ts`, coerce anything but `"info"` to `"price"`, and include it in the `send-digest` job data (depends on T035)
+- [X] T037 [US3] Replace the disabled Switch + "(Feature under construction)" caption in `apps/web/src/app/(main)/dashboard/_components/manual-trigger-button.tsx` with a two-option RadioGroup (default "Refresh all products' price"; second "Refresh all products info (info + price)") that posts `mode` (depends on T036)
 
 **Checkpoint**: US1–US3 work — catalogue-wide enrichment available from the digest
 
@@ -154,11 +154,11 @@ refreshes (no duplicate side effects).
 
 ### Verification for User Story 4 ⚠️
 
-- [ ] T038 [P] [US4] Test the backfill enqueues one `update-product-info` per product and is safe to re-run (mocked queue) in `scripts/backfill-product-info.test.ts`
+- [X] T038 [P] [US4] Test the backfill enqueues one `update-product-info` per product and is safe to re-run (mocked queue) in `scripts/backfill-product-info.test.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Create `scripts/backfill-product-info.ts` (run via `tsx`) that loads all products via Drizzle and enqueues an `update-product-info` job for each; idempotent by construction (overwrite semantics) (depends on T019)
+- [X] T039 [US4] Create `scripts/backfill-product-info.ts` (run via `tsx`) that loads all products via Drizzle and enqueues an `update-product-info` job for each; idempotent by construction (overwrite semantics) (depends on T019)
 
 **Checkpoint**: All user stories independently functional
 
@@ -166,9 +166,9 @@ refreshes (no duplicate side effects).
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T040 [P] Document the migration workflow + `RUN_MIGRATIONS` operational flag (auto-apply on the single gated instance, manual fallback `pnpm --filter @price-monitor/db migrate`) in `docs/` and/or `README.md`
-- [ ] T041 Run `pnpm test` (all workspaces) and `pnpm lint`; fix any failures and review unsafe autofixes
-- [ ] T042 Run `quickstart.md` manual validation: detail dialogs from Products + dashboard, both digest modes end-to-end, and the migration applied against a populated DB (zero data loss)
+- [X] T040 [P] Documented the migration workflow + `RUN_MIGRATIONS` flag in new `docs/migrations.md`, wired into `README.md` (quick start uses `migrate`, Deployment notes the gated worker, Additional documentation links it)
+- [X] T041 `pnpm test` → 546 tests pass across db/mcp-server/reporting/web/worker; `pnpm lint` clean; worker + web SOURCE files typecheck clean (`tsc --noEmit`). Pre-existing strict-tsc noise in older `*.test.ts` files is unrelated to this feature.
+- [~] T042 PARTIAL — **migration against the populated dev DB verified live** (T007: 8 products + 409 price records intact, 6 NULL columns added, idempotent re-run). Detail-dialog rendering / click-vs-menu, both digest modes, and backfill idempotency are covered by automated tests. The interactive browser walkthrough + real AI extraction + real email send remain a manual run (`pnpm worker:dev` + web dev) for the user — needs Playwright chromium, AI keys, and Resend.
 
 ---
 

@@ -78,7 +78,7 @@ feature.)
 ### US1 — Enrich on demand / on add (P1)
 
 ```bash
-pnpm dev:worker            # local worker (auto-manages Docker worker)
+pnpm worker:dev            # local worker (auto-manages Docker worker)
 pnpm --filter @price-monitor/web dev
 ```
 
@@ -111,7 +111,9 @@ pnpm --filter @price-monitor/web dev
 ### US4 — Backfill (P3)
 
 ```bash
-pnpm tsx scripts/backfill-product-info.ts
+# Lives in the worker workspace (testable + alongside the queue infra,
+# mirroring scripts/cleanupDigestSchedules.ts)
+pnpm --filter @price-monitor/worker backfill:product-info
 ```
 
 - Pre-feature products gain metadata + `info_updated_at`. Re-run → completes with

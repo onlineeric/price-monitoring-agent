@@ -28,6 +28,12 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 // Re-export schema
 export * from "./schema";
 
+// Re-export the shared product-attribute type + Zod validation
+export * from "./attributes";
+
+// Re-export the programmatic migrator (used by the gated worker on startup)
+export { runMigrations } from "./migrate";
+
 // Re-export drizzle-orm utilities for use in other packages
 export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray };
 

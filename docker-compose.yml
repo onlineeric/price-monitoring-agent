@@ -63,6 +63,8 @@ services:
       FORCE_AI_EXTRACTION: ${FORCE_AI_EXTRACTION:-false}
       # Scheduler - enabled for background worker
       ENABLE_SCHEDULER: "true"
+      # Auto-apply pending DB migrations on startup (same single gated instance)
+      RUN_MIGRATIONS: "true"
       # Timezone used by BullMQ repeatable cron jobs
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
       # Email

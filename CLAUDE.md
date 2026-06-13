@@ -58,7 +58,7 @@ scripts/       # Utility scripts
 # Dev environment
 pnpm docker:up                            # Start PostgreSQL + Redis
 pnpm --filter @price-monitor/web dev      # Next.js dev server (port 3000)
-pnpm dev:worker                           # Dev worker (auto-manages Docker worker)
+pnpm worker:dev                           # Dev worker (auto-manages Docker worker)
 pnpm lint                                 # Biome lint over every workspace + scripts
 pnpm lint:fix                             # apply Biome safe + unsafe fixes (review the diff)
 
@@ -80,7 +80,7 @@ pnpm worker:logs       # tail Docker worker logs
 pnpm worker:restart    # restart Docker worker (no rebuild)
 ```
 
-The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts PostgreSQL and Redis. `pnpm dev:worker` (from repo root) and `pnpm dev` (from `apps/worker/`) both route through `scripts/dev-worker.sh`: stop the Docker worker, run the local dev worker with tsx watch, then restart the Docker worker on exit (Ctrl+C).
+The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts PostgreSQL and Redis. `pnpm worker:dev` (from repo root) and `pnpm dev` (from `apps/worker/`) both route through `scripts/dev-worker.sh`: stop the Docker worker, run the local dev worker with tsx watch, then restart the Docker worker on exit (Ctrl+C).
 
 ---
 

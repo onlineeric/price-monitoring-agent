@@ -7,7 +7,7 @@ import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
 import { getCoreRowModel, getSortedRowModel, type SortingState, useReactTable } from "@tanstack/react-table";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -23,8 +23,10 @@ import { formatPrice } from "@/lib/format";
 
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
+import { ProductDetailDialog } from "./product-detail-dialog";
 import type { ProductWithStats } from "./products-view";
 import { useCheckPrice } from "./use-check-price";
+import { useUpdateInfo } from "./use-update-info";
 
 interface ProductTableViewProps {
   products: ProductWithStats[];
@@ -33,9 +35,11 @@ interface ProductTableViewProps {
 export function ProductTableView({ products }: ProductTableViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
+  const [detailProduct, setDetailProduct] = useState<ProductWithStats | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
+  const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
 
   const columns: ColumnDef<ProductWithStats>[] = [
     {
@@ -77,6 +81,7 @@ export function ProductTableView({ products }: ProductTableViewProps) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="truncate text-muted-foreground text-xs hover:underline"
             >
               {hostname}
@@ -127,38 +132,55 @@ export function ProductTableView({ products }: ProductTableViewProps) {
         const product = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleCheckPrice(product.id)} disabled={checkingPriceId === product.id}>
-                <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
-                {checkingPriceId === product.id ? "Checking..." : "Check price now"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditingProduct(product);
-                }}
-              >
-                <Pencil className="mr-2 size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setDeletingProduct(product);
-                  setIsDeleteDialogOpen(true);
-                }}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          // Stop row-click (which opens the detail dialog) from firing when the
+          // user interacts with the actions menu. Keyboard users reach the menu
+          // button directly, so this wrapper needs no keyboard handler.
+          // biome-ignore lint/a11y/noStaticElementInteractions: wrapper only guards click bubbling
+          // biome-ignore lint/a11y/useKeyWithClickEvents: wrapper only stops mouse-event bubbling, not an interactive control
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCheckPrice(product.id)}
+                  disabled={checkingPriceId === product.id}
+                >
+                  <RefreshCw className={`mr-2 size-4 ${checkingPriceId === product.id ? "animate-spin" : ""}`} />
+                  {checkingPriceId === product.id ? "Checking..." : "Check price now"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleUpdateInfo(product.id)}
+                  disabled={updatingInfoId === product.id}
+                >
+                  <Sparkles className={`mr-2 size-4 ${updatingInfoId === product.id ? "animate-spin" : ""}`} />
+                  {updatingInfoId === product.id ? "Updating..." : "Update product info"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditingProduct(product);
+                  }}
+                >
+                  <Pencil className="mr-2 size-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDeletingProduct(product);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -177,9 +199,16 @@ export function ProductTableView({ products }: ProductTableViewProps) {
 
   return (
     <>
-      <DataTable table={table} columns={columns} />
+      <DataTable table={table} columns={columns} onRowClick={(product) => setDetailProduct(product)} />
 
       {/* Dialogs */}
+      <ProductDetailDialog
+        product={detailProduct}
+        open={detailProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailProduct(null);
+        }}
+      />
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "generate": "drizzle-kit generate",
+    "migrate": "tsx src/migrate.ts",
     "push": "drizzle-kit push",
     "studio": "drizzle-kit studio",
     "test": "vitest run"
@@ -20,10 +21,12 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "zod": "^4.3.3"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0",
     "vitest": "^3.2.4"
   }
 }

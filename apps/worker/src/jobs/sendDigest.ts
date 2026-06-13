@@ -8,7 +8,10 @@ export async function sendDigestJob(job: Job) {
 
   try {
     const triggerType = job.name === "send-digest-scheduled" ? "scheduled" : "manual";
-    const refreshResult = await enqueueRefreshFlowForActiveProducts(triggerType);
+    // Refresh mode rides on the job payload. Scheduled digests carry none, so
+    // they default to the cheap price-only refresh (SC-002).
+    const mode = job.data?.mode === "info" ? "info" : "price";
+    const refreshResult = await enqueueRefreshFlowForActiveProducts(triggerType, mode);
 
     console.log(`[${job.id}] Found ${refreshResult.activeProductCount} active products`);
 

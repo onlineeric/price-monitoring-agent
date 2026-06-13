@@ -1,6 +1,7 @@
-import type { ScraperResult } from "../types/scraper.js";
+import type { ProductInfoResult, ScraperResult } from "../types/scraper.js";
+import { aiExtractProductInfo } from "./aiExtractor.js";
 import { fetchAndParse } from "./htmlFetcher.js";
-import { playwrightFetch } from "./playwrightFetcher.js";
+import { playwrightFetch, renderPageHtml } from "./playwrightFetcher.js";
 
 /**
  * Check if debug mode is enabled for forcing AI extraction
@@ -74,8 +75,30 @@ export async function scrapeProduct(url: string): Promise<ScraperResult> {
   return playwrightResult;
 }
 
+/**
+ * Rich product-info scraper used by the `update-product-info` operation.
+ *
+ * Always renders the page with Playwright (full content is needed for metadata)
+ * and routes to the AI extractor — the cheap Tier-1/selector price path is NOT
+ * reused here. The separate price scraper (`scrapeProduct`) is left untouched so
+ * the routine price loop keeps its cost/latency profile (SC-002).
+ */
+export async function scrapeProductInfo(url: string): Promise<ProductInfoResult> {
+  console.log(`[Scraper] Rendering page for full product-info extraction: ${url}`);
+  try {
+    const renderedHtml = await renderPageHtml(url);
+    const result = await aiExtractProductInfo(url, renderedHtml);
+    console.log(`[Scraper] Product-info extraction ${result.success ? "succeeded" : "failed"} via: ${result.method}`);
+    return result;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Scraper] Product-info extraction failed for ${url}: ${errorMessage}`);
+    return { success: false, error: errorMessage, method: "ai" };
+  }
+}
+
 // Re-export types for convenience
-export type { ScraperConfig, ScraperResult } from "../types/scraper.js";
+export type { ProductInfoResult, ScraperConfig, ScraperResult } from "../types/scraper.js";
 
 // Re-export browser cleanup for graceful shutdown
 export { closeBrowser } from "./playwrightFetcher.js";
