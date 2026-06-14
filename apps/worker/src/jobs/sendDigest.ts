@@ -1,7 +1,22 @@
+import { SETTING_LAST_BULK_REFRESH_COMPLETED_AT } from "@price-monitor/db";
 import { buildActiveProductReportSnapshot, sendPriceReportEmail } from "@price-monitor/reporting";
 import type { Job } from "bullmq";
 
+import { setSetting } from "../services/settingsService.js";
 import { closeUpdatePricesFlowProducer, enqueueRefreshFlowForActiveProducts } from "../services/update-prices.js";
+
+/**
+ * Stamp the "bulk refresh finished" marker so the dashboard can reveal a
+ * "refresh available" signal once a batch it triggered has completed (B1).
+ * Best-effort: a marker write must never fail the digest itself.
+ */
+async function stampBulkRefreshComplete(): Promise<void> {
+  try {
+    await setSetting(SETTING_LAST_BULK_REFRESH_COMPLETED_AT, new Date().toISOString());
+  } catch (error) {
+    console.error("[Digest] Failed to stamp bulk-refresh completion marker:", error);
+  }
+}
 
 export async function sendDigestJob(job: Job) {
   console.log(`[${job.id}] Starting digest flow...`);
@@ -17,6 +32,9 @@ export async function sendDigestJob(job: Job) {
 
     if (!refreshResult.enqueued) {
       console.log(`[${job.id}] No products to check, skipping`);
+      // No flow → onDigestFlowComplete never runs, so mark "done" here, else a
+      // dashboard waiting on the completion signal would poll until it times out.
+      await stampBulkRefreshComplete();
       return { success: true, message: "No products to check" };
     }
 
@@ -42,6 +60,10 @@ export async function onDigestFlowComplete(job: Job, token?: string) {
     // Verify children completed (defensive check)
     const childrenValues = await job.getChildrenValues();
     console.log(`[Digest Flow] Verified ${Object.keys(childrenValues).length} children completed`);
+
+    // All products are refreshed by this point — stamp the marker before the
+    // email so the dashboard sees "done" even if email delivery later fails.
+    await stampBulkRefreshComplete();
 
     const report = await buildActiveProductReportSnapshot();
 

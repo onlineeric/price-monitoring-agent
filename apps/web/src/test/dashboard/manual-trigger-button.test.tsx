@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ManualTriggerButton } from "@/app/(main)/dashboard/_components/manual-trigger-button";
 
+// The bulk-refresh-signal hook (used by the button) needs a router + toast.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function mockFetchOk() {
@@ -14,6 +16,11 @@ function mockFetchOk() {
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
+}
+
+/** The POST the button makes to kick off the digest (ignores the status poll). */
+function triggerCall(fetchMock: ReturnType<typeof vi.fn>) {
+  return fetchMock.mock.calls.find(([url]) => url === "/api/digest/trigger");
 }
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -45,9 +52,9 @@ describe("ManualTriggerButton — refresh mode", () => {
 
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [, init] = fetchMock.mock.calls[0];
-    expect(JSON.parse(init.body)).toEqual({ mode: "price" });
+    await waitFor(() => expect(triggerCall(fetchMock)).toBeDefined());
+    const [, init] = triggerCall(fetchMock) as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ mode: "price" });
   });
 
   it("posts mode: info when the info+price option is selected", async () => {
@@ -59,9 +66,8 @@ describe("ManualTriggerButton — refresh mode", () => {
     await user.click(screen.getByRole("radio", { name: /info \+ price/i }));
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/digest/trigger");
-    expect(JSON.parse(init.body)).toEqual({ mode: "info" });
+    await waitFor(() => expect(triggerCall(fetchMock)).toBeDefined());
+    const [, init] = triggerCall(fetchMock) as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ mode: "info" });
   });
 });

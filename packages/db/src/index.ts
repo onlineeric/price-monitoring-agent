@@ -31,6 +31,9 @@ export * from "./schema";
 // Re-export the shared product-attribute type + Zod validation
 export * from "./attributes";
 
+// Re-export the well-known settings keys (shared writer/reader contract)
+export * from "./settingsKeys";
+
 // NOTE: runMigrations is intentionally NOT re-exported here. It lives behind the
 // dedicated "@price-monitor/db/migrate" subpath so the migrator (postgres-js +
 // drizzle migrator + a ../drizzle URL) never gets pulled into web's bundle.

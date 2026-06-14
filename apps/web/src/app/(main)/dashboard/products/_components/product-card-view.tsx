@@ -33,10 +33,15 @@ interface ProductCardViewProps {
 export function ProductCardView({ products }: ProductCardViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
-  const [detailProduct, setDetailProduct] = useState<ProductWithStats | null>(null);
+  // Track the open detail dialog by id (not a captured object) and derive the
+  // live product from the current list. After router.refresh() swaps in fresh
+  // data, an already-open dialog re-renders with it instead of stale values.
+  const [detailProductId, setDetailProductId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
   const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
+
+  const detailProduct = products.find((p) => p.id === detailProductId) ?? null;
 
   const calculatePriceChange = (history: Array<{ date: Date; price: number }>) => {
     if (history.length < 2) return null;
@@ -56,7 +61,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
             <Card
               key={product.id}
               className="cursor-pointer overflow-hidden transition-colors hover:bg-muted/40"
-              onClick={() => setDetailProduct(product)}
+              onClick={() => setDetailProductId(product.id)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
@@ -202,7 +207,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
         product={detailProduct}
         open={detailProduct !== null}
         onOpenChange={(open) => {
-          if (!open) setDetailProduct(null);
+          if (!open) setDetailProductId(null);
         }}
       />
       {editingProduct && (

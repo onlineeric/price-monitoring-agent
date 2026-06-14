@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+import { useBulkRefreshSignal } from "./use-bulk-refresh-signal";
+
 // Note: Authentication intentionally removed in this phase.
 // Proper authentication will be added app-wide in a future phase.
 
@@ -29,6 +31,7 @@ export function ManualTriggerButton() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<RefreshMode>("price");
+  const { watchForCompletion } = useBulkRefreshSignal();
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -59,6 +62,9 @@ export function ManualTriggerButton() {
         toast.success("Digest triggered successfully!", {
           description: "All products will be checked and email will be sent.",
         });
+        // The batch runs in the background; watch for it to finish and then
+        // surface a "refresh available" signal (no auto-refresh of the list).
+        void watchForCompletion();
       } else {
         toast.error("Failed to trigger digest", {
           description: data?.error || "Unknown error occurred",

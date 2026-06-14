@@ -35,11 +35,15 @@ interface ProductTableViewProps {
 export function ProductTableView({ products }: ProductTableViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
-  const [detailProduct, setDetailProduct] = useState<ProductWithStats | null>(null);
+  // Track the open detail dialog by id and derive the live product from the
+  // current list, so a refresh updates an already-open dialog (see card view).
+  const [detailProductId, setDetailProductId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
   const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
+
+  const detailProduct = products.find((p) => p.id === detailProductId) ?? null;
 
   const columns: ColumnDef<ProductWithStats>[] = [
     {
@@ -199,14 +203,14 @@ export function ProductTableView({ products }: ProductTableViewProps) {
 
   return (
     <>
-      <DataTable table={table} columns={columns} onRowClick={(product) => setDetailProduct(product)} />
+      <DataTable table={table} columns={columns} onRowClick={(product) => setDetailProductId(product.id)} />
 
       {/* Dialogs */}
       <ProductDetailDialog
         product={detailProduct}
         open={detailProduct !== null}
         onOpenChange={(open) => {
-          if (!open) setDetailProduct(null);
+          if (!open) setDetailProductId(null);
         }}
       />
       {editingProduct && (
