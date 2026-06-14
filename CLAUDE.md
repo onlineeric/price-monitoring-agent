@@ -234,3 +234,8 @@ Only create commits when explicitly requested.
 - 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` + `GET /mcp/health` on port 3002) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown. Test-only tools (`slow_ping`, `throw_test`) are gated on `NODE_ENV !== "production"` so a stray `MCP_TEST_TOOLS=1` cannot leak them into a prod deploy.
 - 005-chat-page-ui: Dashboard chat page streaming `/api/chat` responses with sanitized markdown, inline tool-call indicators, and per-tab in-memory conversation state
 - 004-chat-streaming-api: Add `/api/chat` streaming route with MCP tool-calling, provider abstraction, and structured error taxonomy
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
