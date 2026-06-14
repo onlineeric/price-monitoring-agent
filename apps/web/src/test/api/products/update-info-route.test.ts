@@ -2,10 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * POST /api/products/[id]/update-info enqueues a per-product metadata + price
- * refresh. Mirrors the check-price route contract:
+ * refresh AND waits for the worker to finish (so the client refreshes real, not
+ * stale, data). Contract covered here:
  *   - 400 if the id is not a valid UUID (no DB hit)
  *   - 404 when the row is missing
- *   - 200 with the queued jobId on success, enqueuing "update-product-info"
+ *   - 200 "completed" when the job resolves with { success: true }
+ *   - 422 "failed" when the job resolves with { success: false } (clean failure)
+ *   - 422 "failed" when the job rejects (threw: no price / DB error)
+ *   - 202 "processing" when the wait times out (job still running)
+ *   - 500 when enqueuing itself throws
  */
 
 const dbMock = vi.hoisted(() => ({ select: vi.fn() }));
@@ -16,7 +21,10 @@ vi.mock("@price-monitor/db", () => ({
   products: { id: "products.id" },
 }));
 vi.mock("drizzle-orm", () => ({ eq: (c: unknown, v: unknown) => ({ __op: "eq", c, v }) }));
-vi.mock("@/lib/queue", () => ({ priceQueue: { add: queueMock.add } }));
+vi.mock("@/lib/queue", () => ({
+  priceQueue: { add: queueMock.add },
+  priceQueueEvents: { __isQueueEvents: true },
+}));
 
 import { POST } from "@/app/api/products/[id]/update-info/route";
 
@@ -40,6 +48,11 @@ function mockProductLookup(row: Record<string, unknown> | null) {
   dbMock.select.mockReturnValueOnce({ from });
 }
 
+/** Queue a fake job whose waitUntilFinished resolves/rejects as configured. */
+function mockEnqueuedJob(waitUntilFinished: () => Promise<unknown>) {
+  queueMock.add.mockResolvedValueOnce({ id: "j-456", waitUntilFinished });
+}
+
 describe("POST /api/products/[id]/update-info", () => {
   it("returns 400 without hitting the DB when the id is not a UUID", async () => {
     const response = await POST({} as never, { params: params("not-a-uuid") });
@@ -54,19 +67,60 @@ describe("POST /api/products/[id]/update-info", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns 200 and enqueues update-product-info with the product URL", async () => {
+  it("enqueues update-product-info with the product URL", async () => {
     mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
-    queueMock.add.mockResolvedValueOnce({ id: "j-456" });
+    mockEnqueuedJob(() => Promise.resolve({ success: true }));
+
+    await POST({} as never, { params: params(VALID_ID) });
+
+    expect(queueMock.add).toHaveBeenCalledWith(
+      "update-product-info",
+      expect.objectContaining({ url: "https://shop/x" }),
+    );
+  });
+
+  it("returns 200 'completed' when the worker resolves with success", async () => {
+    mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
+    mockEnqueuedJob(() => Promise.resolve({ success: true, data: { title: "X" } }));
 
     const response = await POST({} as never, { params: params(VALID_ID) });
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json).toMatchObject({ success: true, jobId: "j-456" });
-    expect(queueMock.add).toHaveBeenCalledWith(
-      "update-product-info",
-      expect.objectContaining({ url: "https://shop/x" }),
-    );
+    expect(json).toMatchObject({ success: true, status: "completed", jobId: "j-456" });
+  });
+
+  it("returns 422 'failed' with the message when the worker resolves with a clean failure", async () => {
+    mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
+    mockEnqueuedJob(() => Promise.resolve({ success: false, error: "Page unreachable" }));
+
+    const response = await POST({} as never, { params: params(VALID_ID) });
+    const json = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(json).toMatchObject({ success: false, status: "failed", error: "Page unreachable" });
+  });
+
+  it("returns 422 'failed' when the job rejects (threw)", async () => {
+    mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
+    mockEnqueuedJob(() => Promise.reject(new Error("Incomplete data: missing price")));
+
+    const response = await POST({} as never, { params: params(VALID_ID) });
+    const json = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(json).toMatchObject({ success: false, status: "failed", error: "Incomplete data: missing price" });
+  });
+
+  it("returns 202 'processing' when the wait times out", async () => {
+    mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
+    mockEnqueuedJob(() => Promise.reject(new Error("Job wait update-product-info timed out before finishing")));
+
+    const response = await POST({} as never, { params: params(VALID_ID) });
+    const json = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(json).toMatchObject({ success: true, status: "processing", jobId: "j-456" });
   });
 
   it("returns 500 when the queue throws", async () => {
