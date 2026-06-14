@@ -69,3 +69,5 @@ pnpm-debug.log*
 **/.DS_Store
 **/Thumbs.db
 
+# use hardlink to create AGENTS.md `ln CLAUDE.md AGENTS.md`
+AGENTS.md
