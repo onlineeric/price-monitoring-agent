@@ -302,7 +302,7 @@ export async function aiExtractProductInfo(_url: string, html: string): Promise<
       };
     }
 
-    const priceInCents = hasPrice && object.price != null ? Math.round(object.price * 100) : null;
+    const priceInCents = object.price !== null ? Math.round(object.price * 100) : null;
 
     return {
       success: true,

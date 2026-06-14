@@ -21,6 +21,7 @@ import { formatPrice } from "@/lib/format";
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import { MiniPriceChart } from "./mini-price-chart";
+import { calculatePriceChange } from "./price-change";
 import { ProductDetailDialog } from "./product-detail-dialog";
 import type { ProductWithStats } from "./products-view";
 import { useCheckPrice } from "./use-check-price";
@@ -42,14 +43,6 @@ export function ProductCardView({ products }: ProductCardViewProps) {
   const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
 
   const detailProduct = products.find((p) => p.id === detailProductId) ?? null;
-
-  const calculatePriceChange = (history: Array<{ date: Date; price: number }>) => {
-    if (history.length < 2) return null;
-    const oldest = history[0].price;
-    const newest = history[history.length - 1].price;
-    const change = ((newest - oldest) / oldest) * 100;
-    return change;
-  };
 
   return (
     <>

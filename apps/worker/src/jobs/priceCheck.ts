@@ -1,13 +1,13 @@
 import type { Job } from "bullmq";
 import {
   getOrCreateProductByUrl,
-  getProductById,
   logRun,
   savePriceRecord,
   updateProductFailure,
   updateProductTimestamp,
 } from "../services/database.js";
 import { type ScraperResult, scrapeProduct } from "../services/scraper.js";
+import { formatErrorMessage, resolveTargetUrl } from "./jobUtils.js";
 
 /**
  * Job data interface for price check jobs
@@ -22,40 +22,6 @@ interface PriceCheckJobData {
  * Job result type
  */
 type PriceCheckResult = ScraperResult | { status: "skipped"; reason: string };
-
-/**
- * Format error message for logging
- */
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
-}
-
-/**
- * Resolve target URL from job data
- * Supports both URL-first (new) and productId (legacy) approaches
- */
-async function resolveTargetUrl(
-  url: string | undefined,
-  productId: string | undefined,
-  jobId: string,
-): Promise<string | null> {
-  // Modern approach: URL is directly provided
-  if (url) {
-    return url;
-  }
-
-  // Legacy approach: Lookup URL by productId
-  if (productId) {
-    console.log(`[${jobId}] No URL provided, looking up by productId (legacy mode)`);
-    const product = await getProductById(productId);
-    if (product) {
-      console.log(`[${jobId}] Found URL in database: ${product.url}`);
-      return product.url;
-    }
-  }
-
-  return null;
-}
 
 /**
  * Save scraped price data to database

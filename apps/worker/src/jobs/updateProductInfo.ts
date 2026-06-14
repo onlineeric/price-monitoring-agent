@@ -1,7 +1,6 @@
 import type { Job } from "bullmq";
 import {
   getOrCreateProductByUrl,
-  getProductById,
   getProductByUrl,
   logRun,
   savePriceRecord,
@@ -10,6 +9,7 @@ import {
   updateProductTimestamp,
 } from "../services/database.js";
 import { type ProductInfoResult, scrapeProductInfo } from "../services/scraper.js";
+import { formatErrorMessage, resolveTargetUrl } from "./jobUtils.js";
 
 /**
  * Job data for the rich metadata + price refresh.
@@ -23,32 +23,6 @@ interface UpdateProductInfoJobData {
 
 /** Job result — the extraction result, or a skip when no URL could be resolved. */
 type UpdateProductInfoResult = ProductInfoResult | { status: "skipped"; reason: string };
-
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
-}
-
-/**
- * Resolve target URL from job data (URL-first, productId legacy fallback).
- * Mirrors the resolution pattern in priceCheck.ts.
- */
-async function resolveTargetUrl(
-  url: string | undefined,
-  productId: string | undefined,
-  jobId: string,
-): Promise<string | null> {
-  if (url) {
-    return url;
-  }
-  if (productId) {
-    console.log(`[${jobId}] No URL provided, looking up by productId (legacy mode)`);
-    const product = await getProductById(productId);
-    if (product) {
-      return product.url;
-    }
-  }
-  return null;
-}
 
 /**
  * Record a total failure against the product, leaving its metadata untouched.

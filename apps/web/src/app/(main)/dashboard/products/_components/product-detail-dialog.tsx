@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/format";
 
 import { MiniPriceChart } from "./mini-price-chart";
+import { calculatePriceChange } from "./price-change";
 import type { ProductWithStats } from "./products-view";
 import { useCheckPrice } from "./use-check-price";
 import { useUpdateInfo } from "./use-update-info";
@@ -25,15 +26,6 @@ interface ProductDetailDialogProps {
   product: ProductWithStats | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-/** Percentage change across the available price history, or null if <2 points. */
-function calculatePriceChange(history: ProductWithStats["priceHistory"]): number | null {
-  if (history.length < 2) return null;
-  const oldest = history[0].price;
-  const newest = history[history.length - 1].price;
-  if (oldest === 0) return null;
-  return ((newest - oldest) / oldest) * 100;
 }
 
 function hostnameOf(url: string): string {
