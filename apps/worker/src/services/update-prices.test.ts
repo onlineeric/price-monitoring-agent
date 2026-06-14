@@ -106,6 +106,27 @@ describe("enqueueRefreshFlowForActiveProducts", () => {
     ]);
   });
 
+  it("defaults to check-price children when no mode is given (price-only digest)", async () => {
+    mockActiveProducts([{ url: "https://shop/x" }]);
+    flowMocks.add.mockResolvedValueOnce({});
+
+    await enqueueRefreshFlowForActiveProducts("manual");
+
+    const payload = flowMocks.add.mock.calls[0][0] as { children: Array<{ name: string }> };
+    expect(payload.children.every((c) => c.name === "check-price")).toBe(true);
+  });
+
+  it("uses update-product-info children when mode is 'info'", async () => {
+    mockActiveProducts([{ url: "https://shop/x" }, { url: "https://shop/y" }]);
+    flowMocks.add.mockResolvedValueOnce({});
+
+    await enqueueRefreshFlowForActiveProducts("manual", "info");
+
+    const payload = flowMocks.add.mock.calls[0][0] as { children: Array<{ name: string; data: { url: string } }> };
+    expect(payload.children.map((c) => c.name)).toEqual(["update-product-info", "update-product-info"]);
+    expect(payload.children.map((c) => c.data.url)).toEqual(["https://shop/x", "https://shop/y"]);
+  });
+
   it("constructs the FlowProducer lazily and reuses the singleton across calls", async () => {
     mockActiveProducts([{ url: "https://shop/x" }]);
     flowMocks.add.mockResolvedValue({});

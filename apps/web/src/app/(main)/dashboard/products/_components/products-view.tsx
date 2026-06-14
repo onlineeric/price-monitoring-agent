@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { LayoutGrid, Table } from "lucide-react";
 
+import type { ProductAttribute } from "@price-monitor/db";
+
 import { Button } from "@/components/ui/button";
 
 import { ProductCardView } from "./product-card-view";
@@ -26,6 +28,14 @@ export type ProductWithStats = {
     date: Date;
     price: number;
   }>;
+  // Rich metadata (feature 007). The products page query spreads all product
+  // columns, so these flow through automatically once the schema is extended.
+  description: string | null;
+  category: string | null;
+  brand: string | null;
+  countryOfOrigin: string | null;
+  attributes: ProductAttribute[] | null;
+  infoUpdatedAt: Date | null;
 };
 
 type ViewMode = "card" | "table";

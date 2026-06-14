@@ -141,7 +141,7 @@ describe("POST /api/products", () => {
     expect(insertedRow.active).toBe(true);
   });
 
-  it("enqueues a check-price job carrying the new URL on success", async () => {
+  it("enqueues an update-product-info job carrying the new URL so new products start enriched", async () => {
     mockNoExistingProduct();
     mockInsertReturning({ id: "p-new", url: "https://shop/x" });
     queueMock.add.mockResolvedValueOnce({ id: "j1" });
@@ -150,7 +150,7 @@ describe("POST /api/products", () => {
 
     expect(response.status).toBe(200);
     expect(queueMock.add).toHaveBeenCalledWith(
-      "check-price",
+      "update-product-info",
       expect.objectContaining({ url: "https://shop/x" }),
     );
   });

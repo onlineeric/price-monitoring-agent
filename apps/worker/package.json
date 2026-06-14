@@ -10,6 +10,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
+    "backfill:product-info": "node --import tsx ./scripts/backfill-product-info.ts",
     "test": "vitest run"
   },
   "keywords": [],

@@ -36,6 +36,13 @@ describe("schema: products", () => {
         "name",
         "updatedAt",
         "url",
+        // Feature 007 — rich metadata
+        "description",
+        "category",
+        "brand",
+        "countryOfOrigin",
+        "attributes",
+        "infoUpdatedAt",
       ].sort(),
     );
   });
@@ -48,6 +55,34 @@ describe("schema: products", () => {
 
   it("defaults active to true so new rows show up in the list view", () => {
     expect(getTableColumns(products).active.hasDefault).toBe(true);
+  });
+
+  it("adds the six metadata columns as nullable + additive (feature 007)", () => {
+    const cols = getTableColumns(products);
+    // All new metadata is optional — existing rows stay valid with NULLs.
+    for (const name of [
+      "description",
+      "category",
+      "brand",
+      "countryOfOrigin",
+      "attributes",
+      "infoUpdatedAt",
+    ] as const) {
+      expect(cols[name].notNull).toBe(false);
+      expect(cols[name].hasDefault).toBe(false);
+    }
+  });
+
+  it("maps metadata fields to the expected snake_case columns + types", () => {
+    const cols = getTableColumns(products);
+    expect(cols.description.name).toBe("description");
+    expect(cols.category.name).toBe("category");
+    expect(cols.brand.name).toBe("brand");
+    expect(cols.countryOfOrigin.name).toBe("country_of_origin");
+    expect(cols.infoUpdatedAt.name).toBe("info_updated_at");
+    // attributes is JSONB carrying the ProductAttribute[] shape.
+    expect(cols.attributes.name).toBe("attributes");
+    expect(cols.attributes.dataType).toBe("json");
   });
 });
 

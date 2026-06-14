@@ -5,7 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, Pencil, RefreshCw, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { MoreVertical, Pencil, RefreshCw, Sparkles, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,11 @@ import { formatPrice } from "@/lib/format";
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { EditProductDialog } from "./edit-product-dialog";
 import { MiniPriceChart } from "./mini-price-chart";
+import { calculatePriceChange } from "./price-change";
+import { ProductDetailDialog } from "./product-detail-dialog";
 import type { ProductWithStats } from "./products-view";
 import { useCheckPrice } from "./use-check-price";
+import { useUpdateInfo } from "./use-update-info";
 
 interface ProductCardViewProps {
   products: ProductWithStats[];
@@ -31,16 +34,15 @@ interface ProductCardViewProps {
 export function ProductCardView({ products }: ProductCardViewProps) {
   const [editingProduct, setEditingProduct] = useState<ProductWithStats | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithStats | null>(null);
+  // Track the open detail dialog by id (not a captured object) and derive the
+  // live product from the current list. After router.refresh() swaps in fresh
+  // data, an already-open dialog re-renders with it instead of stale values.
+  const [detailProductId, setDetailProductId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { handleCheckPrice, checkingPriceId } = useCheckPrice();
+  const { handleUpdateInfo, updatingInfoId } = useUpdateInfo();
 
-  const calculatePriceChange = (history: Array<{ date: Date; price: number }>) => {
-    if (history.length < 2) return null;
-    const oldest = history[0].price;
-    const newest = history[history.length - 1].price;
-    const change = ((newest - oldest) / oldest) * 100;
-    return change;
-  };
+  const detailProduct = products.find((p) => p.id === detailProductId) ?? null;
 
   return (
     <>
@@ -49,7 +51,11 @@ export function ProductCardView({ products }: ProductCardViewProps) {
           const priceChange = calculatePriceChange(product.priceHistory);
 
           return (
-            <Card key={product.id} className="overflow-hidden">
+            <Card
+              key={product.id}
+              className="cursor-pointer overflow-hidden transition-colors hover:bg-muted/40"
+              onClick={() => setDetailProductId(product.id)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -60,6 +66,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                       href={product.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="mt-1 line-clamp-1 text-muted-foreground text-xs hover:underline"
                     >
                       {(() => {
@@ -77,13 +84,22 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="size-4" />
+                          <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => handleCheckPrice(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckPrice(product.id);
+                          }}
                           disabled={checkingPriceId === product.id}
                         >
                           <RefreshCw
@@ -92,7 +108,20 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           {checkingPriceId === product.id ? "Checking..." : "Check price now"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateInfo(product.id);
+                          }}
+                          disabled={updatingInfoId === product.id}
+                        >
+                          <Sparkles
+                            className={`mr-2 size-4 ${updatingInfoId === product.id ? "animate-spin" : ""}`}
+                          />
+                          {updatingInfoId === product.id ? "Updating..." : "Update product info"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingProduct(product);
                           }}
                         >
@@ -100,7 +129,8 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDeletingProduct(product);
                             setIsDeleteDialogOpen(true);
                           }}
@@ -119,7 +149,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                 {/* Product Image */}
                 {product.imageUrl ? (
                   <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                    <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
+                    <Image src={product.imageUrl} alt={product.name} fill className="object-contain" unoptimized />
                   </div>
                 ) : (
                   <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-muted">
@@ -166,6 +196,13 @@ export function ProductCardView({ products }: ProductCardViewProps) {
       </div>
 
       {/* Dialogs */}
+      <ProductDetailDialog
+        product={detailProduct}
+        open={detailProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailProductId(null);
+        }}
+      />
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}

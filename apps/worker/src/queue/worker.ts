@@ -2,12 +2,16 @@ import { type Job, Worker } from "bullmq";
 import { connection, QUEUE_NAME } from "../config.js";
 import priceCheckJob from "../jobs/priceCheck.js";
 import { onDigestFlowComplete, sendDigestJob } from "../jobs/sendDigest.js";
+import updateProductInfoJob from "../jobs/updateProductInfo.js";
 
 // Job processor function
 async function processJob(job: Job) {
   switch (job.name) {
     case "check-price":
       return await priceCheckJob(job);
+
+    case "update-product-info":
+      return await updateProductInfoJob(job);
 
     case "send-digest":
     case "send-digest-scheduled":
@@ -24,8 +28,10 @@ async function processJob(job: Job) {
   }
 }
 
-// Initialize BullMQ Worker
-const worker = new Worker(QUEUE_NAME, processJob, { connection });
+// Initialize BullMQ Worker.
+// autorun:false so startup can run pending DB migrations BEFORE this worker
+// begins consuming jobs (see index.ts — worker.run() is called after migrate).
+const worker = new Worker(QUEUE_NAME, processJob, { connection, autorun: false });
 
 // Event listeners
 worker.on("completed", (job) => {

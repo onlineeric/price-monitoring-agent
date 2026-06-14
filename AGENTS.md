@@ -78,7 +78,7 @@ pnpm --filter @price-monitor/worker dev   # Terminal 2
 pnpm docker:up                            # Start PostgreSQL & Redis
 pnpm docker:down                          # Stop services
 pnpm --filter @price-monitor/web dev      # Next.js dev server
-pnpm dev:worker                           # Dev worker (auto-stops/restarts Docker worker)
+pnpm worker:dev                           # Dev worker (auto-stops/restarts Docker worker)
 pnpm lint                                 # Lint with Biome
 ```
 
@@ -90,7 +90,7 @@ pnpm worker:logs                          # View worker logs
 pnpm worker:restart                       # Restart background worker
 ```
 
-The Docker worker uses `profiles: ["worker"]` so `pnpm docker:up` only starts PostgreSQL and Redis. The worker auto-restarts with Docker Desktop. `pnpm dev:worker` automatically stops the Docker worker, runs the dev worker, and restarts Docker worker on exit (Ctrl+C).
+The Docker worker uses `profiles: ["worker"]` so `pnpm docker:up` only starts PostgreSQL and Redis. The worker auto-restarts with Docker Desktop. `pnpm worker:dev` automatically stops the Docker worker, runs the dev worker, and restarts Docker worker on exit (Ctrl+C).
 
 ### Database
 ```bash

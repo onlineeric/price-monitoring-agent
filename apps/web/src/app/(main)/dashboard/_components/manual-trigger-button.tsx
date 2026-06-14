@@ -18,19 +18,35 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+import { useBulkRefreshSignal } from "./use-bulk-refresh-signal";
 
 // Note: Authentication intentionally removed in this phase.
 // Proper authentication will be added app-wide in a future phase.
 
+type RefreshMode = "price" | "info";
+
 export function ManualTriggerButton() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [forceAI, setForceAI] = useState(false);
+  const [mode, setMode] = useState<RefreshMode>("price");
+  const { watchForCompletion } = useBulkRefreshSignal();
+
+  // Reset to the documented default whenever the dialog closes, so the expensive
+  // "info + price" option can never stay pre-selected from a previous run and get
+  // triggered by accident (FR-017: the dialog defaults to price each time it opens).
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setMode("price");
+    }
+  };
 
   const handleConfirm = async () => {
     setLoading(true);
     setOpen(false);
+    setMode("price");
 
     try {
       const response = await fetch("/api/digest/trigger", {
@@ -38,6 +54,7 @@ export function ManualTriggerButton() {
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ mode }),
       });
 
       // Handle non-JSON responses (e.g., HTML error pages from proxies/gateways)
@@ -56,6 +73,9 @@ export function ManualTriggerButton() {
         toast.success("Digest triggered successfully!", {
           description: "All products will be checked and email will be sent.",
         });
+        // The batch runs in the background; watch for it to finish and then
+        // surface a "refresh available" signal (no auto-refresh of the list).
+        void watchForCompletion();
       } else {
         toast.error("Failed to trigger digest", {
           description: data?.error || "Unknown error occurred",
@@ -71,7 +91,7 @@ export function ManualTriggerButton() {
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
         <Button disabled={loading} className="gap-2" size="lg">
           <Mail className="size-4" />
@@ -86,14 +106,33 @@ export function ManualTriggerButton() {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Force AI Option (Disabled) */}
-        <div className="flex items-center space-x-2 py-4">
-          <Switch id="force-ai" checked={forceAI} onCheckedChange={setForceAI} disabled />
-          <Label htmlFor="force-ai" className="text-sm">
-            Force AI Extraction
-          </Label>
-        </div>
-        <p className="-mt-2 ml-12 text-muted-foreground text-xs">(Feature under construction)</p>
+        {/* Refresh mode */}
+        <RadioGroup
+          value={mode}
+          onValueChange={(value) => setMode(value as RefreshMode)}
+          className="gap-3 py-4"
+        >
+          <div className="flex items-start space-x-2">
+            <RadioGroupItem value="price" id="mode-price" className="mt-1" />
+            <Label htmlFor="mode-price" className="font-normal">
+              <div>
+                <p className="font-medium text-sm">Refresh all products' price</p>
+                <p className="text-muted-foreground text-xs">Fast, default — updates prices only.</p>
+              </div>
+            </Label>
+          </div>
+          <div className="flex items-start space-x-2">
+            <RadioGroupItem value="info" id="mode-info" className="mt-1" />
+            <Label htmlFor="mode-info" className="font-normal">
+              <div>
+                <p className="font-medium text-sm">Refresh all products info (info + price)</p>
+                <p className="text-muted-foreground text-xs">
+                  Slower &amp; more expensive — re-extracts full metadata via AI for every product.
+                </p>
+              </div>
+            </Label>
+          </div>
+        </RadioGroup>
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

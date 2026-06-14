@@ -70,14 +70,15 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Trigger price check job to extract title and first price
+    // Trigger a full product-info update so new products start enriched
+    // (title, image, price AND rich metadata) — not just a price (FR-007).
     try {
-      await priceQueue.add("check-price", {
+      await priceQueue.add("update-product-info", {
         url: newProduct.url,
         triggeredAt: new Date(),
       });
     } catch (queueError) {
-      console.error("[API] Failed to enqueue price check job:", queueError);
+      console.error("[API] Failed to enqueue product-info job:", queueError);
 
       // Don't delete the product - it exists in DB and user can retry or manually delete
       // Deleting here creates a race condition with the worker

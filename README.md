@@ -134,12 +134,27 @@ pnpm install
 cp .env.example .env
 # configure at least one AI provider key; add Resend settings for digest emails
 pnpm docker:up
-pnpm --filter @price-monitor/db push
+pnpm --filter @price-monitor/db migrate   # apply committed migrations (see below)
 pnpm worker:up
 pnpm --filter @price-monitor/web dev
 ```
 
 Open `http://localhost:3000/dashboard`.
+
+### Database migrations
+
+Schema changes ship as **versioned, committed Drizzle migrations** (the
+canonical path); `drizzle-kit push` is kept only for quick local prototyping.
+
+```bash
+pnpm --filter @price-monitor/db generate   # author: diff schema.ts → drizzle/NNNN_*.sql (commit it)
+pnpm --filter @price-monitor/db migrate     # apply pending migrations (idempotent, journalled)
+```
+
+In production the single gated worker (`RUN_MIGRATIONS=true`, the same instance
+that owns `ENABLE_SCHEDULER=true`) auto-applies pending migrations on startup,
+before it consumes any jobs. See [Database migrations](docs/migrations.md) for
+the full workflow, the `IF NOT EXISTS` baseline, and the manual fallback.
 
 ### Development worker
 
@@ -147,7 +162,7 @@ If you want the worker in local watch mode instead of Docker:
 
 ```bash
 pnpm --filter @price-monitor/worker exec playwright install chromium
-pnpm dev:worker          # from repo root
+pnpm worker:dev          # from repo root
 # or equivalently:
 cd apps/worker && pnpm dev
 ```
@@ -189,7 +204,7 @@ Deployment is automated through GitHub Actions and Coolify.
 - Pushes to `dev` build `web:dev` and `worker:dev` images for CI validation.
 - Pushes to `main` build `web:latest` and `worker:latest`, push them to GHCR, and trigger Coolify webhooks.
 - The production setup runs three independent containers — `web`, `worker`, and the internal-only `mcp-server` — on the same Docker network, plus PostgreSQL and Redis.
-- Only one production worker should have `ENABLE_SCHEDULER=true` to avoid duplicate scheduled emails.
+- Only one production worker should have `ENABLE_SCHEDULER=true` to avoid duplicate scheduled emails. That same single worker also sets `RUN_MIGRATIONS=true` so it auto-applies pending DB migrations on startup before consuming jobs (see [Database migrations](docs/migrations.md)).
 
 ## Repository structure
 
@@ -226,4 +241,5 @@ scripts/       Local development and utility scripts
 ## Additional documentation
 
 - [Production environment reference](docs/production-env.md)
+- [Database migrations](docs/migrations.md)
 - [Docker troubleshooting](docs/troubleshooting-docker.md)
