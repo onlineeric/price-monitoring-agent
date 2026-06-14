@@ -55,7 +55,7 @@ export function ProductTableView({ products }: ProductTableViewProps) {
 
         return imageUrl ? (
           <div className="relative size-12 overflow-hidden rounded-md bg-muted">
-            <Image src={imageUrl} alt={name} fill className="object-cover" unoptimized />
+            <Image src={imageUrl} alt={name} fill className="object-contain" unoptimized />
           </div>
         ) : (
           <div className="flex size-12 items-center justify-center overflow-hidden rounded-md bg-muted">

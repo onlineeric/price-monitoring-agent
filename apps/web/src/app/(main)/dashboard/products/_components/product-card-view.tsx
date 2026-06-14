@@ -156,7 +156,7 @@ export function ProductCardView({ products }: ProductCardViewProps) {
                 {/* Product Image */}
                 {product.imageUrl ? (
                   <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                    <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
+                    <Image src={product.imageUrl} alt={product.name} fill className="object-contain" unoptimized />
                   </div>
                 ) : (
                   <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-muted">
