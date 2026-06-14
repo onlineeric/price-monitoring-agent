@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
@@ -83,7 +81,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="flex h-[80vh] max-h-[95vh] min-h-[24rem] w-[80vw] min-w-[20rem] max-w-[95vw] resize flex-col overflow-hidden sm:max-w-[95vw]">
         <DialogHeader>
           <DialogTitle className="line-clamp-2 pr-6">{product.name || "Unnamed product"}</DialogTitle>
           <DialogDescription asChild>
@@ -99,18 +97,23 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh] pr-4">
+        <ScrollArea className="min-h-0 flex-1 pr-4">
           <div className="space-y-4">
-            {/* Image */}
-            {product.imageUrl ? (
-              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                <Image src={product.imageUrl} alt={product.name} fill className="object-cover" unoptimized />
-              </div>
-            ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-md bg-muted">
-                <p className="text-muted-foreground text-sm">No image</p>
-              </div>
-            )}
+            {/* Image — natural size, capped on the longest edge so it never upscales/zooms */}
+            <div className="flex justify-center">
+              {product.imageUrl ? (
+                // biome-ignore lint/performance/noImgElement: render at natural size with a longest-edge cap; intrinsic dimensions are unknown and images are served unoptimized
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="max-h-96 max-w-96 rounded-md object-contain"
+                />
+              ) : (
+                <div className="flex aspect-video w-full max-w-96 items-center justify-center rounded-md bg-muted">
+                  <p className="text-muted-foreground text-sm">No image</p>
+                </div>
+              )}
+            </div>
 
             {/* Price + trend */}
             <div className="flex items-end justify-between">
