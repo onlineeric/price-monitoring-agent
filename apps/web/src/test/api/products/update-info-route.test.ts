@@ -123,6 +123,20 @@ describe("POST /api/products/[id]/update-info", () => {
     expect(json).toMatchObject({ success: true, status: "processing", jobId: "j-456" });
   });
 
+  it("treats a job error that merely mentions 'timed out' as a failure, not processing", async () => {
+    // A DB/connection error like this is a real failure — it must NOT be masked
+    // as "still processing" just because the message contains "timed out". Only
+    // BullMQ's own "timed out before finishing" wait-timeout maps to 202.
+    mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
+    mockEnqueuedJob(() => Promise.reject(new Error("Connection terminated: connection timed out")));
+
+    const response = await POST({} as never, { params: params(VALID_ID) });
+    const json = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(json).toMatchObject({ success: false, status: "failed" });
+  });
+
   it("returns 500 when the queue throws", async () => {
     mockProductLookup({ id: VALID_ID, url: "https://shop/x" });
     queueMock.add.mockRejectedValueOnce(new Error("redis down"));

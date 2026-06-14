@@ -33,9 +33,20 @@ export function ManualTriggerButton() {
   const [mode, setMode] = useState<RefreshMode>("price");
   const { watchForCompletion } = useBulkRefreshSignal();
 
+  // Reset to the documented default whenever the dialog closes, so the expensive
+  // "info + price" option can never stay pre-selected from a previous run and get
+  // triggered by accident (FR-017: the dialog defaults to price each time it opens).
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setMode("price");
+    }
+  };
+
   const handleConfirm = async () => {
     setLoading(true);
     setOpen(false);
+    setMode("price");
 
     try {
       const response = await fetch("/api/digest/trigger", {
@@ -80,7 +91,7 @@ export function ManualTriggerButton() {
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
         <Button disabled={loading} className="gap-2" size="lg">
           <Mail className="size-4" />

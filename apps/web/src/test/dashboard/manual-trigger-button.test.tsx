@@ -70,4 +70,22 @@ describe("ManualTriggerButton — refresh mode", () => {
     const [, init] = triggerCall(fetchMock) as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({ mode: "info" });
   });
+
+  it("resets back to the price default after the dialog is closed and reopened", async () => {
+    mockFetchOk();
+    const user = userEvent.setup();
+    render(<ManualTriggerButton />);
+
+    // Select the expensive "info + price" option, then cancel (close) the dialog.
+    await openDialog(user);
+    await user.click(screen.getByRole("radio", { name: /info \+ price/i }));
+    expect(screen.getByRole("radio", { name: /info \+ price/i })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    // Reopen: the choice must default back to price, not stay on info, so an
+    // expensive AI batch can't be triggered by accident.
+    await openDialog(user);
+    expect(screen.getByRole("radio", { name: /Refresh all products' price/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /info \+ price/i })).not.toBeChecked();
+  });
 });

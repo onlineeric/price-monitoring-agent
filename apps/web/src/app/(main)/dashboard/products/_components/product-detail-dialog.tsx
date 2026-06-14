@@ -161,8 +161,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                   <div className="space-y-1">
                     <p className="text-muted-foreground text-sm">Specifications</p>
                     <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                      {attributes.map((attr) => (
-                        <div key={`${attr.key}:${attr.value}`} className="flex justify-between gap-2 border-b py-1">
+                      {attributes.map((attr, i) => (
+                        // Index-keyed: persistence dedupes exact pairs, but rows
+                        // saved before that fix may still repeat one — the index
+                        // keeps React keys unique either way (list is static here).
+                        <div key={`${i}-${attr.key}`} className="flex justify-between gap-2 border-b py-1">
                           <dt className="text-muted-foreground text-sm">{attr.key}</dt>
                           <dd className="text-right text-sm">{attr.value}</dd>
                         </div>

@@ -62,4 +62,27 @@ describe("sanitizeProductAttributes", () => {
     }));
     expect(sanitizeProductAttributes(tooMany)).toHaveLength(MAX_PRODUCT_ATTRIBUTES);
   });
+
+  it("drops exact duplicate key/value pairs, keeping the first occurrence", () => {
+    const result = sanitizeProductAttributes([
+      { key: "Color", value: "Black" },
+      { key: "Color", value: "Black" }, // exact dup → dropped
+      { key: "Color", value: "White" }, // same key, different value → kept
+      { key: "Size", value: "M" },
+    ]);
+    expect(result).toEqual([
+      { key: "Color", value: "Black" },
+      { key: "Color", value: "White" },
+      { key: "Size", value: "M" },
+    ]);
+  });
+
+  it("does not collide pairs that concatenate to the same string", () => {
+    // {"a ","b"} and {"a"," b"} must stay distinct (NUL-separated dedupe key).
+    const result = sanitizeProductAttributes([
+      { key: "a ", value: "b" },
+      { key: "a", value: " b" },
+    ]);
+    expect(result).toHaveLength(2);
+  });
 });

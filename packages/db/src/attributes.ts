@@ -35,22 +35,30 @@ export const productAttributesSchema = z.array(productAttributeSchema).max(MAX_P
 
 /**
  * Defensively coerce arbitrary attribute input into a clean, capped array:
- * drop entries with an empty/blank key or value, then keep only the first
- * {@link MAX_PRODUCT_ATTRIBUTES}. Never throws — returns `[]` for nullish input.
+ * drop entries with an empty/blank key or value, drop exact duplicate
+ * {key,value} pairs (which carry no extra information and would collide as React
+ * keys downstream), then keep only the first {@link MAX_PRODUCT_ATTRIBUTES}.
+ * Never throws — returns `[]` for nullish input.
  *
  * This is the safe path for persistence (the AI extractor may return more than
- * 100 or include empty pairs); `productAttributesSchema` remains for strict
- * validation where throwing on a violation is desired.
+ * 100, include empty pairs, or repeat a spec); `productAttributesSchema` remains
+ * for strict validation where throwing on a violation is desired.
  */
 export function sanitizeProductAttributes(input: unknown): ProductAttribute[] {
   if (!Array.isArray(input)) return [];
   const cleaned: ProductAttribute[] = [];
+  const seen = new Set<string>();
   for (const entry of input) {
     const parsed = productAttributeSchema.safeParse(entry);
-    if (parsed.success) {
-      cleaned.push(parsed.data);
-      if (cleaned.length === MAX_PRODUCT_ATTRIBUTES) break;
-    }
+    if (!parsed.success) continue;
+    // Dedupe on the exact key/value pair (keep first occurrence / model ordering).
+    // The NUL separator can't appear in extracted text, so distinct pairs can't
+    // collide into one dedupe key (e.g. {"a ","b"} vs {"a"," b"}).
+    const dedupeKey = `${parsed.data.key}\u0000${parsed.data.value}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    cleaned.push(parsed.data);
+    if (cleaned.length === MAX_PRODUCT_ATTRIBUTES) break;
   }
   return cleaned;
 }

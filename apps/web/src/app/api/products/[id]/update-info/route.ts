@@ -13,6 +13,17 @@ import { priceQueue, priceQueueEvents } from "@/lib/queue";
  */
 const JOB_WAIT_TIMEOUT_MS = 45_000;
 
+/**
+ * BullMQ's `waitUntilFinished` rejects with a message of the form
+ * `Job wait <name> timed out before finishing, ...` when the wait (not the job)
+ * times out. We match that exact phrase rather than a bare "timed out" so a job
+ * that genuinely *failed* with a timeout-flavoured error (e.g. a DB/connection
+ * "timed out") is reported as a failure (422), not masked as "still processing".
+ */
+function isWaitTimeout(message: string): boolean {
+  return /timed out before finishing/i.test(message);
+}
+
 /** Shape the worker returns on a successful run (see updateProductInfoJob). */
 function isSuccessResult(value: unknown): value is { success: true } {
   return typeof value === "object" && value !== null && "success" in value && (value as { success: unknown }).success === true;
@@ -82,8 +93,8 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     } catch (waitError) {
       const message = waitError instanceof Error ? waitError.message : String(waitError);
 
-      // Timeout: the job is still running; don't treat it as a failure.
-      if (/timed out/i.test(message)) {
+      // Wait timeout: the job is still running; don't treat it as a failure.
+      if (isWaitTimeout(message)) {
         return NextResponse.json(
           {
             success: true,
