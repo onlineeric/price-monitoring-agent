@@ -7,6 +7,7 @@ import { registerAddProduct } from "./tools/add-product.js";
 import { registerGetPriceSummary } from "./tools/get-price-summary.js";
 import { registerGetProductHistory } from "./tools/get-product-history.js";
 import { registerSearchProducts } from "./tools/search-products.js";
+import { registerSemanticSearchProducts } from "./tools/semantic-search-products.js";
 
 /**
  * Construct the MCP server with the canonical tool set. Both transports
@@ -28,6 +29,7 @@ export function createServer(): McpServer {
 
   // --- Real tools (stable across both transports) ---
   registerSearchProducts(server);
+  registerSemanticSearchProducts(server);
   registerGetProductHistory(server);
   registerGetPriceSummary(server);
   registerAddProduct(server);

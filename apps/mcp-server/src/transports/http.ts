@@ -1,8 +1,14 @@
 import { createServer, type Server as HttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { z } from "zod";
 import type { ServerConfig } from "../config.js";
+import { ProductNotFoundError, reindexProduct } from "../embeddings/reindex.js";
 import { createServer as buildMcpServer } from "../server.js";
+
+// POST /internal/reindex body (feature 008). Internal-only endpoint — not an
+// MCP tool, so it's validated here rather than via the SDK tool layer.
+const reindexInputSchema = z.object({ productId: z.string().uuid() });
 
 /**
  * Build a stateless `StreamableHTTPServerTransport`.
@@ -106,6 +112,27 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.end(body);
+      return;
+    }
+
+    // POST /internal/reindex (feature 008) — the single write-time embedding
+    // entry point, called by the worker's reindex job. Internal-only (same
+    // network as /mcp); NOT an MCP tool, so it never reaches the chat agent.
+    if (path === "/internal/reindex") {
+      if (shuttingDown) {
+        res.statusCode = 503;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Server shutting down");
+        return;
+      }
+      if (req.method !== "POST") {
+        res.statusCode = 405;
+        res.setHeader("Allow", "POST");
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Method Not Allowed");
+        return;
+      }
+      await handleInternalReindex(req, res);
       return;
     }
 
@@ -328,6 +355,61 @@ export async function runHttp(_unusedServer: McpServer, config: ServerConfig): P
   // Run forever. The function returns only when the process exits via the
   // shutdown handler.
   await new Promise<void>(() => undefined);
+}
+
+/** Send a `{ error: { code, message } }` JSON envelope (feature 008 endpoint). */
+function sendJsonError(res: ServerResponse, status: number, code: string, message: string): void {
+  if (res.headersSent || res.writableEnded) return;
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify({ error: { code, message } }));
+}
+
+/**
+ * Handle `POST /internal/reindex` (contract: internal-reindex-endpoint.md).
+ * Validates `{ productId }`, runs the delete-and-replace reindex, and maps the
+ * outcome to the documented status codes: 200 on success, 400 on a bad body,
+ * 404 for an unknown product, 500 on embed/DB failure. A non-2xx is what makes
+ * the worker job retry with backoff.
+ */
+export async function handleInternalReindex(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const startTs = Date.now();
+  res.on("finish", () => {
+    console.error(`[mcp-server] http POST /internal/reindex status=${res.statusCode} ms=${Date.now() - startTs}`);
+  });
+
+  let parsed: unknown;
+  try {
+    parsed = await readJsonBody(req, MAX_BODY_BYTES);
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      sendJsonError(res, 413, "payload_too_large", "Request body too large");
+    } else {
+      sendJsonError(res, 400, "validation_error", "Invalid JSON body");
+    }
+    return;
+  }
+
+  const result = reindexInputSchema.safeParse(parsed);
+  if (!result.success) {
+    sendJsonError(res, 400, "validation_error", "productId must be a valid uuid");
+    return;
+  }
+
+  try {
+    const chunks = await reindexProduct(result.data.productId);
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ productId: result.data.productId, chunks }));
+  } catch (err) {
+    if (err instanceof ProductNotFoundError) {
+      sendJsonError(res, 404, "not_found", err.message);
+      return;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[mcp-server] reindex failed: ${message}`);
+    sendJsonError(res, 500, "internal_error", message);
+  }
 }
 
 // 1 MiB cap on POST /mcp request bodies. Tool inputs are JSON-RPC frames

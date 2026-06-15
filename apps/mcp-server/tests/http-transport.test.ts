@@ -157,7 +157,7 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
     }
   });
 
-  it("(a) tools/list returns the five expected tool names", async () => {
+  it("(a) tools/list returns the six expected tool names", async () => {
     const { port } = useShared();
     const res = await postMcp(port, {
       jsonrpc: "2.0",
@@ -169,7 +169,14 @@ describe("US1 — HTTP transport (POST /mcp)", () => {
     expect(res.json?.result?.tools).toBeDefined();
     const names = (res.json?.result?.tools ?? []).map((t) => t.name).sort();
     expect(names).toEqual(
-      ["add_product", "get_price_summary", "get_product_history", "ping", "search_products"].sort(),
+      [
+        "add_product",
+        "get_price_summary",
+        "get_product_history",
+        "ping",
+        "search_products",
+        "semantic_search_products",
+      ].sort(),
     );
   });
 

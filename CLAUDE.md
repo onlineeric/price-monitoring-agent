@@ -89,6 +89,11 @@ pnpm worker:restart    # restart Docker worker (no rebuild)
 
 # Backfill rich metadata for existing products (one-off; enqueues update-product-info for every product)
 pnpm --filter @price-monitor/worker backfill:product-info
+
+# Backfill semantic-search embeddings for existing products (one-off; enqueues
+# reindex-product-embeddings for every product). Run backfill:product-info FIRST
+# so products have metadata to embed.
+pnpm --filter @price-monitor/worker backfill:embeddings
 ```
 
 The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts PostgreSQL and Redis. `pnpm worker:dev` (from repo root) and `pnpm dev` (from `apps/worker/`) both route through `scripts/dev-worker.sh`: stop the Docker worker, run the local dev worker with tsx watch, then restart the Docker worker on exit (Ctrl+C). The Docker `mcp-server` (`profiles: ["mcp"]`) and `pnpm mcp:dev` (`scripts/dev-mcp.sh`) follow the same swap pattern.
@@ -101,6 +106,7 @@ The Docker worker uses `profiles: ["worker"]` — `pnpm docker:up` only starts P
 
 **products** — URL (unique key), name, imageUrl, active, lastSuccessAt, lastFailedAt, plus rich metadata (007): `description`, `category`, `brand`, `countryOfOrigin`, `attributes` (JSONB — ordered key/value spec list, capped at 100, see `packages/db/src/attributes.ts`), `infoUpdatedAt`
 **priceRecords** — productId (FK cascade), price (integer cents), currency, scrapedAt
+**productEmbeddings** (008) — productId (FK cascade), chunkIndex, content (the embedded text incl. identity prefix), `embedding vector(384)`; HNSW cosine index. One row per (product, chunk). Maintained by the reindex operation only.
 **settings** — key/value JSON store (email schedule, etc.)
 **runLogs** — job status/error tracking (no FK on productId for flexibility)
 
@@ -115,10 +121,11 @@ Set `FORCE_AI_EXTRACTION=true` to skip Tier 1. **Rich metadata extraction always
 
 ### Job Flow (BullMQ)
 
-Job types (see `apps/worker/src/queue/worker.ts`): `check-price`, `update-product-info`, `send-digest` / `send-digest-scheduled` (same handler), `send-digest-flow` (FlowProducer parent).
+Job types (see `apps/worker/src/queue/worker.ts`): `check-price`, `update-product-info`, `reindex-product-embeddings` (008), `send-digest` / `send-digest-scheduled` (same handler), `send-digest-flow` (FlowProducer parent).
 
 - **Manual price check:** API → `check-price` job → Worker extracts price → saves price record (metadata untouched)
-- **Update product info:** API (`products/[id]/update-info`) or first add → `update-product-info` job → Worker extracts metadata + a fresh price → overwrites metadata + writes price record + sets `infoUpdatedAt`. The route waits up to ~45s for the job (synchronous result) and reports "still processing" on wait-timeout.
+- **Update product info:** API (`products/[id]/update-info`) or first add → `update-product-info` job → Worker extracts metadata + a fresh price → overwrites metadata + writes price record + sets `infoUpdatedAt`. The route waits up to ~45s for the job (synchronous result) and reports "still processing" on wait-timeout. On success it best-effort enqueues a `reindex-product-embeddings` job (008; never fails the write).
+- **Reindex embeddings (008):** `reindex-product-embeddings` job → handler `fetch`es the mcp-server's `POST /internal/reindex { productId }` → mcp-server (the single embedding model authority) rebuilds the product's `productEmbeddings` rows (delete-and-replace, atomic). Retryable (5 attempts, exponential backoff) so a transient mcp-server outage self-heals. The worker holds **no** model. A plain `check-price` never reindexes; product deletion cascades the rows away.
 - **Digest:** `send-digest` job → spawns a refresh flow over active products → calculates trends → sends email. The job payload carries a **mode**: `"price"` (default — cheap price-only refresh) or `"info"` (full metadata+price refresh per product). `digest/trigger` accepts `{ mode: "info" }`.
 - **Scheduled digest:** Worker startup → reads schedule from DB → registers BullMQ repeatable job (polls DB every 5 min for updates)
 
@@ -160,7 +167,8 @@ Global product search is implemented as a dialog provider in `_components/produc
 - **Dev/prod transport split** — The MCP server speaks two transports selected by `MCP_TRANSPORT`:
   - `stdio` (default) — spawned as a child process by the **IDE** (VSCode / Cursor) for local development. Stdout is reserved for JSON-RPC frames; all logs go to stderr.
   - `http` — Streamable HTTP on `MCP_HTTP_PORT` (default `3002`). Used by `web → mcp-server` in **both dev (Docker container) and prod (Coolify app)**. Stateless: every request creates a fresh `StreamableHTTPServerTransport` so no per-session state lingers, which makes the service horizontally scalable and lets `web` and `mcp-server` scale independently.
-- **MCP server (`apps/mcp-server/`)** — standalone Node process using `@modelcontextprotocol/sdk`. Exposes typed tools (`search_products`, `get_product_history`, `get_price_summary`, `add_product`, `ping`) backed by Drizzle queries and the BullMQ queue. Direct SQL access from the agent is intentionally not exposed. All tool errors flow through `tools/_wrap.ts` into a structured `{ error: { code, message } }` shape. HTTP mode also exposes `GET /health` (Coolify health probe) and `GET /mcp/health` (alias used by web's MCP-health proxy route). Test-only tools (`slow_ping`, `throw_test`) are hard-gated on `NODE_ENV !== "production"`.
+- **MCP server (`apps/mcp-server/`)** — standalone Node process using `@modelcontextprotocol/sdk`. Exposes typed tools (`search_products`, `semantic_search_products` (008), `get_product_history`, `get_price_summary`, `add_product`, `ping`) backed by Drizzle queries and the BullMQ queue. Direct SQL access from the agent is intentionally not exposed. All tool errors flow through `tools/_wrap.ts` into a structured `{ error: { code, message } }` shape. HTTP mode also exposes `GET /health` (Coolify health probe), `GET /mcp/health` (alias used by web's MCP-health proxy route), and `POST /internal/reindex` (008 — internal-only, **not** an MCP tool; the worker's reindex job calls it). Test-only tools (`slow_ping`, `throw_test`) are hard-gated on `NODE_ENV !== "production"`.
+- **Embeddings / semantic search (008)** — the mcp-server is the **single embedding authority**: it loads a local `all-MiniLM-L6-v2` model once (`src/embeddings/`: `local`, `provider`, `document`, `chunk`, `reindex`, `search`) for both query-time `semantic_search_products` and write-time reindex, keeping the prod RAM budget. Weights are baked into the Docker image (`scripts/warm-embedding-model.ts`) and the runtime is offline. The worker/backfill never embed — they enqueue/POST. Vector storage is Drizzle-native (`vector(384)` + `cosineDistance` + HNSW), no `db.execute()`. `EMBEDDING_PROVIDER=openai|google` is behind the provider seam but a deliberate migration (different dimension) — see `docs/production-env.md`.
 - **MCP client (`apps/web/src/lib/mcp/client.ts`)** — singleton client that picks the transport at first connect: `StreamableHTTPClientTransport(MCP_HTTP_URL)` when `MCP_HTTP_URL` is set (production + Docker dev), otherwise `StdioClientTransport` spawning `pnpm --filter @price-monitor/mcp-server start` (the IDE-style fallback). Override the stdio command via `MCP_SERVER_COMMAND` / `MCP_SERVER_ARGS`.
 - **Chat API (`apps/web/src/app/api/chat/route.ts`)** — Node-runtime route using Vercel AI SDK `streamText` with MCP tools bridged via `buildMcpTools` (in `apps/web/src/lib/ai/chat-tools.ts`). Enforces `CHAT_MAX_STEPS` (5-step tool budget) and `CHAT_TURN_TIMEOUT_MS` (60s). Errors surface as documented `ChatErrorCode` values: `validation_error`, `provider_config_missing`, `mcp_unreachable`, `step_budget_exceeded`, `turn_timeout`, `empty_response`, `provider_error`.
 - **Provider selection** — same `AI_PROVIDER` env var as the worker (`openai` | `anthropic` | `google`).
@@ -228,8 +236,10 @@ Only create commits when explicitly requested.
 ## Active Technologies
 - TypeScript 5.9 + Next.js 16 (App Router), React 19, Tailwind CSS v4, Shadcn UI, TanStack Query/Table, Zustand, Drizzle ORM, PostgreSQL 18, Redis 8, BullMQ, Playwright, Vercel AI SDK (OpenAI / Anthropic / Google), `@modelcontextprotocol/sdk`, `streamdown` (Markdown rendering), Resend + React Email
 - 007-extend-product-info: Versioned Drizzle migrations (`generate` → committed `packages/db/drizzle/` → `migrate`) replacing `push`; additive product metadata columns (description / category / brand / country_of_origin / `attributes` JSONB ≤100 pairs / `info_updated_at`).
+- 008-semantic-product-search: pgvector RAG — local `@huggingface/transformers` MiniLM (384-dim, int8) + `@langchain/textsplitters` token-accurate chunking in `apps/mcp-server`; `product_embeddings` `vector(384)` + HNSW (additive migration); retryable `reindex-product-embeddings` BullMQ job → mcp-server `POST /internal/reindex`.
 
 ## Recent Changes
+- 008-semantic-product-search: Meaning-based product search via a new `semantic_search_products` MCP tool over pgvector. Each product's 007 metadata is assembled → token-accurate chunked → embedded by a **local** MiniLM model in the mcp-server (the single embedding authority; weights baked into the image, offline at runtime). A `product_embeddings` table (one row per (product, chunk), HNSW cosine index) is kept current by a retryable `reindex-product-embeddings` job the worker enqueues after each successful `update-product-info` (POST to mcp-server's internal `/internal/reindex`); a `backfill:embeddings` script seeds the existing catalog. Drizzle-native vector query (no `db.execute()`); `EMBEDDING_PROVIDER` seam (local default; openai/google a deliberate dimension-change migration).
 - 007-extend-product-info: Rich product metadata (description, category, brand, country, key/value specs) via a new `update-product-info` operation (on add / on demand / batch info+price digest mode) that uses the AI tier and overwrites metadata; reusable product detail dialog; backfill script. Schema delivered as versioned, additive migrations auto-applied on deploy by a single gated instance (`RUN_MIGRATIONS`), with a manual apply fallback.
 - 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` + `GET /mcp/health` on port 3002) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown. Test-only tools (`slow_ping`, `throw_test`) are gated on `NODE_ENV !== "production"` so a stray `MCP_TEST_TOOLS=1` cannot leak them into a prod deploy.
 - 005-chat-page-ui: Dashboard chat page streaming `/api/chat` responses with sanitized markdown, inline tool-call indicators, and per-tab in-memory conversation state

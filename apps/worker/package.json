@@ -11,6 +11,7 @@
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
     "backfill:product-info": "node --import tsx ./scripts/backfill-product-info.ts",
+    "backfill:embeddings": "node --import tsx ./scripts/backfill-embeddings.ts",
     "test": "vitest run"
   },
   "keywords": [],

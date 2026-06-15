@@ -260,6 +260,31 @@ true
 - Having multiple schedulers will cause duplicate emails
 - Current setup: Single worker with scheduler enabled
 
+#### MCP_REINDEX_URL (feature 008)
+
+**Description:** Full URL of the MCP server's internal reindex endpoint. After a
+successful `update-product-info`, the worker enqueues a `reindex-product-embeddings`
+job whose handler POSTs `{ productId }` here so the MCP server (the single
+embedding authority) rebuilds the product's vectors. The embeddings backfill
+enqueues the same job per product.
+
+**Format:** `http://<mcp-host>:<port>/internal/reindex` (a dedicated full URL —
+NOT the web app's `MCP_HTTP_URL`, which points at the `/mcp` JSON-RPC endpoint).
+
+**Production Value (Coolify Internal DNS):**
+```
+http://price-monitor-mcp-prod:3002/internal/reindex
+```
+
+**Notes:**
+- Default `http://localhost:3002/internal/reindex` (dev). In Docker compose the
+  worker uses the service name: `http://mcp-server:3002/internal/reindex`.
+- A non-2xx / network error makes the job retry with backoff, so a briefly-down
+  MCP server self-heals without failing the metadata/price write.
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables
+
 ---
 
 ### MCP Server Configuration
@@ -321,6 +346,40 @@ http://price-monitor-mcp-prod:3002/mcp
 Use the same values as the worker (Coolify internal DNS for Postgres + Redis, same business timezone, `NODE_ENV=production`). The MCP tools query the DB via Drizzle and `add_product` enqueues a BullMQ job.
 
 `AI_PROVIDER` and the matching API key are **optional** today — no current MCP tool calls an LLM. Add them only when one does.
+
+#### MCP Server — Semantic Search / Embeddings (feature 008)
+
+The MCP server is the **single embedding authority**: it loads the local
+`all-MiniLM-L6-v2` model (~300 MB resident, paid once) and serves both
+query-time semantic search and write-time reindex. The worker and backfill
+never load a model — they enqueue a reindex job that POSTs to the MCP server.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `EMBEDDING_PROVIDER` | `local` | `local` \| `openai` \| `google`. Only `local` is wired; switching is a deliberate migration (see runbook below). |
+| `EMBEDDING_MODEL` | `Xenova/all-MiniLM-L6-v2` | Local model id (384-dim, int8). |
+| `EMBEDDING_CACHE_DIR` | `/app/.cache/transformers` | Baked into the image at build time. Leave at the image default in prod. |
+| `SEMANTIC_SEARCH_TOP_N` | `5` | Default number of distinct products returned. |
+| `SEMANTIC_SEARCH_MAX_DISTANCE` | `0.70` | Cosine-distance relevance cutoff (lower = stricter). Tuned against the real catalog (on-topic ≤0.66, off-topic ≥0.76); re-tune if the catalog mix changes. |
+
+**Offline at runtime:** the Docker image bakes the model weights into
+`EMBEDDING_CACHE_DIR` and sets `TRANSFORMERS_OFFLINE=1` / `HF_HUB_OFFLINE=1`;
+under `NODE_ENV=production` the code also sets `allowRemoteModels=false`. A
+running container never contacts the Hugging Face Hub, so a Hub outage cannot
+break search and the first chat search after a deploy is not gated on a download.
+
+**Deliberate provider-switch runbook (`local` → `openai`/`google`):** changing
+provider changes the vector dimension (OpenAI 1536, Google 768), so it is a
+migration, not a runtime toggle:
+1. Install `ai` + the adapter (`@ai-sdk/openai` or `@ai-sdk/google`) in
+   `apps/mcp-server` and implement the `embedMany` branch in
+   `embeddings/provider.ts`.
+2. Migrate the `product_embeddings.embedding` column to `vector(N)` for the new
+   dimension.
+3. Rebuild the HNSW index for the new column.
+4. Re-run the embeddings backfill (`pnpm --filter @price-monitor/worker
+   backfill:embeddings`) to repopulate vectors.
+5. Set `EMBEDDING_PROVIDER` + the provider API key and redeploy.
 
 ---
 
@@ -406,6 +465,7 @@ Use this checklist when configuring production environment:
 - [ ] SCHEDULER_TIMEZONE (scheduler + quota day-boundary timezone)
 - [ ] NODE_ENV (`production`)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
+- [ ] MCP_REINDEX_URL (`http://price-monitor-mcp-prod:3002/internal/reindex` — semantic-search reindex)
 
 ### MCP Server Application
 
@@ -418,6 +478,8 @@ Use this checklist when configuring production environment:
 - [ ] Network alias (e.g. `price-monitor-mcp-prod`) so the web app can resolve the hostname
 - [ ] Health check path: `/health` on port `3002`
 - [ ] Internal-only — no public domain, no HTTPS termination
+- [ ] EMBEDDING_PROVIDER (`local`) + EMBEDDING_MODEL / SEMANTIC_SEARCH_TOP_N / SEMANTIC_SEARCH_MAX_DISTANCE (or rely on defaults)
+- [ ] EMBEDDING_CACHE_DIR (`/app/.cache/transformers` — image default; weights baked in)
 
 ---
 

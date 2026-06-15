@@ -22,6 +22,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@price-monitor/db": "workspace:*",
     "bullmq": "^5.66.4",

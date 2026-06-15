@@ -1,6 +1,7 @@
 import { type Job, Worker } from "bullmq";
 import { connection, QUEUE_NAME } from "../config.js";
 import priceCheckJob from "../jobs/priceCheck.js";
+import reindexEmbeddingsJob from "../jobs/reindexEmbeddings.js";
 import { onDigestFlowComplete, sendDigestJob } from "../jobs/sendDigest.js";
 import updateProductInfoJob from "../jobs/updateProductInfo.js";
 
@@ -12,6 +13,11 @@ async function processJob(job: Job) {
 
     case "update-product-info":
       return await updateProductInfoJob(job);
+
+    case "reindex-product-embeddings":
+      // Feature 008: rebuild a product's semantic-search embeddings by calling
+      // the mcp-server's internal endpoint (the single embedding authority).
+      return await reindexEmbeddingsJob(job);
 
     case "send-digest":
     case "send-digest-scheduled":

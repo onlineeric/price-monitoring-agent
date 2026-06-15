@@ -55,7 +55,7 @@ export const productEmbeddings = pgTable(
 - **Composite document** — the per-product text assembled in priority order
   **name → brand → category → country of origin → description → key/value specs**
   (FR-008). Built in `embeddings/document.ts`. Never persisted as-is; it is the input to chunking.
-- **Chunk** — a ~200-token token-accurate slice of the composite document (small overlap), each
+- **Chunk** (called a **"fragment"** in spec.md — same thing) — a ~200-token token-accurate slice of the composite document (small overlap), each
   prefixed with product identity (research D4/D5). Becomes one `product_embeddings` row.
 - **Reindex operation** — `reindexProduct(productId)`: load product + 007 metadata → build document →
   chunk → embed each chunk → **delete all existing rows for the product, insert the new set** in one
@@ -73,13 +73,14 @@ export const productEmbeddings = pgTable(
 
 ## Query shape (read path)
 
-`semanticSearch(query, limit)` in `embeddings/search.ts`:
+`semanticSearch(query, limit)` in `embeddings/search.ts` — **Drizzle query builder only, no `db.execute()`** (constitution III; `cosineDistance` is an inline `sql` expression, which the constitution permits):
 1. `embedQuery(query)` → 384-d vector (local model).
 2. `distance = cosineDistance(embedding, queryVec)`.
 3. Filter `where lte(distance, SEMANTIC_SEARCH_MAX_DISTANCE)` (FR-007 threshold).
-4. Best chunk per product: `selectDistinctOn([productId])` ordered by `(productId, distance asc)` (FR-005).
-5. Outer order by `distance asc`, `limit(topN)` (FR-004, default 5).
-6. Join `products` to return rich metadata (id, name, url, brand, category, country, description, attributes) + the matched `content` + distance, so the agent can explain the match.
+4. **Inner** subquery — best chunk per product: `selectDistinctOn([productId], { productId, distance })` ordered by `(productId, distance asc)`, wrapped via `.as("best")` (FR-005). `DISTINCT ON` requires `productId` to lead the inner order-by, which is exactly why a wrapping subquery (not one flat query) is needed.
+5. **Outer** query selects from `best`, orders by `distance asc`, `limit(topN)` (FR-004, default 5).
+6. Join `products` for rich metadata (id, name, url, brand, category, country, description, attributes) **and the latest `priceRecords` row for the current price** (reuse the `search_products` latest-price pattern), returned alongside the matched chunk `content` + distance — the tool formats the price into `currentPriceFormatted` via the existing `_format` helper so the agent can explain the match.
 7. Empty index or all-below-threshold → `[]` (FR-007; no error).
+8. **Fallback**: if the distinct-on + outer-order/limit composition proves inexpressible in the builder, use a `ROW_NUMBER()` window via an inline `sql` expression and record the constitution-III note in plan Complexity Tracking.
 
 Volume: ~10–50 products × a few chunks ⇒ low hundreds of rows; HNSW search is sub-millisecond at this size, well inside SC-009.

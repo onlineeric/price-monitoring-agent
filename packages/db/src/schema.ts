@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
 import type { ProductAttribute } from "./attributes";
 
 // Products table
@@ -37,6 +37,37 @@ export const priceRecords = pgTable("price_records", {
   scrapedAt: timestamp("scraped_at").defaultNow(),
 });
 
+// Product embeddings table (feature 008 — semantic product search / RAG)
+// One row per (product, chunk). A short product has exactly one row; a long
+// product (big description + many specs) has several. This is the indexable
+// shape — pgvector's HNSW index works on a single `vector` column, so an
+// array-of-vectors column is not an option. Populated only by the reindex
+// operation (delete-and-replace per product); never touched by price checks.
+export const productEmbeddings = pgTable(
+  "product_embeddings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    // 0-based position of the chunk within the product's composite document.
+    chunkIndex: integer("chunk_index").notNull(),
+    // The exact text embedded for this row (chunk + identity prefix). Stored
+    // for debuggability and so the agent can cite the matched fragment.
+    content: text("content").notNull(),
+    // MiniLM int8 embedding in cosine space. Dimension fixed by the local
+    // model; a provider switch resizes this column (deliberate migration).
+    embedding: vector("embedding", { dimensions: 384 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    // HNSW similarity index (cosine). The search query orders by cosineDistance.
+    index("product_embeddings_embedding_hnsw").using("hnsw", t.embedding.op("vector_cosine_ops")),
+    // btree to speed delete-and-replace, per-product dedup, and the FK cascade.
+    index("product_embeddings_product_id_idx").on(t.productId),
+  ],
+);
+
 // Run logs table
 export const runLogs = pgTable("run_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -67,6 +98,14 @@ export const manualReportSends = pgTable("manual_report_sends", {
 export const productsRelations = relations(products, ({ many }) => ({
   priceRecords: many(priceRecords),
   runLogs: many(runLogs),
+  embeddings: many(productEmbeddings),
+}));
+
+export const productEmbeddingsRelations = relations(productEmbeddings, ({ one }) => ({
+  product: one(products, {
+    fields: [productEmbeddings.productId],
+    references: [products.id],
+  }),
 }));
 
 export const priceRecordsRelations = relations(priceRecords, ({ one }) => ({

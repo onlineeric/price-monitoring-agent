@@ -22,7 +22,7 @@
 3. Drop rows with `distance > SEMANTIC_SEARCH_MAX_DISTANCE` (relevance cutoff — FR-007).
 4. Collapse to the **best (nearest) chunk per product** (FR-005).
 5. Order by distance, take top-N distinct products (FR-004).
-6. Join `products` for rich metadata.
+6. Join `products` for rich metadata and the latest `priceRecords` row → `currentPriceFormatted` (reuse the `search_products` latest-price pattern + `_format`).
 
 ## Output (success)
 
