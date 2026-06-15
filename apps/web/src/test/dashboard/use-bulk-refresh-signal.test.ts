@@ -75,6 +75,33 @@ describe("useBulkRefreshSignal", () => {
     expect(toastMock.success).toHaveBeenCalledTimes(1);
   });
 
+  it("returns a stop handle that cancels polling (used when the trigger fails)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(markerResponse("T0")) // baseline
+      .mockResolvedValue(markerResponse("T1")); // would otherwise signal on tick 1
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useBulkRefreshSignal());
+
+    let stop: (() => void) | undefined;
+    await act(async () => {
+      stop = await result.current.watchForCompletion();
+    });
+
+    // Caller cancels the watch (e.g. the trigger POST failed).
+    act(() => stop?.());
+
+    const callsAfterStop = fetchMock.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3);
+    });
+
+    // No further polling and no toast after stop.
+    expect(fetchMock.mock.calls.length).toBe(callsAfterStop);
+    expect(toastMock.success).not.toHaveBeenCalled();
+  });
+
   it("does not signal while the marker stays at the baseline", async () => {
     const fetchMock = vi.fn().mockResolvedValue(markerResponse("T0"));
     vi.stubGlobal("fetch", fetchMock);

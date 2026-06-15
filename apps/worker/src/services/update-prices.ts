@@ -26,7 +26,10 @@ export async function enqueueRefreshFlowForActiveProducts(
   triggerType: "manual" | "scheduled",
   mode: RefreshMode = "price",
 ) {
-  const activeProducts = await db.select().from(products).where(eq(products.active, true));
+  // Only the URL is used to build the per-product child jobs; project just that
+  // column so a digest never drags every product's full 007 metadata (description
+  // text + attributes JSONB) over the wire.
+  const activeProducts = await db.select({ url: products.url }).from(products).where(eq(products.active, true));
 
   if (activeProducts.length === 0) {
     return {

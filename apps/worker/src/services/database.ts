@@ -11,6 +11,8 @@ import {
 } from "@price-monitor/db";
 import { validate as isValidUuid } from "uuid";
 
+import { formatErrorMessage } from "../utils/errors.js";
+
 /**
  * Parameters for saving a price record
  */
@@ -100,13 +102,6 @@ export async function updateProductFailure(productId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
-}
-
-/**
- * Format error message for logging
- */
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
 }
 
 /**

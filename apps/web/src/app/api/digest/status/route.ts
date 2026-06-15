@@ -16,7 +16,7 @@ import { eq } from "drizzle-orm";
 export async function GET() {
   try {
     const [row] = await db
-      .select()
+      .select({ value: settings.value })
       .from(settings)
       .where(eq(settings.key, SETTING_LAST_BULK_REFRESH_COMPLETED_AT))
       .limit(1);

@@ -1,9 +1,8 @@
 import { getProductById } from "../services/database.js";
 
-/** Format an unknown thrown value into a log-friendly message. */
-export function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
-}
+// Re-exported from the shared leaf module so existing importers (priceCheck,
+// updateProductInfo) keep importing it from here, with a single implementation.
+export { formatErrorMessage } from "../utils/errors.js";
 
 /**
  * Resolve the target URL for a job from its data.

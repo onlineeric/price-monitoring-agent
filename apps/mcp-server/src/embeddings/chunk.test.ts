@@ -85,6 +85,24 @@ describe("chunk", () => {
     expect(chunks.at(-1)?.startsWith(`${PREFIX}\n`)).toBe(true);
   });
 
+  it("still prefixes spill-over chunks that merely start with the name (not just chunk 0)", async () => {
+    const NAME = "Widget";
+    // Every token is the name, so chunk 0 AND every later chunk start with it.
+    // Only the leading chunk is genuinely self-describing; the rest must still
+    // get the identity prefix rather than being skipped via a startsWith match.
+    const repeated = Array.from({ length: 600 }, () => NAME).join(" ");
+    const chunks = await chunk(repeated, PREFIX, NAME);
+
+    expect(chunks.length).toBeGreaterThan(1);
+    // Chunk 0: leads with the name → not re-prefixed.
+    expect(chunks[0]?.startsWith(`${PREFIX}\n`)).toBe(false);
+    expect(chunks[0]?.startsWith(NAME)).toBe(true);
+    // Every later chunk DOES get the prefix, even though it also starts with the name.
+    for (const c of chunks.slice(1)) {
+      expect(c.startsWith(`${PREFIX}\n`)).toBe(true);
+    }
+  });
+
   it("produces overlap between consecutive chunks (repeated tokens)", async () => {
     const words = Array.from({ length: 600 }, (_, i) => `w${i}`).join(" ");
     const chunks = await chunk(words, PREFIX);

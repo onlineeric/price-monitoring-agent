@@ -59,8 +59,10 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ success: false, error: "Invalid product ID" }, { status: 400 });
     }
 
-    // Look up product by ID
-    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    // Look up product by ID. Only the URL is needed to enqueue the job (row
+    // presence is the existence check), so project just that column rather than
+    // loading the full 007 metadata row.
+    const [product] = await db.select({ url: products.url }).from(products).where(eq(products.id, id)).limit(1);
 
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });

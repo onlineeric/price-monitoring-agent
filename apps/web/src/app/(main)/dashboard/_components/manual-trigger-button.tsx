@@ -48,6 +48,11 @@ export function ManualTriggerButton() {
     setOpen(false);
     setMode("price");
 
+    // Start watching for completion BEFORE enqueuing the batch so the baseline
+    // marker is captured before the worker can advance it — otherwise a fast or
+    // empty batch can finish first and the "refresh available" signal never fires.
+    const stopWatch = await watchForCompletion();
+
     try {
       const response = await fetch("/api/digest/trigger", {
         method: "POST",
@@ -63,6 +68,7 @@ export function ManualTriggerButton() {
         data = await response.json();
       } catch (_parseError) {
         // If JSON parsing fails, it's likely an HTML error page or network issue
+        stopWatch();
         toast.error("Failed to trigger digest", {
           description: `Server returned invalid response (HTTP ${response.status})`,
         });
@@ -73,15 +79,16 @@ export function ManualTriggerButton() {
         toast.success("Digest triggered successfully!", {
           description: "All products will be checked and email will be sent.",
         });
-        // The batch runs in the background; watch for it to finish and then
-        // surface a "refresh available" signal (no auto-refresh of the list).
-        void watchForCompletion();
+        // The batch runs in the background; the watch started above will surface a
+        // "refresh available" signal once it finishes (no auto-refresh of the list).
       } else {
+        stopWatch();
         toast.error("Failed to trigger digest", {
           description: data?.error || "Unknown error occurred",
         });
       }
     } catch (error) {
+      stopWatch();
       toast.error("Failed to trigger digest", {
         description: error instanceof Error ? error.message : "Network error",
       });

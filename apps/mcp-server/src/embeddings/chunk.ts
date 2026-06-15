@@ -53,14 +53,20 @@ export async function chunk(document: string, identityPrefix: string, productNam
 
   if (prefix.length === 0) return fragments;
 
-  // A fragment is already self-describing when it leads with the product name
-  // (the document starts with the name, so the first fragment does). Match
-  // against the bare name when we have it — the full prefix is `name — brand
-  // (category)`, which the document never leads with, so matching on the prefix
-  // alone would fail and double-prepend the identity onto chunk 0.
+  // Only the FIRST fragment can already be self-describing: the document leads
+  // with the product name, and with overlap every later fragment starts with the
+  // tail of its predecessor (spec text), never the name. So we scope the
+  // skip-prefix check to index 0 — a deeper spec fragment that merely happens to
+  // begin with the name (e.g. a short name like "Pro" preceding "Profile: ...")
+  // must still get the identity prefix. Match against the bare name when we have
+  // it — the full prefix is `name — brand (category)`, which the document never
+  // leads with, so matching on the prefix alone would fail and double-prepend the
+  // identity onto chunk 0.
   const name = productName?.trim() ?? "";
   const leadsWithIdentity = (fragment: string): boolean =>
     name.length > 0 ? fragment.startsWith(name) : fragment.startsWith(prefix);
 
-  return fragments.map((fragment) => (leadsWithIdentity(fragment) ? fragment : `${prefix}\n${fragment}`));
+  return fragments.map((fragment, index) =>
+    index === 0 && leadsWithIdentity(fragment) ? fragment : `${prefix}\n${fragment}`,
+  );
 }

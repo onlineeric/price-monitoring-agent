@@ -27,12 +27,18 @@ async function fetchCompletionMarker(): Promise<string | null> {
  * Watches for a bulk "Check All" batch to finish, then surfaces a *user-clickable*
  * "refresh available" signal instead of auto-refreshing the list (B1).
  *
- * How it works: when a batch is triggered, the caller invokes `watchForCompletion()`.
- * We capture the current completion marker as a baseline, then poll the status
- * endpoint. The worker advances the marker (a server-side timestamp) when the
- * whole batch finishes; once the polled value differs from the baseline we show
- * a toast with a "Refresh" action and stop polling. Comparing marker-to-marker
- * (both server-sourced) sidesteps any client/server clock skew.
+ * How it works: the caller invokes `watchForCompletion()` *before* enqueuing the
+ * batch. We capture the current completion marker as a baseline, then poll the
+ * status endpoint. The worker advances the marker (a server-side timestamp) when
+ * the whole batch finishes; once the polled value differs from the baseline we
+ * show a toast with a "Refresh" action and stop polling. Comparing marker-to-
+ * marker (both server-sourced) sidesteps any client/server clock skew.
+ *
+ * Capturing the baseline before the batch is enqueued is essential: a fast or
+ * empty batch can finish (advancing the marker) almost immediately, so reading
+ * the baseline afterwards could already see the advanced value and the signal
+ * would never fire. `watchForCompletion` returns a `stop` function so the caller
+ * can cancel the watch if the trigger request itself fails.
  */
 export function useBulkRefreshSignal() {
   const router = useRouter();
@@ -63,8 +69,8 @@ export function useBulkRefreshSignal() {
       const current = await fetchCompletionMarker();
       if (current !== null && current !== baseline) {
         stop();
-        toast.success("Product info refreshed", {
-          description: "All products have been updated — refresh to see the latest.",
+        toast.success("Refresh complete", {
+          description: "Products have been updated — refresh to see the latest.",
           duration: Number.POSITIVE_INFINITY,
           action: {
             label: "Refresh",
@@ -73,6 +79,9 @@ export function useBulkRefreshSignal() {
         });
       }
     }, POLL_INTERVAL_MS);
+
+    // Let the caller cancel the watch (e.g. if the trigger request fails).
+    return stop;
   }, [router, stop]);
 
   return { watchForCompletion };

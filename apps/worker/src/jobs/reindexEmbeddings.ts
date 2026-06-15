@@ -22,6 +22,15 @@ interface ReindexJobData {
   productId: string;
 }
 
+/**
+ * Hard ceiling on the reindex HTTP round-trip. Generous enough to cover an
+ * mcp-server cold start (lazy embedding-model load can take tens of seconds) but
+ * bounded so a hung/half-open connection can't pin the job — and with the
+ * worker's default concurrency, the whole queue — indefinitely. A timeout aborts
+ * the fetch and is handled as a transient failure (BullMQ retries with backoff).
+ */
+const REINDEX_REQUEST_TIMEOUT_MS = 120_000;
+
 export default async function reindexEmbeddingsJob(job: Job<ReindexJobData>): Promise<{ productId: string; chunks: number }> {
   const { productId } = job.data;
   const jobId = String(job.id);
@@ -32,9 +41,11 @@ export default async function reindexEmbeddingsJob(job: Job<ReindexJobData>): Pr
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ productId }),
+      signal: AbortSignal.timeout(REINDEX_REQUEST_TIMEOUT_MS),
     });
   } catch (err) {
-    // Network error (mcp-server down/unreachable) — throw so BullMQ retries.
+    // Network error (mcp-server down/unreachable) or a request timeout — throw so
+    // BullMQ retries with backoff.
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[${jobId}] reindex request failed (network): ${message}`);
     throw new Error(`reindex request to ${MCP_REINDEX_URL} failed: ${message}`);
