@@ -49,8 +49,7 @@ We are integrating an end-to-end AI Agent into our Price Monitor app. The goal i
 
 ## 5. Implementation Roadmap (Task List)
 
-This list is the resumable guideline. Each sub-task is sized to be independently testable and small enough to learn in one sitting. 
-After each coding sub-task is implemented, the AI assistant will stop and explain the change in detail before moving on, **help the developer (me) to fully understand** what have been done, what are they, how they works, in a simple, easy to understand way, so I can fully understand and learn about what we did.
+This list is the resumable guideline. Each sub-task is sized to be independently testable.
 
 ### Legend
 
@@ -123,6 +122,8 @@ Three issues surfaced during the PR #47 code review of the 3.9–3.16 work. Reso
 ### Phase 4 — Semantic Search with pgvector (RAG)
 Goal: Users query in natural language; the chatbot retrieves relevant products via vector similarity.
 
+**Workflow note:** 4.2 is the **design task** (speckit `specify → plan → tasks`) — it produces the `specs/<feature>/` folder for the whole Phase 4 embedding pipeline. 4.3–4.7 are the **implement phase** of that same spec. 4.2–4.7 are executed together as **one full speckit workflow** (`specify → plan → tasks → implement`). (4.1 and 4.8 are `[Manual]`.)
+
 **Decisions locked before 4.2 (rationale recorded here so the spec and later tasks stay consistent). These are intentionally detailed so the speckit 4.2 workflow does not need to re-clarify them.**
 
 - **Embedding model — LOCAL via Transformers.js.** Use `@huggingface/transformers` running `all-MiniLM-L6-v2` (**384-dim**, quantized int8), lazy-loaded on first use. Chosen over a paid API because: (a) zero cost, (b) zero external dependency / fully private, (c) strongest portfolio/interview story, (d) it **fits the production droplet** — 14-day RAM history shows a stable 67–69% / 72% peak on the $24/mo 2 vCPU · 4 GB DigitalOcean droplet (peak already includes daily Playwright runs), and MiniLM adds ~300 MB resident → ~76% baseline / ~79–82% peak, leaving ~750–850 MB free. No upgrade needed. **The model is loaded in exactly one process** (see "Where embedding runs" below) so the ~300 MB is paid once, not per process.
@@ -148,7 +149,9 @@ Goal: Users query in natural language; the chatbot retrieves relevant products v
 - **Vector dimension is fixed by the chosen model** — `vector(384)` for the `local` default.
 
 - [x] 4.1 **[Manual]** Enable `pgvector` extension in the local Docker Postgres image (update `docker-compose.yml` image or init script) and document for prod
-- [ ] 4.2 **[Code+Speckit]** Design the embedding pipeline end-to-end — the `productEmbeddings` table shape (one row per (product, chunk): `productId` FK cascade, `chunkIndex`, `content`, `embedding vector(384)`; HNSW index), the composite document + chunking strategy (splitter, ~200-token token-accurate chunks with overlap, per-chunk identity prefix), the re-embed flow (delete-and-replace a product's chunk rows on `update-product-info`), the worker→mcp-server reindex path, and the query/dedup-to-best-chunk-per-product strategy — produces the spec that the Drizzle schema + later tasks follow. (Model, chunking, multi-vector table, index type, and embed-host all decided above.)
+- [ ] 4.2 **[Code+Speckit — design only]** Run speckit `specify → plan → tasks` for the whole Phase 4 embedding pipeline: the `productEmbeddings` table shape (one row per (product, chunk): `productId` FK cascade, `chunkIndex`, `content`, `embedding vector(384)`; HNSW index), the composite document + chunking strategy (splitter, ~200-token token-accurate chunks with overlap, per-chunk identity prefix), the re-embed flow (delete-and-replace a product's chunk rows on `update-product-info`), the worker→mcp-server reindex path, and the query/dedup-to-best-chunk-per-product strategy. Output is the `specs/<feature>/` folder that 4.3–4.7 implement. (Model, chunking, multi-vector table, index type, and embed-host all decided above.)
+_4.3–4.7 are the **implement phase** of the 4.2 spec (executed in the same speckit workflow)._
+
 - [ ] 4.3 **[Code]** Drizzle schema + migration for the `productEmbeddings` table (per-chunk rows, `vector(384)`, HNSW index on the embedding column, `productId` FK cascade) — follows 4.2's spec
 - [ ] 4.4 **[Code]** Embedding service in `mcp-server` (default: local Transformers.js `all-MiniLM-L6-v2` called directly): build the composite document, chunk it, embed each chunk, and delete-and-replace a product's rows; plus a query-embed path for search. Behind the `EMBEDDING_PROVIDER` abstraction with optional Vercel AI SDK `embed`/`embedMany` API providers as fallback
 - [ ] 4.5 **[Code]** Backfill script (`scripts/backfill-embeddings.ts`) that (re)indexes every existing product once via the mcp-server embedding path. **Run order:** the 007 `backfill:product-info` must run first so products have metadata to embed. Idempotent (delete-and-replace per product, safe to re-run)
@@ -176,9 +179,7 @@ Scope and ordering to be revisited once the core features are live.
 
 ---
 
-## 6. Working Agreement (Collaboration Mode)
+## 6. Working Agreement
 
-- The assistant implements **[Code]** tasks; the user performs **[Manual]** tasks; **[Code+Speckit]** tasks go through the speckit workflow before implementation.
-- After each **[Code]** or **[Code+Speckit]** sub-task is implemented, the assistant **stops and explains** what was built, how it works, and how it connects to the broader architecture — before moving to the next sub-task.
-- Tasks may be re-broken into even smaller pieces during implementation if a piece turns out to be too large to learn at once.
+- The assistant implements **[Code]** tasks; the user performs **[Manual]** tasks; **[Code+Speckit]** tasks go through the speckit workflow.
 - Progress is tracked by updating the checkboxes in section 5 as each sub-task is completed.
