@@ -46,19 +46,9 @@ export function registerSemanticSearchProducts(server: McpServer) {
       }
 
       const results = matches.map((m) => ({
-        id: m.id,
-        name: m.name,
-        url: m.url,
-        brand: m.brand,
-        category: m.category,
-        countryOfOrigin: m.countryOfOrigin,
-        description: m.description,
-        attributes: m.attributes,
-        currentPriceCents: m.currentPriceCents,
+        ...m,
+        // Display string ("NZD 585.00") the agent must show verbatim.
         currentPriceFormatted: formatPriceCents(m.currentPriceCents, m.currency),
-        currency: m.currency,
-        matchedChunk: m.matchedChunk,
-        distance: m.distance,
       }));
 
       return {

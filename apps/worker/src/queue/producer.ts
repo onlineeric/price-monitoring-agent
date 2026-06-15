@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { connection, QUEUE_NAME } from "../config.js";
+import { REINDEX_JOB_NAME, REINDEX_JOB_OPTS } from "./reindexJob.js";
 
 /**
  * Worker-side queue producer (feature 008, US2).
@@ -11,7 +12,7 @@ import { connection, QUEUE_NAME } from "../config.js";
  * side-effect-free.
  */
 
-export const REINDEX_JOB_NAME = "reindex-product-embeddings";
+export { REINDEX_JOB_NAME };
 
 let queue: Queue | null = null;
 function getQueue(): Queue {
@@ -22,20 +23,9 @@ function getQueue(): Queue {
 }
 
 /**
- * Enqueue a durable, retryable reindex job for one product. Options per
- * `contracts/reindex-job.md`: 5 attempts with exponential backoff so a transient
- * mcp-server outage self-heals; completed jobs are dropped, failed jobs retained
- * (100) for diagnosis.
+ * Enqueue a durable, retryable reindex job for one product. The retry contract
+ * (`REINDEX_JOB_OPTS`) is shared with the backfill so the two can't drift.
  */
 export async function enqueueReindex(productId: string): Promise<void> {
-  await getQueue().add(
-    REINDEX_JOB_NAME,
-    { productId },
-    {
-      attempts: 5,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: 100,
-    },
-  );
+  await getQueue().add(REINDEX_JOB_NAME, { productId }, REINDEX_JOB_OPTS);
 }

@@ -13,15 +13,14 @@ import { dimensions as localDimensions, embedLocal } from "./local.js";
  * deliberate migration, not a runtime toggle.
  */
 
-const NON_LOCAL_PROVIDER_MESSAGE =
-  'EMBEDDING_PROVIDER="%p" is not wired. Only "local" is implemented. To use a non-local ' +
-  "provider: install `ai` + the matching adapter (`@ai-sdk/openai` or `@ai-sdk/google`) in " +
-  "apps/mcp-server, implement the embedMany branch in embeddings/provider.ts, and migrate the " +
-  "product_embeddings.embedding column to the provider's dimension (OpenAI 1536, Google 768), " +
-  "then re-run the embeddings backfill and rebuild the HNSW index.";
-
 function notWired(provider: string): never {
-  throw new Error(NON_LOCAL_PROVIDER_MESSAGE.replace("%p", provider));
+  throw new Error(
+    `EMBEDDING_PROVIDER="${provider}" is not wired. Only "local" is implemented. To use a non-local ` +
+      "provider: install `ai` + the matching adapter (`@ai-sdk/openai` or `@ai-sdk/google`) in " +
+      "apps/mcp-server, implement the embedMany branch in embeddings/provider.ts, and migrate the " +
+      "product_embeddings.embedding column to the provider's dimension (OpenAI 1536, Google 768), " +
+      "then re-run the embeddings backfill and rebuild the HNSW index.",
+  );
 }
 
 /** Embed a batch of documents → one vector per input (write/index path). */
@@ -39,18 +38,13 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 
 /** Embed a single query string → one vector (read/search path). */
 export async function embedQuery(query: string): Promise<number[]> {
-  const { provider } = getEmbeddingConfig();
-  switch (provider) {
-    case "local": {
-      const [vector] = await embedLocal([query]);
-      if (!vector) {
-        throw new Error("embedQuery: local model returned no vector");
-      }
-      return vector;
-    }
-    default:
-      return notWired(provider);
+  // Delegate provider dispatch to embedTexts so the single-query (read) path
+  // can't drift from the batch (write) path.
+  const [vector] = await embedTexts([query]);
+  if (!vector) {
+    throw new Error("embedQuery: model returned no vector for query");
   }
+  return vector;
 }
 
 /** The active provider's vector dimension (must match the DB column width). */

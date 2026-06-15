@@ -3,18 +3,13 @@ import { db, products } from "@price-monitor/db";
 import { Queue } from "bullmq";
 import { config } from "dotenv";
 import { Redis } from "ioredis";
+// Shared job identity + retry contract — same source the live producer uses, so
+// a backfilled job retries with backoff exactly like a live one. This module is
+// side-effect-free, so importing it does not pull in the worker's eager Redis
+// connection (the backfill manages its own).
+import { REINDEX_JOB_NAME, REINDEX_JOB_OPTS } from "../src/queue/reindexJob.js";
 
 const QUEUE_NAME = "price-monitor-queue";
-const REINDEX_JOB_NAME = "reindex-product-embeddings";
-
-// Job options mirror the reindex producer (contracts/reindex-job.md) so a
-// backfilled job retries with backoff exactly like a live one.
-const REINDEX_JOB_OPTS = {
-  attempts: 5,
-  backoff: { type: "exponential" as const, delay: 5000 },
-  removeOnComplete: true,
-  removeOnFail: 100,
-};
 
 /** Minimal queue surface the backfill needs — eases testing with a mock. */
 interface EnqueueOnly {
