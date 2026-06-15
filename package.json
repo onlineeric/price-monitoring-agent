@@ -40,5 +40,11 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
     "dotenv": "^16.6.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "onnxruntime-node",
+      "protobufjs"
+    ]
   }
 }

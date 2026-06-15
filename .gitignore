@@ -21,6 +21,9 @@
 
 # Drizzle & DB files
 **/drizzle/*.sql
+# ...but DO track committed, versioned migrations (Migration Rule since 007):
+# they must ship in the repo so a fresh clone / prod deploy can apply them.
+!packages/db/drizzle/*.sql
 **/*.sqlite
 **/dev.db
 **/dev.db-journal

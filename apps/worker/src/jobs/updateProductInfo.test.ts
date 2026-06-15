@@ -22,8 +22,13 @@ const dbMocks = vi.hoisted(() => ({
 
 const scraperMocks = vi.hoisted(() => ({ scrapeProductInfo: vi.fn() }));
 
+// Feature 008: the success path best-effort enqueues a reindex job. Mock the
+// producer at the boundary so no real Redis connection is opened in tests.
+const producerMocks = vi.hoisted(() => ({ enqueueReindex: vi.fn() }));
+
 vi.mock("../services/database.js", () => dbMocks);
 vi.mock("../services/scraper.js", () => scraperMocks);
+vi.mock("../queue/producer.js", () => producerMocks);
 
 import updateProductInfoJob from "./updateProductInfo";
 
@@ -46,6 +51,8 @@ const FULL_DATA = {
 beforeEach(() => {
   for (const m of Object.values(dbMocks)) m.mockReset();
   scraperMocks.scrapeProductInfo.mockReset();
+  producerMocks.enqueueReindex.mockReset();
+  producerMocks.enqueueReindex.mockResolvedValue(undefined);
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -75,6 +82,9 @@ describe("updateProductInfoJob — success (overwrite)", () => {
     expect(dbMocks.updateProductTimestamp).toHaveBeenCalledWith("prod-1");
     expect(dbMocks.logRun).toHaveBeenCalledWith({ productId: "prod-1", status: "SUCCESS" });
     expect("success" in result && result.success).toBe(true);
+    // Feature 008: a successful info refresh enqueues exactly one reindex job.
+    expect(producerMocks.enqueueReindex).toHaveBeenCalledTimes(1);
+    expect(producerMocks.enqueueReindex).toHaveBeenCalledWith("prod-1");
   });
 
   it("blanks missing metadata fields on a partial page (still a success with a price)", async () => {
@@ -125,6 +135,30 @@ describe("updateProductInfoJob — payload resolution", () => {
     const result = await updateProductInfoJob(makeJob({}));
     expect(result).toEqual({ status: "skipped", reason: "no_url" });
     expect(scraperMocks.scrapeProductInfo).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateProductInfoJob — reindex enqueue (feature 008)", () => {
+  it("does NOT enqueue a reindex on a total failure (metadata untouched)", async () => {
+    scraperMocks.scrapeProductInfo.mockResolvedValueOnce({ success: false, method: "ai", error: "unreachable" });
+    dbMocks.getProductByUrl.mockResolvedValueOnce({ id: "prod-f", url: "https://shop/f" });
+
+    await updateProductInfoJob(makeJob({ url: "https://shop/f" }));
+
+    expect(producerMocks.enqueueReindex).not.toHaveBeenCalled();
+  });
+
+  it("never fails the metadata/price write when the reindex enqueue throws (FR-015)", async () => {
+    scraperMocks.scrapeProductInfo.mockResolvedValueOnce({ success: true, method: "ai", data: FULL_DATA });
+    dbMocks.getOrCreateProductByUrl.mockResolvedValueOnce({ id: "prod-1", url: "https://shop/k" });
+    producerMocks.enqueueReindex.mockRejectedValueOnce(new Error("redis down"));
+
+    const result = await updateProductInfoJob(makeJob({ url: "https://shop/k" }));
+
+    // The write still succeeded — the enqueue failure is swallowed + logged.
+    expect("success" in result && result.success).toBe(true);
+    expect(dbMocks.logRun).toHaveBeenCalledWith({ productId: "prod-1", status: "SUCCESS" });
+    expect(producerMocks.enqueueReindex).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -57,3 +57,6 @@ export type NewSetting = typeof schema.settings.$inferInsert;
 
 export type ManualReportSend = typeof schema.manualReportSends.$inferSelect;
 export type NewManualReportSend = typeof schema.manualReportSends.$inferInsert;
+
+export type ProductEmbedding = typeof schema.productEmbeddings.$inferSelect;
+export type NewProductEmbedding = typeof schema.productEmbeddings.$inferInsert;

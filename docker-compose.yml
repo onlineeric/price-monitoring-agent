@@ -65,6 +65,9 @@ services:
       ENABLE_SCHEDULER: "true"
       # Auto-apply pending DB migrations on startup (same single gated instance)
       RUN_MIGRATIONS: "true"
+      # Semantic search (feature 008): the reindex job POSTs here. Use the
+      # mcp-server Docker service name, not localhost.
+      MCP_REINDEX_URL: http://mcp-server:3002/internal/reindex
       # Timezone used by BullMQ repeatable cron jobs
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
       # Email
@@ -95,6 +98,13 @@ services:
       # Port 3002 (not 3001) so we don't collide with the worker's health server on host
       MCP_TRANSPORT: http
       MCP_HTTP_PORT: "3002"
+      # Semantic search (feature 008): the mcp-server is the single embedding
+      # authority. Weights are baked into the image at EMBEDDING_CACHE_DIR.
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-Xenova/all-MiniLM-L6-v2}
+      EMBEDDING_CACHE_DIR: /app/.cache/transformers
+      SEMANTIC_SEARCH_TOP_N: ${SEMANTIC_SEARCH_TOP_N:-5}
+      SEMANTIC_SEARCH_MAX_DISTANCE: ${SEMANTIC_SEARCH_MAX_DISTANCE:-0.70}
       # Timezone used by any date-based tools
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
     depends_on:

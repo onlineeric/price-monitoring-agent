@@ -43,7 +43,7 @@ describe("US2 — stdio transport (no regression)", () => {
     }
   });
 
-  it("(a) tools/list over stdin returns the five expected tool names", async () => {
+  it("(a) tools/list over stdin returns the six expected tool names", async () => {
     const server = useShared();
     const stdoutPromise = server.waitForStdout(/"id":1/, 5_000);
     server.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })}\n`);
@@ -53,7 +53,14 @@ describe("US2 — stdio transport (no regression)", () => {
     };
     const names = (parsed.result?.tools ?? []).map((t) => t.name).sort();
     expect(names).toEqual(
-      ["add_product", "get_price_summary", "get_product_history", "ping", "search_products"].sort(),
+      [
+        "add_product",
+        "get_price_summary",
+        "get_product_history",
+        "ping",
+        "search_products",
+        "semantic_search_products",
+      ].sort(),
     );
   });
 

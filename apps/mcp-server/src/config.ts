@@ -38,6 +38,81 @@ export interface ServerConfig {
   requestTimeoutMs: number;
 }
 
+/**
+ * Embedding + semantic-search config (feature 008). Read once at module load.
+ * The mcp-server is the single embedding authority, so this config lives here
+ * (not in the worker, which only enqueues reindex jobs).
+ *
+ * Defaults match `.env.example` and `plan.md`. `SEMANTIC_SEARCH_MAX_DISTANCE`
+ * is the cosine-distance relevance cutoff (lower = stricter) — tuned against
+ * the real catalog during 4.8; `0.55` is the starting point.
+ */
+export type EmbeddingProvider = "local" | "openai" | "google";
+
+export interface EmbeddingConfig {
+  provider: EmbeddingProvider;
+  model: string;
+  cacheDir: string | undefined;
+  topN: number;
+  maxDistance: number;
+}
+
+const providerSchema = z
+  .union([z.literal("local"), z.literal("openai"), z.literal("google")])
+  .default("local");
+const topNSchema = z.coerce.number().int().min(1).max(50).default(5);
+// Default tuned against the real catalog in 4.8 (T039): on-topic matches land
+// ≤0.66, nearest off-topic ≥0.76, so 0.70 separates them with margin. Started
+// at 0.55 (research D7), which dropped relevant items (e.g. red wine at ~0.65).
+const maxDistanceSchema = z.coerce.number().min(0).max(2).default(0.7);
+
+export function loadEmbeddingConfig(env: NodeJS.ProcessEnv = process.env): EmbeddingConfig {
+  const provider = providerSchema.safeParse(env.EMBEDDING_PROVIDER);
+  if (!provider.success) {
+    throw new ConfigError(
+      `invalid EMBEDDING_PROVIDER="${env.EMBEDDING_PROVIDER}" (expected "local", "openai", or "google")`,
+    );
+  }
+
+  const topN = topNSchema.safeParse(env.SEMANTIC_SEARCH_TOP_N);
+  if (!topN.success) {
+    throw new ConfigError(
+      `invalid SEMANTIC_SEARCH_TOP_N="${env.SEMANTIC_SEARCH_TOP_N}" (expected integer in [1, 50])`,
+    );
+  }
+
+  const maxDistance = maxDistanceSchema.safeParse(env.SEMANTIC_SEARCH_MAX_DISTANCE);
+  if (!maxDistance.success) {
+    throw new ConfigError(
+      `invalid SEMANTIC_SEARCH_MAX_DISTANCE="${env.SEMANTIC_SEARCH_MAX_DISTANCE}" (expected number in [0, 2])`,
+    );
+  }
+
+  const cacheDir = env.EMBEDDING_CACHE_DIR?.trim();
+
+  return {
+    provider: provider.data,
+    model: env.EMBEDDING_MODEL?.trim() || "Xenova/all-MiniLM-L6-v2",
+    cacheDir: cacheDir && cacheDir.length > 0 ? cacheDir : undefined,
+    topN: topN.data,
+    maxDistance: maxDistance.data,
+  };
+}
+
+/**
+ * Module-level singleton so the search tool and reindex path read the same
+ * config without re-parsing env on every call. Loaded lazily on first access
+ * to keep module import side-effect-free (consistent with the local-model
+ * singleton).
+ */
+let cachedEmbeddingConfig: EmbeddingConfig | null = null;
+export function getEmbeddingConfig(): EmbeddingConfig {
+  if (!cachedEmbeddingConfig) {
+    cachedEmbeddingConfig = loadEmbeddingConfig();
+  }
+  return cachedEmbeddingConfig;
+}
+
 export class ConfigError extends Error {
   constructor(message: string) {
     super(message);

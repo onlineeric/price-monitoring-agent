@@ -8,6 +8,7 @@ import {
   updateProductFailure,
   updateProductTimestamp,
 } from "../services/database.js";
+import { enqueueReindex } from "../queue/producer.js";
 import { type ProductInfoResult, scrapeProductInfo } from "../services/scraper.js";
 import { formatErrorMessage, resolveTargetUrl } from "./jobUtils.js";
 
@@ -123,6 +124,18 @@ export default async function updateProductInfoJob(
     await logRun({ productId: product.id, status: "SUCCESS" });
 
     console.log(`[${jobId}] Product info updated (ID: ${product.id})`);
+
+    // Feature 008: rebuild semantic-search embeddings now that metadata changed.
+    // Best-effort — an enqueue failure (e.g. Redis hiccup) is logged but MUST
+    // NOT fail the metadata/price write (FR-015). The job itself retries the
+    // mcp-server call with backoff. Price-only checks never reach here, so they
+    // never reindex (FR-011); the info+price digest fans out to per-product
+    // update-product-info, so the batch is covered automatically (FR-010).
+    try {
+      await enqueueReindex(product.id);
+    } catch (enqueueError) {
+      console.warn(`[${jobId}] Failed to enqueue reindex (non-fatal):`, formatErrorMessage(enqueueError));
+    }
   } catch (dbError) {
     const errorMessage = formatErrorMessage(dbError);
     console.error(`[${jobId}] Failed to save product info: ${errorMessage}`);
