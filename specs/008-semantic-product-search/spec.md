@@ -44,6 +44,14 @@ so planning stays consistent):
 - **One process owns the embedding model** so its memory cost is paid once and
   the production host stays within its RAM budget.
 
+## Clarifications
+
+### Session 2026-06-15
+
+- Q: How should the search tool decide when nothing is relevant enough, given a non-empty index always has a "nearest" product? → A: Apply a **configurable cosine-distance cutoff** (sensible default, tunable via env). Only matches within the threshold are returned, so an off-topic query yields an empty set.
+- Q: How many distinct products should semantic search return by default (top-N)? → A: **Configurable, default 5** (exposed as a tool parameter / env with a default of 5).
+- Q: If write-time reindex fails (e.g. embedding service briefly unavailable) after a metadata refresh, how should the system recover without failing the metadata write? → A: Enqueue a **dedicated, retryable reindex job** (queue-backed, with backoff) so the metadata/price write commits immediately and reindex eventually succeeds on its own.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Find products by meaning in chat (Priority: P1)
@@ -78,9 +86,10 @@ irrelevant catalog returns "nothing found" gracefully rather than an error.
    single embedding, **When** the user's query matches content buried deep in the
    specs, **Then** the product is still found (via its best-matching fragment) and
    appears **once**, not once per fragment.
-3. **Given** a query that no product is semantically relevant to (or an empty
-   index), **When** the user asks it, **Then** semantic search returns an empty
-   result set with no error and the agent can say nothing relevant was found.
+3. **Given** a query no product is within the relevance (distance) threshold of
+   (or an empty index), **When** the user asks it, **Then** semantic search returns
+   an empty result set with no error and the agent can say nothing relevant was
+   found — rather than surfacing the nearest-but-irrelevant product.
 4. **Given** a query containing a price predicate such as "cheap gaming monitor",
    **When** the agent handles it, **Then** the semantic part ("gaming monitor")
    drives semantic search while the price part ("cheap") is handled by the
@@ -120,8 +129,9 @@ unchanged; delete a product and confirm it no longer appears in results.
    index fragments are removed and it no longer appears in semantic-search results.
 5. **Given** the embedding authority is temporarily unavailable when a metadata
    refresh completes, **When** reindex cannot run, **Then** the metadata and price
-   write still succeed (007 behavior preserved) and the indexing failure is logged
-   for retry rather than failing the refresh.
+   write still succeed (007 behavior preserved) and the reindex is retried durably via
+   its queued job (with backoff) until it succeeds, rather than failing the refresh or
+   leaving the index permanently stale.
 
 ---
 
@@ -169,6 +179,10 @@ errors and produces no duplicate index entries.
   (the replace is applied atomically).
 - **Empty index / fresh database**: searching before anything is indexed returns
   no results with no error.
+- **Off-topic query against a populated index**: a query unrelated to anything in
+  the catalog returns an empty set because no product's best fragment falls within the
+  relevance (distance) threshold — the tool does not surface the nearest-but-irrelevant
+  product just because it is closest.
 - **Long content not lost**: a description plus up to 100 specs that exceeds the
   embedding input window is represented across multiple fragments; no content is
   silently truncated away.
@@ -194,18 +208,22 @@ errors and produces no duplicate index entries.
 - **FR-003**: Matching MUST be based on the meaning of a product's **rich
   metadata** (name, brand, category, country of origin, description, and key/value
   specs), not only literal keyword overlap with the product name.
-- **FR-004**: Search MUST return at most a bounded top-N set of **distinct**
-  products (no product appearing more than once), each accompanied by its rich
-  metadata so the agent can explain the match.
+- **FR-004**: Search MUST return at most a **configurable top-N** (default **5**)
+  set of **distinct** products (no product appearing more than once), each
+  accompanied by its rich metadata so the agent can explain the match. The top-N
+  limit MUST be adjustable (tool parameter and/or environment) without code change.
 - **FR-005**: When a product is represented by multiple indexed fragments, search
   MUST collapse it to its single best-matching fragment so long products are
   neither duplicated in results nor unfairly penalized.
 - **FR-006**: Semantic search MUST apply semantic similarity only; price-based
   predicates (e.g., "cheap", "under $200") are handled by the existing price tools
   and MUST NOT be implemented as a vector filter in this feature.
-- **FR-007**: When no product is semantically relevant — including when the index
-  is empty — search MUST return an empty result set gracefully (no error) so the
-  agent can report that nothing was found.
+- **FR-007**: Search MUST apply a **configurable similarity (cosine-distance)
+  threshold**: only products whose best fragment falls within the threshold are
+  returned. When no product is within the threshold — including when the index is
+  empty — search MUST return an empty result set gracefully (no error) so the agent
+  can report that nothing relevant was found. The threshold MUST have a sensible
+  default and be tunable via environment without code change.
 
 **Index construction & freshness (US2)**
 
@@ -230,8 +248,11 @@ errors and produces no duplicate index entries.
   (reindex/backfill) MUST go through that authority so the model's memory cost is
   paid once.
 - **FR-015**: A failure to (re)index a product MUST NOT fail or block the
-  underlying metadata/price write; indexing is best-effort and such failures MUST be
-  logged so they can be retried/diagnosed.
+  underlying metadata/price write. Reindexing MUST be performed via a **dedicated,
+  retryable reindex job** (queue-backed, with backoff) so the metadata/price write
+  commits immediately and a transient embedding-side failure is retried durably until
+  it succeeds, rather than leaving the index silently stale. Exhausted retries MUST be
+  logged so they can be diagnosed and recovered (e.g. via the backfill).
 
 **Backfill (US3)**
 
@@ -264,7 +285,9 @@ errors and produces no duplicate index entries.
 - **Composite document (concept)**: the assembled, priority-ordered metadata text
   for a product that is split into the fragments above.
 - **Reindex operation (concept)**: the delete-and-replace of a product's fragments,
-  triggered by a successful metadata (re)extraction or by the backfill.
+  triggered by a successful metadata (re)extraction or by the backfill. At write-time
+  it runs as a **dedicated, retryable queued job** so it is decoupled from (and never
+  blocks) the metadata/price write.
 
 ## Technical and Operational Constraints *(mandatory)*
 
@@ -281,20 +304,24 @@ errors and produces no duplicate index entries.
   **additive, versioned, committed migration** applied on deploy by the single gated
   instance (the existing `RUN_MIGRATIONS` pattern), with a manual apply fallback. The
   vector extension must be present (already enabled locally in 4.1; production
-  enablement documented). New surfaces: a `semantic_search_products` agent tool, an
-  internal mcp-server reindex entry point called by the worker and the backfill. The
-  existing price-check, metadata, digest, and `search_products` contracts are
+  enablement documented). New surfaces: a `semantic_search_products` agent tool (with
+  a configurable top-N default 5 and a configurable cosine-distance relevance
+  threshold), an internal mcp-server reindex entry point, and a **dedicated retryable
+  reindex job** the worker enqueues after a metadata refresh (and the backfill drives).
+  The existing price-check, metadata, digest, and `search_products` contracts are
   unchanged.
 - **Operational Impact**: the embedding model is loaded in exactly one process
   (`mcp-server`); per the locked Phase 4 RAM analysis (recorded in project memory)
   the local model adds roughly 300 MB resident and fits the production droplet's
   established headroom — there is no second model load. Query-time embedding is local
   and fast; write-time reindex is an occasional extra hop (worker → mcp-server) whose
-  cost is acceptable because metadata refreshes are infrequent. Reindexing is
-  **best-effort and MUST NOT block or fail** the metadata/price pipeline; structured
-  logging covers reindex and search outcomes; an empty index degrades to "no results"
-  rather than an error. Changing the embedding provider is a deliberate multi-step
-  operation (dimension resize + re-backfill + index rebuild), not a runtime switch.
+  cost is acceptable because metadata refreshes are infrequent. Reindexing **MUST NOT
+  block or fail** the metadata/price pipeline: it runs as a dedicated, queue-backed
+  retryable job (with backoff) so a transient embedding-side failure self-heals rather
+  than leaving the index stale; structured logging covers reindex and search outcomes;
+  an empty index or a below-threshold query degrades to "no results" rather than an
+  error. Changing the embedding provider is a deliberate multi-step operation
+  (dimension resize + re-backfill + index rebuild), not a runtime switch.
 - **Inherited (locked) technical decisions** — established in the Phase 4 roadmap
   before this spec and not re-litigated here: local embedding model as the default
   path (called directly, not via the AI SDK), token-accurate chunking into ~200-token
@@ -309,8 +336,11 @@ errors and produces no duplicate index entries.
 - **Verification Notes**: automated coverage for composite-document assembly order,
   chunking (bounded fragments, overlap, no content loss, single-fragment degradation),
   delete-and-replace reindex, the trigger boundary (reindex on metadata refresh but
-  **not** on price-only check), best-fragment-per-product dedup in query results,
-  empty-index behavior, deletion cleanup, and backfill idempotency. Backend
+  **not** on price-only check), best-fragment-per-product dedup in query results, the
+  relevance-threshold cutoff (below-threshold/off-topic query returns empty) and
+  configurable top-N, the retryable reindex job (a transient failure is retried, not
+  swallowed, and never fails the metadata write), empty-index behavior, deletion
+  cleanup, and backfill idempotency. Backend
   dependencies (model, database, queue) are mocked at the module boundary per the
   repository's test convention. Manual validation (roadmap 4.8): ask the chatbot a
   natural-language query and confirm relevant products are returned.
@@ -324,7 +354,9 @@ errors and produces no duplicate index entries.
   query words do not literally appear in any product name (e.g., "a display for
   editing video" surfaces a relevant monitor).
 - **SC-002**: Semantic-search results contain only **distinct** products (no product
-  appears more than once) and never exceed the configured top-N.
+  appears more than once) and never exceed the configured top-N (default 5); an
+  off-topic query (nothing within the relevance threshold) returns an empty set rather
+  than an irrelevant nearest match.
 - **SC-003**: After a product's info is refreshed, a subsequent semantic search
   reflects the updated metadata, and a price-only check produces **no** change to
   that product's index.
@@ -343,6 +375,10 @@ errors and produces no duplicate index entries.
 - **SC-009**: Semantic search is fast enough to feel interactive in chat — a search
   over the production-sized catalog returns within a couple of seconds so the
   conversational experience is not noticeably delayed.
+- **SC-010**: A transient reindex failure (embedding authority briefly unavailable)
+  is recovered automatically — the queued reindex job retries and the product's index
+  becomes current with no manual intervention — while the triggering metadata/price
+  write still succeeds.
 
 ## Assumptions
 
@@ -358,9 +394,10 @@ errors and produces no duplicate index entries.
 - **Single embedding authority**: the `mcp-server` is the only process that loads the
   model and owns chunking/embedding and the embeddings table for both query-time and
   write-time, so the RAM cost is paid once.
-- **Best-effort indexing**: reindexing is decoupled from the metadata/price write; an
-  embedding-side failure is logged and retried, never propagated as a refresh failure
-  (007 metadata/price behavior is preserved exactly).
+- **Durable, decoupled indexing**: reindexing is decoupled from the metadata/price
+  write and runs as a dedicated, retryable queued job; an embedding-side failure is
+  retried with backoff (and logged if retries are exhausted), never propagated as a
+  refresh failure (007 metadata/price behavior is preserved exactly).
 - **Always re-embed on info refresh**: at the current dataset size every metadata
   refresh re-embeds the product (delete-and-replace); no content-hash skip
   optimization is built now (it can be revisited under later cost work).
