@@ -70,6 +70,21 @@ describe("chunk", () => {
     }
   });
 
+  it("does not double-prefix the leading chunk when it already starts with the name", async () => {
+    const NAME = "Widget";
+    // Document leads with the bare name (as buildDocument does), then a long
+    // run of spec tokens that spills into later chunks.
+    const spill = Array.from({ length: 600 }, (_, i) => `s${i}`).join(" ");
+    const chunks = await chunk(`${NAME} ${spill}`, PREFIX, NAME);
+
+    // Chunk 0 starts with the name and must NOT be re-prefixed with the full
+    // `name — brand (category)` identity (which would duplicate the name).
+    expect(chunks[0]?.startsWith(`${PREFIX}\n`)).toBe(false);
+    expect(chunks[0]?.startsWith(NAME)).toBe(true);
+    // Spill-over chunks no longer carry the name → they DO get the prefix.
+    expect(chunks.at(-1)?.startsWith(`${PREFIX}\n`)).toBe(true);
+  });
+
   it("produces overlap between consecutive chunks (repeated tokens)", async () => {
     const words = Array.from({ length: 600 }, (_, i) => `w${i}`).join(" ");
     const chunks = await chunk(words, PREFIX);

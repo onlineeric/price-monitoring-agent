@@ -59,6 +59,28 @@ describe("reindexEmbeddingsJob", () => {
     await expect(reindexEmbeddingsJob(makeJob("p1"))).rejects.toThrow(/HTTP 500/);
   });
 
+  it("resolves without throwing on a 404 (deleted product — terminal, no retry)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 404, text: async () => "not found" })),
+    );
+
+    const result = await reindexEmbeddingsJob(makeJob("gone"));
+
+    expect(result).toEqual({ productId: "gone", chunks: 0 });
+  });
+
+  it("resolves without throwing on a 400 (bad productId — terminal, no retry)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 400, text: async () => "validation_error" })),
+    );
+
+    const result = await reindexEmbeddingsJob(makeJob("bad-id"));
+
+    expect(result).toEqual({ productId: "bad-id", chunks: 0 });
+  });
+
   it("throws on a network error (so BullMQ retries)", async () => {
     vi.stubGlobal(
       "fetch",

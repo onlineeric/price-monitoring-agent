@@ -43,7 +43,7 @@ export async function reindexProduct(productId: string): Promise<number> {
 
   const document = buildDocument(product);
   const identityPrefix = buildIdentityPrefix(product);
-  const contents = await chunk(document, identityPrefix);
+  const contents = await chunk(document, identityPrefix, product.name);
 
   const embeddings = await embedTexts(contents);
   const rows = contents.map((content, chunkIndex) => {

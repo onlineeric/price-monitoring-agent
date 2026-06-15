@@ -8,9 +8,16 @@ import { getTokenizer } from "./local.js";
  * `RecursiveCharacterTextSplitter` with a length function backed by the MiniLM
  * tokenizer — character counts only approximate tokens and can overflow the
  * model's ~256-token window (triggering silent truncation), the exact failure
- * we're avoiding. Each fragment is prefixed with the product identity (research
- * D4) so a specs-only chunk is still self-describing, and `chunkSize` budgets
- * for the prefix so every embedded string stays within the window.
+ * we're avoiding. Spill-over fragments (deep specs that no longer carry the
+ * product name) are prefixed with the product identity (research D4) so they
+ * stay self-describing, and `chunkSize` budgets for the prefix so every
+ * embedded string stays within the window.
+ *
+ * The composite document leads with the bare product name, so the first
+ * fragment already carries identity (name + the brand/category sections that
+ * immediately follow). We therefore skip the prefix on any fragment that
+ * already starts with the name — prepending the full `name — brand (category)`
+ * prefix there would duplicate the name inside chunk 0 and skew its vector.
  *
  * Guarantees ≥1 chunk whenever there is any text (document or identity), so a
  * name-only product is indexed, never skipped.
@@ -20,7 +27,7 @@ const TARGET_TOKENS = 200;
 const OVERLAP_TOKENS = 30;
 const MIN_CHUNK_TOKENS = 32;
 
-export async function chunk(document: string, identityPrefix: string): Promise<string[]> {
+export async function chunk(document: string, identityPrefix: string, productName?: string | null): Promise<string[]> {
   const tokenizer = await getTokenizer();
   // `encode` returns the token-id array; its length is the token count.
   const countTokens = (text: string): number => tokenizer.encode(text).length;
@@ -44,11 +51,16 @@ export async function chunk(document: string, identityPrefix: string): Promise<s
     return prefix.length > 0 ? [prefix] : [];
   }
 
-  // Prepend the identity prefix to every fragment that doesn't already lead with
-  // it (the first fragment usually starts with the name == prefix, so we avoid
-  // duplicating it there).
-  return fragments.map((fragment) => {
-    if (prefix.length === 0 || fragment.startsWith(prefix)) return fragment;
-    return `${prefix}\n${fragment}`;
-  });
+  if (prefix.length === 0) return fragments;
+
+  // A fragment is already self-describing when it leads with the product name
+  // (the document starts with the name, so the first fragment does). Match
+  // against the bare name when we have it — the full prefix is `name — brand
+  // (category)`, which the document never leads with, so matching on the prefix
+  // alone would fail and double-prepend the identity onto chunk 0.
+  const name = productName?.trim() ?? "";
+  const leadsWithIdentity = (fragment: string): boolean =>
+    name.length > 0 ? fragment.startsWith(name) : fragment.startsWith(prefix);
+
+  return fragments.map((fragment) => (leadsWithIdentity(fragment) ? fragment : `${prefix}\n${fragment}`));
 }

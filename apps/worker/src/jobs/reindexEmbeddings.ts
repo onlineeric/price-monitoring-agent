@@ -9,8 +9,13 @@ import { MCP_REINDEX_URL } from "../config.js";
  * mcp-server's internal reindex endpoint (the single embedding authority), so
  * the worker's RAM budget is untouched.
  *
- * A non-2xx response or a network error is rethrown so BullMQ retries with
- * backoff (contract: reindex-job.md); a 2xx logs the chunk count.
+ * Failure handling distinguishes transient from permanent:
+ *  - network error or a 5xx → rethrow so BullMQ retries with backoff
+ *    (contract: reindex-job.md);
+ *  - 400 (bad productId) / 404 (product already deleted — its embeddings were
+ *    cascade-removed) → terminal: log and resolve, since retrying can never
+ *    succeed and would only churn the queue with spurious failures;
+ *  - 2xx → resolve, logging the chunk count.
  */
 
 interface ReindexJobData {
@@ -37,6 +42,13 @@ export default async function reindexEmbeddingsJob(job: Job<ReindexJobData>): Pr
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
+    // 400 (bad productId) and 404 (product already deleted) are permanent —
+    // retrying can never succeed and just churns the queue with backoff retries
+    // and failed-job noise. Resolve as a no-op; only 5xx/network errors retry.
+    if (response.status === 400 || response.status === 404) {
+      console.warn(`[${jobId}] reindex skipped (terminal HTTP ${response.status}): ${body}`);
+      return { productId, chunks: 0 };
+    }
     console.error(`[${jobId}] reindex non-2xx: HTTP ${response.status} ${body}`);
     throw new Error(`reindex returned HTTP ${response.status}`);
   }

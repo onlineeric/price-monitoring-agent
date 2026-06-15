@@ -21,6 +21,19 @@ import { embedQuery } from "./provider.js";
  *      distance/matched-chunk and preserve the nearest-first order.
  *
  * Empty index or all-below-threshold → `[]` (no error).
+ *
+ * NOTE on the HNSW index: this query intentionally does NOT use the
+ * `product_embeddings_embedding_hnsw` index. DISTINCT ON requires `product_id`
+ * to lead the inner ORDER BY, but HNSW is only chosen when the distance
+ * expression is the leading (and ideally sole) sort key — so the planner does an
+ * exact sequential scan + sort here. That is the correct trade-off at this scale
+ * (~10–50 products → low hundreds of chunk rows): the exact scan is well within
+ * SC-009 and, unlike an HNSW over-fetch-then-dedup, it cannot silently drop a
+ * product whose best chunk ranks just outside a candidate window (FR-004/FR-005
+ * demand the exact top-N distinct products). If the catalog grows by orders of
+ * magnitude, revisit with an HNSW-friendly candidate prefilter (and accept the
+ * approximation), not before. The index is retained for that future path and for
+ * the delete-and-replace write side.
  */
 
 export interface SemanticSearchResult {

@@ -87,7 +87,7 @@ describe("reindexProduct", () => {
 
     expect(count).toBe(2);
     expect(documentMock.buildDocument).toHaveBeenCalledWith(PRODUCT);
-    expect(chunkMock.chunk).toHaveBeenCalledWith("DOC", "PREFIX");
+    expect(chunkMock.chunk).toHaveBeenCalledWith("DOC", "PREFIX", PRODUCT.name);
     expect(providerMock.embedTexts).toHaveBeenCalledWith(["chunk 0", "chunk 1"]);
     expect(dbMock.insertValues).toHaveBeenCalledWith([
       { productId: "prod-1", chunkIndex: 0, content: "chunk 0", embedding: [0.1, 0.2, 0.3] },
