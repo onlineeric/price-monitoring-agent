@@ -13,6 +13,8 @@
  * See specs/004-chat-streaming-api/data-model.md §5.
  */
 
+import { PRODUCT_LINK_PREFIX } from "@/lib/chat/product-cards";
+
 export const CHAT_MAX_MESSAGES = 100;
 export const CHAT_MAX_MESSAGE_CHARS = 10_000;
 export const CHAT_CONVERSATION_ID_MAX = 200;
@@ -70,7 +72,7 @@ export const CHAT_SYSTEM_PROMPT = [
   'Tool results carry every price as both a raw `*Cents` integer (e.g. `currentPriceCents: 58500`) and a pre-formatted display string (e.g. `currentPriceFormatted: "USD 585.00"`). Always quote the formatted string verbatim when showing a price to the user. Never divide cents by 100, never add your own currency symbol, and never reformat the number — the formatted field already has the correct decimal places and currency code.',
   "",
   "## Linking products",
-  "When you mention a specific monitored product that a tool returned, write its name as a Markdown link to its id using this exact form: `[Product Name](#product-<id>)`, taking `<id>` from the `id` field of that tool result (for example `[Sony WH-1000XM5](#product-3f2a9c10-1b2c-4d5e-8f90-1234567890ab)`). This lets the user open the product's details in one click.",
+  `When you mention a specific monitored product that a tool returned, write its name as a Markdown link to its id using this exact form: \`[Product Name](${PRODUCT_LINK_PREFIX}<id>)\`, taking \`<id>\` from the \`id\` field of that tool result (for example \`[Sony WH-1000XM5](${PRODUCT_LINK_PREFIX}3f2a9c10-1b2c-4d5e-8f90-1234567890ab)\`). This lets the user open the product's details in one click.`,
   "Only link products you actually retrieved this turn — never invent an id, and never link a product a tool did not return. The id travels inside the link target; do not also print the raw id as visible text.",
   "",
   "## Style",

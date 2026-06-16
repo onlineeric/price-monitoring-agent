@@ -11,8 +11,6 @@ function rp(id: string, overrides: Partial<RetrievedProduct> = {}): RetrievedPro
     name: `Product ${id}`,
     url: `https://shop/${id}`,
     currentPriceFormatted: "NZD 10.00",
-    currentPriceCents: 1000,
-    currency: "NZD",
     ...overrides,
   };
 }

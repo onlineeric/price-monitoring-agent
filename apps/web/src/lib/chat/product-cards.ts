@@ -20,14 +20,30 @@ const PRODUCT_TOOL_NAMES = new Set(["search_products", "semantic_search_products
 /** Max cards shown per reply (spec FR-009 / clarification: cap 5 + "+N more"). */
 export const MAX_PRODUCT_CARDS = 5;
 
-export interface RetrievedProduct {
-  id: string;
-  name: string | null;
-  url: string;
-  currentPriceFormatted: string | null;
-  currentPriceCents: number | null;
-  currency: string | null;
-}
+/**
+ * Fragment-scheme prefix for inline product links (`#product-<id>`). A fragment
+ * (not a custom `product:` protocol) so it survives Streamdown's rehype-sanitize
+ * allow-list untouched. Single source of truth for the three-way contract: the
+ * system prompt instructs the model to emit this exact form, `markdown-content`
+ * parses it, and the sanitizer passes it through.
+ */
+export const PRODUCT_LINK_PREFIX = "#product-";
+
+// Both product tools share this core shape. Optional display fields normalize to
+// `null` (never `undefined`) via `.default(null)`; unknown extra fields (semantic
+// search adds metadata) are stripped by Zod's default object behavior.
+const retrievedProductSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().nullable().default(null),
+  url: z.string(),
+  currentPriceFormatted: z.string().nullable().default(null),
+});
+
+/**
+ * A product parsed out of a chat tool result. Zod-inferred — the schema above is
+ * the single source of truth for the shape.
+ */
+export type RetrievedProduct = z.infer<typeof retrievedProductSchema>;
 
 export interface MessageProductSurface {
   /** Every distinct product retrieved this message, in first-seen order. */
@@ -38,29 +54,7 @@ export interface MessageProductSurface {
   overflowCount: number;
 }
 
-// Both product tools share this core shape. Unknown extra fields (semantic
-// search adds metadata) are stripped by Zod's default object behavior.
-const retrievedProductSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().nullish(),
-  url: z.string(),
-  currentPriceFormatted: z.string().nullish(),
-  currentPriceCents: z.number().nullish(),
-  currency: z.string().nullish(),
-});
-
 const productArraySchema = z.array(retrievedProductSchema);
-
-function normalize(raw: z.infer<typeof retrievedProductSchema>): RetrievedProduct {
-  return {
-    id: raw.id,
-    name: raw.name ?? null,
-    url: raw.url,
-    currentPriceFormatted: raw.currentPriceFormatted ?? null,
-    currentPriceCents: raw.currentPriceCents ?? null,
-    currency: raw.currency ?? null,
-  };
-}
 
 /** Collect the `text` payloads from an MCP `CallToolResult`-shaped value. */
 function textPartsOf(result: unknown): string[] {
@@ -96,7 +90,7 @@ function parseProducts(text: string): RetrievedProduct[] {
       return null;
     }
     const parsed = productArraySchema.safeParse(json);
-    return parsed.success ? parsed.data.map(normalize) : null;
+    return parsed.success ? parsed.data : null;
   };
 
   const direct = tryParse(text);

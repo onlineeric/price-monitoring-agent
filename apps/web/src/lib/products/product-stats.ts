@@ -49,19 +49,22 @@ type ProductRow = typeof products.$inferSelect;
  * product, and the same mapper the list path applies per product.
  */
 async function toProductWithStats(product: ProductRow): Promise<ProductWithStats> {
-  const [latestPrice] = await db
-    .select()
-    .from(priceRecords)
-    .where(eq(priceRecords.productId, product.id))
-    .orderBy(desc(priceRecords.scrapedAt))
-    .limit(1);
-
   const cutoff = subDays(new Date(), PRICE_HISTORY_DAYS);
-  const priceHistory = await db
-    .select()
-    .from(priceRecords)
-    .where(and(eq(priceRecords.productId, product.id), gte(priceRecords.scrapedAt, cutoff)))
-    .orderBy(priceRecords.scrapedAt);
+  // The latest price and the recent history window are independent queries —
+  // fetch them in parallel to save a round-trip per product.
+  const [[latestPrice], priceHistory] = await Promise.all([
+    db
+      .select()
+      .from(priceRecords)
+      .where(eq(priceRecords.productId, product.id))
+      .orderBy(desc(priceRecords.scrapedAt))
+      .limit(1),
+    db
+      .select()
+      .from(priceRecords)
+      .where(and(eq(priceRecords.productId, product.id), gte(priceRecords.scrapedAt, cutoff)))
+      .orderBy(priceRecords.scrapedAt),
+  ]);
 
   return {
     ...product,

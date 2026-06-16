@@ -4,6 +4,7 @@ import { type ComponentPropsWithoutRef, useMemo } from "react";
 
 import { Streamdown } from "streamdown";
 
+import { PRODUCT_LINK_PREFIX } from "@/lib/chat/product-cards";
 import { cn } from "@/lib/utils";
 
 import { useChatProduct } from "./chat-product-context";
@@ -19,11 +20,6 @@ interface MarkdownContentProps {
   knownProductIds?: ReadonlyMap<string, unknown>;
 }
 
-// A fragment scheme (rather than a custom `product:` protocol) so the link
-// survives Streamdown's rehype-sanitize protocol allow-list; rehype-harden
-// passes fragment URLs through untouched.
-const PRODUCT_LINK_PREFIX = "#product-";
-
 /** Return the product id from a `#product-<id>` href, or `null` for other hrefs. */
 function parseProductHref(href: string | undefined): string | null {
   if (!href || !href.startsWith(PRODUCT_LINK_PREFIX)) return null;
@@ -34,10 +30,10 @@ function parseProductHref(href: string | undefined): string | null {
 /**
  * Block-level elements we permit in assistant Markdown output.
  *
- * Streamdown ships with safe defaults (no `<script>`, `<iframe>`, `<style>`,
- * no inline event-handler attributes); we still pass an explicit list so the
- * safety contract is reviewable in our code rather than inferred from the
- * library's defaults. Per `plan.md` Technical Constraints.
+ * This strict allow-list IS the safety contract: anything not listed (e.g.
+ * `<script>`, `<iframe>`, `<style>`) is dropped, so no separate disallow-list is
+ * needed. We pass it explicitly so the contract is reviewable in our code rather
+ * than inferred from Streamdown's defaults. Per `plan.md` Technical Constraints.
  */
 const ALLOWED_ELEMENTS: readonly string[] = [
   "p",
@@ -68,20 +64,6 @@ const ALLOWED_ELEMENTS: readonly string[] = [
   "span",
   "div",
   "img",
-];
-
-const DISALLOWED_ELEMENTS: readonly string[] = [
-  "script",
-  "iframe",
-  "style",
-  "object",
-  "embed",
-  "form",
-  "input",
-  "button",
-  "textarea",
-  "select",
-  "option",
 ];
 
 /**
@@ -164,7 +146,6 @@ export function MarkdownContent({ text, className, knownProductIds }: MarkdownCo
     >
       <Streamdown
         allowedElements={ALLOWED_ELEMENTS}
-        disallowedElements={DISALLOWED_ELEMENTS}
         urlTransform={safeUrlTransform}
         components={components}
         skipHtml
