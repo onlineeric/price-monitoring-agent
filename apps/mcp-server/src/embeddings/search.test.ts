@@ -104,20 +104,37 @@ afterEach(() => {
 });
 
 describe("semanticSearch", () => {
-  it("returns [] (not an error) when nothing is within the cutoff / index is empty", async () => {
-    dbMock.limit.mockResolvedValueOnce([]);
+  it("returns [] (not an error) when even the best-effort fallback finds nothing / index is empty", async () => {
+    // Both the confident pass and the fallback pass come back empty.
+    dbMock.limit.mockResolvedValue([]);
     const results = await semanticSearch("recommend a hiking trail");
     expect(results).toEqual([]);
     // no metadata fetch when there are no matches
     expect(dbMock.findMany).not.toHaveBeenCalled();
+    // confident pass + best-effort fallback = two nearest-per-product queries,
+    // the fallback asking for exactly one product.
+    expect(dbMock.limit).toHaveBeenCalledTimes(2);
+    expect(dbMock.limit).toHaveBeenLastCalledWith(1);
+  });
+
+  it("falls back to the single nearest product (low-confidence) when nothing clears the cutoff", async () => {
+    dbMock.limit
+      .mockResolvedValueOnce([]) // confident pass: nothing within the cutoff
+      .mockResolvedValueOnce([{ productId: "p9", content: "closest chunk", distance: 0.81 }]); // fallback
+    dbMock.findMany.mockResolvedValueOnce([productRow("p9")]);
+
+    const results = await semanticSearch("host a big dinner party, any drink, no budget");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: "p9", distance: 0.81, lowConfidence: true });
+    expect(dbMock.limit).toHaveBeenLastCalledWith(1);
   });
 
   it("dedups to the best chunk per product via DISTINCT ON product_id", async () => {
-    dbMock.limit.mockResolvedValueOnce([]);
+    dbMock.limit.mockResolvedValue([]);
     await semanticSearch("anything");
-    expect(dbMock.selectDistinctOn).toHaveBeenCalledTimes(1);
-    const onCols = dbMock.selectDistinctOn.mock.calls[0]?.[0];
-    expect(onCols).toEqual([{ name: "product_id" }]);
+    // Both the confident and the fallback pass dedup on product_id.
+    expect(dbMock.selectDistinctOn.mock.calls[0]?.[0]).toEqual([{ name: "product_id" }]);
   });
 
   it("maps matches to distinct products nearest-first, attaching latest price + matched chunk", async () => {
@@ -146,6 +163,7 @@ describe("semanticSearch", () => {
       currency: "NZD",
       matchedChunk: "best chunk for p2",
       distance: 0.12,
+      lowConfidence: false,
     });
   });
 
@@ -158,22 +176,22 @@ describe("semanticSearch", () => {
     expect(result?.currency).toBeNull();
   });
 
-  it("uses the configured top-N as the LIMIT by default", async () => {
-    dbMock.limit.mockResolvedValueOnce([]);
+  it("uses the configured top-N as the LIMIT for the confident pass by default", async () => {
+    dbMock.limit.mockResolvedValue([]);
     await semanticSearch("x");
     expect(dbMock.limit).toHaveBeenCalledWith(5);
   });
 
-  it("honors an explicit limit override, clamped to [1, 50]", async () => {
+  it("honors an explicit limit override on the confident pass, clamped to [1, 50]", async () => {
     dbMock.limit.mockResolvedValue([]);
 
     await semanticSearch("x", 3);
-    expect(dbMock.limit).toHaveBeenLastCalledWith(3);
-
     await semanticSearch("x", 999);
-    expect(dbMock.limit).toHaveBeenLastCalledWith(50);
-
     await semanticSearch("x", 0);
-    expect(dbMock.limit).toHaveBeenLastCalledWith(1);
+
+    // Calls alternate confident-pass / fallback(=1); the confident pass is every
+    // even-indexed call and carries the clamped caller limit.
+    const confidentLimits = dbMock.limit.mock.calls.filter((_c, i) => i % 2 === 0).map((c) => c[0]);
+    expect(confidentLimits).toEqual([3, 50, 1]);
   });
 });

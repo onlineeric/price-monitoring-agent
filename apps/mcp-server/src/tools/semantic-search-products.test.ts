@@ -56,6 +56,7 @@ const ROW: SemanticSearchResult = {
   currency: "NZD",
   matchedChunk: "UltraView 27 — Acme (Monitors) colour-accurate panel",
   distance: 0.21,
+  lowConfidence: false,
 };
 
 beforeEach(() => {
@@ -103,7 +104,22 @@ describe("semantic_search_products tool", () => {
       currency: "NZD",
       matchedChunk: "UltraView 27 — Acme (Monitors) colour-accurate panel",
       distance: 0.21,
+      lowConfidence: false,
     });
+  });
+
+  it("flags a best-effort fallback row as low-confidence in the note", async () => {
+    searchMock.semanticSearch.mockResolvedValueOnce([{ ...ROW, distance: 0.81, lowConfidence: true }]);
+    const handler = captureHandler();
+    const result = await handler({ query: "host a big dinner party" });
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0]?.text ?? "";
+    expect(text).toMatch(/low.confidence/i);
+    // The row payload is still present after the note.
+    const json = text.slice(text.indexOf("["));
+    const parsed = JSON.parse(json) as Array<Record<string, unknown>>;
+    expect(parsed[0]).toMatchObject({ id: "p1", lowConfidence: true });
   });
 
   it("routes failures through the _wrap.ts error envelope", async () => {

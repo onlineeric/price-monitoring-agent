@@ -61,10 +61,16 @@ const providerSchema = z
   .union([z.literal("local"), z.literal("openai"), z.literal("google")])
   .default("local");
 const topNSchema = z.coerce.number().int().min(1).max(50).default(5);
-// Default tuned against the real catalog in 4.8 (T039): on-topic matches land
-// ≤0.66, nearest off-topic ≥0.76, so 0.70 separates them with margin. Started
-// at 0.55 (research D7), which dropped relevant items (e.g. red wine at ~0.65).
-const maxDistanceSchema = z.coerce.number().min(0).max(2).default(0.7);
+// Cosine-distance cutoff for a *confident* match. Re-tuned against the real
+// catalog for conversational queries (the chat agent's actual input): a
+// distilled, product-shaped query lands on-topic ~0.55–0.77 (e.g. red wine for
+// "wine and drinks for a dinner party" ≈ 0.62) while clearly off-topic items
+// sit ≥0.90, so 0.78 separates them with margin. Earlier values (0.55 research
+// D7, then 0.70 in 4.8) were tuned only against terse product-shaped queries
+// and silently dropped relevant items for verbose intent queries. Anything past
+// this cutoff is not dropped outright — `semanticSearch` falls back to the
+// single nearest product as a low-confidence match (see search.ts).
+const maxDistanceSchema = z.coerce.number().min(0).max(2).default(0.78);
 
 export function loadEmbeddingConfig(env: NodeJS.ProcessEnv = process.env): EmbeddingConfig {
   const provider = providerSchema.safeParse(env.EMBEDDING_PROVIDER);

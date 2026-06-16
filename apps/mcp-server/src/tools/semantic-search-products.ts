@@ -9,10 +9,14 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      "Natural-language description of the kind of product you're looking for, matched by MEANING " +
+      "A SHORT, product-shaped phrase describing the KIND of product wanted, matched by MEANING " +
         "against each product's metadata (name, brand, category, country, description, specs). " +
-        "This is the SEMANTIC part only — do NOT put price predicates here (e.g. \"cheap\", \"under $200\"). " +
-        "Route price/budget filtering to get_price_summary / search_products instead.",
+        "Distill the user's request down to the product essence — pass the noun phrase, not their full " +
+        "situational narrative. E.g. for \"I'm hosting a dinner party for lots of guests, suggest some " +
+        "drinks to buy, no budget limit\" pass \"wine and party drinks\", NOT the whole sentence: " +
+        "occasion/quantity/budget words (host, guests, suggestions, no budget) dilute the match and can " +
+        "drop the right product. Likewise do NOT put price predicates here (e.g. \"cheap\", \"under $200\"); " +
+        "route price/budget filtering to get_price_summary / search_products instead.",
     ),
   limit: z
     .number()
@@ -51,8 +55,18 @@ export function registerSemanticSearchProducts(server: McpServer) {
         currentPriceFormatted: formatPriceCents(m.currentPriceCents, m.currency),
       }));
 
+      const json = JSON.stringify(results, null, 2);
+      // Fallback rows (no chunk cleared the confident cutoff): the agent should
+      // present the closest item tentatively rather than as a strong match.
+      const lowConfidence = matches.every((m) => m.lowConfidence);
+      const text = lowConfidence
+        ? `No product is a STRONG semantic match for "${query}". Showing the single closest item as a ` +
+          "LOW-CONFIDENCE suggestion — tell the user it may not be a great fit and don't overstate it:\n" +
+          json
+        : json;
+
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }],
+        content: [{ type: "text" as const, text }],
       };
     }),
   );

@@ -60,7 +60,7 @@ export const CHAT_SYSTEM_PROMPT = [
   "## Tools",
   "Prefer calling a tool over guessing. Available tools (exposed by the MCP server):",
   "- `search_products` — find monitored products by name fragment (use for exact or known product names).",
-  '- `semantic_search_products` — find monitored products by MEANING from a natural-language description of a need, occasion, or use-case (use when the user describes what they want instead of naming it). Do not put price predicates (e.g. "cheap", "under $200") in the query; route budget filtering to the price tools.',
+  '- `semantic_search_products` — find monitored products by MEANING from a natural-language description of a need, occasion, or use-case (use when the user describes what they want instead of naming it). Distill the request into a SHORT product-shaped phrase before searching — pass the kind of product wanted, not the user\'s full story. E.g. for "friends are coming for dinner, suggest drinks, money is no object" search "wine and party drinks", not the whole sentence; occasion, quantity, and budget words ("dinner", "lots of guests", "no budget") dilute the match and can drop the right product. Do not put price predicates (e.g. "cheap", "under $200") in the query; route budget filtering to the price tools. If a search comes back low-confidence, offer the closest item but say it may not be a perfect fit.',
   "- `get_product_history` — fetch historical price records for one product.",
   "- `get_price_summary` — get current / min / max / avg price and trend over a window.",
   "- `add_product` — enqueue a new product URL to be monitored.",

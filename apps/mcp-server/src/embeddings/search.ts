@@ -20,7 +20,15 @@ import { embedQuery } from "./provider.js";
  *      reusing the `search_products` latest-price pattern, then re-attach the
  *      distance/matched-chunk and preserve the nearest-first order.
  *
- * Empty index or all-below-threshold → `[]` (no error).
+ * Best-effort fallback (no dead-ends): when nothing clears the confident cutoff
+ * (`maxDistance`), we don't immediately give up. A verbose, conversational query
+ * ("host a dinner party … any drink …") embeds far from a terse product chunk
+ * even when the product is genuinely relevant — the correct top hit can land
+ * ~0.20 past where the same intent, distilled, would. So if the confident pass
+ * is empty we re-query for the single nearest product within a looser bound
+ * (`maxDistance + FALLBACK_MARGIN`) and return it flagged `lowConfidence: true`.
+ * Only a truly off-topic query (nearest beyond the loose bound) — or a genuinely
+ * empty index — yields `[]`.
  *
  * NOTE on the HNSW index: this query intentionally does NOT use the
  * `product_embeddings_embedding_hnsw` index. DISTINCT ON requires `product_id`
@@ -49,7 +57,17 @@ export interface SemanticSearchResult {
   currency: string | null;
   matchedChunk: string;
   distance: number;
+  /** True when the row was surfaced only by the best-effort fallback (no chunk
+   *  cleared the confident cutoff) — the agent should present it tentatively. */
+  lowConfidence: boolean;
 }
+
+/** Cosine distance is bounded to [0, 2]; the loose fallback never exceeds it. */
+const MAX_COSINE_DISTANCE = 2;
+/** How far past the confident cutoff the fallback still rescues a single nearest
+ *  product. Wide enough to recover verbose-but-on-topic queries (~0.20 inflated)
+ *  yet tight enough that a truly off-topic query still returns nothing. */
+const FALLBACK_MARGIN = 0.15;
 
 export async function semanticSearch(query: string, limit?: number): Promise<SemanticSearchResult[]> {
   const { topN, maxDistance } = getEmbeddingConfig();
@@ -58,28 +76,39 @@ export async function semanticSearch(query: string, limit?: number): Promise<Sem
   const queryVec = await embedQuery(query);
   const distance = cosineDistance(productEmbeddings.embedding, queryVec);
 
-  // Inner: best (nearest) chunk per product within the relevance cutoff.
-  const best = db
-    .selectDistinctOn([productEmbeddings.productId], {
-      productId: productEmbeddings.productId,
-      content: productEmbeddings.content,
-      distance: sql<number>`${distance}`.as("distance"),
-    })
-    .from(productEmbeddings)
-    .where(lte(distance, maxDistance))
-    .orderBy(productEmbeddings.productId, asc(distance))
-    .as("best");
+  // Best (nearest) chunk per product within `cutoff`, ordered nearest-first,
+  // capped at `take`. DISTINCT ON requires product_id to lead the inner
+  // order-by, which is why the dedup is a wrapping subquery (see file header).
+  const nearestPerProduct = (cutoff: number, take: number) => {
+    const best = db
+      .selectDistinctOn([productEmbeddings.productId], {
+        productId: productEmbeddings.productId,
+        content: productEmbeddings.content,
+        distance: sql<number>`${distance}`.as("distance"),
+      })
+      .from(productEmbeddings)
+      .where(lte(distance, cutoff))
+      .orderBy(productEmbeddings.productId, asc(distance))
+      .as("best");
 
-  // Outer: order those per-product winners by distance, take top-N.
-  const matches = await db
-    .select({
-      productId: best.productId,
-      content: best.content,
-      distance: best.distance,
-    })
-    .from(best)
-    .orderBy(asc(best.distance))
-    .limit(effectiveLimit);
+    return db
+      .select({ productId: best.productId, content: best.content, distance: best.distance })
+      .from(best)
+      .orderBy(asc(best.distance))
+      .limit(take);
+  };
+
+  // Confident pass: every product within the relevance cutoff, top-N.
+  let matches = await nearestPerProduct(maxDistance, effectiveLimit);
+  let lowConfidence = false;
+
+  // Best-effort fallback: nothing was confident, so surface the single nearest
+  // product within a looser bound rather than dead-ending the user (see header).
+  if (matches.length === 0) {
+    const looseCutoff = Math.min(MAX_COSINE_DISTANCE, maxDistance + FALLBACK_MARGIN);
+    matches = await nearestPerProduct(looseCutoff, 1);
+    lowConfidence = matches.length > 0;
+  }
 
   if (matches.length === 0) return [];
 
@@ -126,6 +155,7 @@ export async function semanticSearch(query: string, limit?: number): Promise<Sem
       currency: latest?.currency ?? null,
       matchedChunk: match.content,
       distance: Number(match.distance),
+      lowConfidence,
     });
   }
   return results;

@@ -360,7 +360,7 @@ never load a model — they enqueue a reindex job that POSTs to the MCP server.
 | `EMBEDDING_MODEL` | `Xenova/all-MiniLM-L6-v2` | Local model id (384-dim, int8). |
 | `EMBEDDING_CACHE_DIR` | `/app/.cache/transformers` | Baked into the image at build time. Leave at the image default in prod. |
 | `SEMANTIC_SEARCH_TOP_N` | `5` | Default number of distinct products returned. |
-| `SEMANTIC_SEARCH_MAX_DISTANCE` | `0.70` | Cosine-distance relevance cutoff (lower = stricter). Tuned against the real catalog (on-topic ≤0.66, off-topic ≥0.76); re-tune if the catalog mix changes. |
+| `SEMANTIC_SEARCH_MAX_DISTANCE` | `0.78` | Cosine-distance cutoff for a **confident** match (lower = stricter). Tuned for the chat agent's conversational queries: distilled product-shaped queries land on-topic ~0.55–0.77, off-topic ≥0.90. Past the cutoff the search falls back to the single nearest product as a low-confidence match (not a hard empty result); only truly off-topic queries return nothing. Re-tune if the catalog mix changes. |
 
 **Offline at runtime:** the Docker image bakes the model weights into
 `EMBEDDING_CACHE_DIR` and sets `TRANSFORMERS_OFFLINE=1` / `HF_HUB_OFFLINE=1`;
