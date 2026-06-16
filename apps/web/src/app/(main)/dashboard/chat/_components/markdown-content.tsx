@@ -1,12 +1,34 @@
 "use client";
 
+import type { ComponentPropsWithoutRef } from "react";
+
 import { Streamdown } from "streamdown";
 
 import { cn } from "@/lib/utils";
 
+import { useChatProduct } from "./chat-product-context";
+
 interface MarkdownContentProps {
   text: string;
   className?: string;
+  /**
+   * Products this reply actually retrieved. An inline product link only becomes
+   * clickable when its id is in here — otherwise it renders as plain text
+   * (fail-safe, FR-005). Defaults to empty (no clickable product links).
+   */
+  knownProductIds?: ReadonlyMap<string, unknown>;
+}
+
+// A fragment scheme (rather than a custom `product:` protocol) so the link
+// survives Streamdown's rehype-sanitize protocol allow-list; rehype-harden
+// passes fragment URLs through untouched.
+const PRODUCT_LINK_PREFIX = "#product-";
+
+/** Return the product id from a `#product-<id>` href, or `null` for other hrefs. */
+function parseProductHref(href: string | undefined): string | null {
+  if (!href || !href.startsWith(PRODUCT_LINK_PREFIX)) return null;
+  const id = href.slice(PRODUCT_LINK_PREFIX.length).trim();
+  return id.length > 0 ? id : null;
 }
 
 /**
@@ -63,9 +85,10 @@ const DISALLOWED_ELEMENTS: readonly string[] = [
 ];
 
 /**
- * Reject `javascript:` and executable `data:` schemes; pass any other
- * absolute URL through. Relative links and fragment links are returned
- * unchanged. The fallback ("#") makes the link visible but inert.
+ * Reject `javascript:` and executable `data:` schemes; pass any other absolute
+ * URL through. Relative links and fragment links (incl. our `#product-<id>`
+ * markers) are returned unchanged. The fallback ("#") makes the link visible
+ * but inert.
  */
 function safeUrlTransform(url: string): string | null {
   const trimmed = url.trim();
@@ -81,8 +104,42 @@ function safeUrlTransform(url: string): string | null {
 /**
  * Sanitized Markdown renderer for assistant text. Used only on `assistant`
  * bubbles — user input is rendered as plain text (per plan.md).
+ *
+ * Inline `product:<id>` links are rendered as buttons that open the product
+ * detail dialog — but only when the id was actually retrieved this reply
+ * (`knownProductIds`); unresolvable product links degrade to plain text.
  */
-export function MarkdownContent({ text, className }: MarkdownContentProps) {
+export function MarkdownContent({ text, className, knownProductIds }: MarkdownContentProps) {
+  const { openProduct } = useChatProduct();
+
+  function Anchor({ href, children, node: _node, ...rest }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
+    const productId = parseProductHref(href);
+
+    if (productId !== null) {
+      // Fail-safe: only act on products this reply retrieved; otherwise plain text.
+      if (knownProductIds?.has(productId)) {
+        return (
+          <button
+            type="button"
+            onClick={() => openProduct(productId)}
+            className="cursor-pointer bg-transparent p-0 text-primary underline underline-offset-2 hover:no-underline"
+          >
+            {children}
+          </button>
+        );
+      }
+      return <>{children}</>;
+    }
+
+    // Non-product links: href is already sanitized + hardened by Streamdown's
+    // rehype pipeline before it reaches us. Open external links in a new tab.
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+        {children}
+      </a>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -99,6 +156,7 @@ export function MarkdownContent({ text, className }: MarkdownContentProps) {
         allowedElements={ALLOWED_ELEMENTS}
         disallowedElements={DISALLOWED_ELEMENTS}
         urlTransform={safeUrlTransform}
+        components={{ a: Anchor }}
         skipHtml
       >
         {text}

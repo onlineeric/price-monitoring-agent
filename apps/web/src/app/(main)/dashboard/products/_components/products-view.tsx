@@ -4,39 +4,16 @@ import { useEffect, useState } from "react";
 
 import { LayoutGrid, Table } from "lucide-react";
 
-import type { ProductAttribute } from "@price-monitor/db";
-
 import { Button } from "@/components/ui/button";
+// Canonical type now lives in the shared stats module (reused by the chat detail
+// dialog in 009). Imported for local use and re-exported so existing
+// `./products-view` import paths keep working.
+import type { ProductWithStats } from "@/lib/products/product-stats";
 
 import { ProductCardView } from "./product-card-view";
 import { ProductTableView } from "./product-table-view";
 
-export type ProductWithStats = {
-  id: string;
-  url: string;
-  name: string;
-  imageUrl: string | null;
-  active: boolean;
-  lastSuccessAt: Date | null;
-  lastFailedAt: Date | null;
-  createdAt: Date | null;
-  updatedAt: Date | null;
-  currentPrice: number | null;
-  currency: string;
-  lastChecked: Date | null;
-  priceHistory: Array<{
-    date: Date;
-    price: number;
-  }>;
-  // Rich metadata (feature 007). The products page query spreads all product
-  // columns, so these flow through automatically once the schema is extended.
-  description: string | null;
-  category: string | null;
-  brand: string | null;
-  countryOfOrigin: string | null;
-  attributes: ProductAttribute[] | null;
-  infoUpdatedAt: Date | null;
-};
+export type { ProductWithStats };
 
 type ViewMode = "card" | "table";
 

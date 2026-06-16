@@ -3,10 +3,16 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db, products } from "@price-monitor/db";
 import { eq } from "drizzle-orm";
 
+import { getProductWithStats } from "@/lib/products/product-stats";
+
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    // Return the full ProductWithStats (a superset of the raw row) so callers
+    // that open the product detail dialog — including the chat page (009) — can
+    // hydrate it without a second query. Backwards-compatible: existing
+    // consumers read only a subset of these fields.
+    const product = await getProductWithStats(id);
 
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });

@@ -154,7 +154,7 @@ health/                      GET
 
 - `default/` — dashboard overview
 - `products/` — product list (card + table views), edit dialog, global search, and a reusable **product detail dialog** (007 — image, source link, current price + trend, and the rich metadata incl. a key/value spec list) opened from a card/row
-- `chat/` — streaming AI chat page with markdown rendering and inline tool-call indicators
+- `chat/` — streaming AI chat page with markdown rendering and inline tool-call indicators. Replies that retrieved products surface **clickable product cards** (≤5, deduped, "+N more matched") plus **inline `#product-<id>` links** in the prose; both open the reused product detail dialog (009) via a chat-scoped `ChatProductDialogProvider`. The single shared extractor is `lib/chat/product-cards.ts`; `ProductWithStats` + its query now live in `lib/products/product-stats.ts` (reused by the products page and `GET /api/products/[id]`).
 - `finance/` — analytics/KPIs
 - `send-report/` — ad-hoc report preview + send (backed by `manual-report/*` API)
 - `settings/` — email schedule config
@@ -239,6 +239,7 @@ Only create commits when explicitly requested.
 - 008-semantic-product-search: pgvector RAG — local `@huggingface/transformers` MiniLM (384-dim, int8) + `@langchain/textsplitters` token-accurate chunking in `apps/mcp-server`; `product_embeddings` `vector(384)` + HNSW (additive migration); retryable `reindex-product-embeddings` BullMQ job → mcp-server `POST /internal/reindex`.
 
 ## Recent Changes
+- 009-chat-product-links: Chat replies that retrieve products now render clickable product cards (one merged, deduped list per reply, capped at 5 + "+N more") and inline `#product-<id>` links in the prose — both open the **reused** `ProductDetailDialog` (incl. its Check/Update actions) via a chat-scoped `ChatProductDialogProvider`, no leaving the chat page. Reuse-first: `getProductsWithStats` + the `ProductWithStats` type were promoted to `apps/web/src/lib/products/product-stats.ts` (shared by the products page and an additive `GET /api/products/[id]` enrichment); one Zod extractor (`lib/chat/product-cards.ts`) feeds both surfaces; inline links resolve only against products retrieved that turn (fail-safe). Web-only, no migration/worker/mcp change.
 - 008-semantic-product-search: Meaning-based product search via a new `semantic_search_products` MCP tool over pgvector. Each product's 007 metadata is assembled → token-accurate chunked → embedded by a **local** MiniLM model in the mcp-server (the single embedding authority; weights baked into the image, offline at runtime). A `product_embeddings` table (one row per (product, chunk), HNSW cosine index) is kept current by a retryable `reindex-product-embeddings` job the worker enqueues after each successful `update-product-info` (POST to mcp-server's internal `/internal/reindex`); a `backfill:embeddings` script seeds the existing catalog. Drizzle-native vector query (no `db.execute()`); `EMBEDDING_PROVIDER` seam (local default; openai/google a deliberate dimension-change migration).
 - 007-extend-product-info: Rich product metadata (description, category, brand, country, key/value specs) via a new `update-product-info` operation (on add / on demand / batch info+price digest mode) that uses the AI tier and overwrites metadata; reusable product detail dialog; backfill script. Schema delivered as versioned, additive migrations auto-applied on deploy by a single gated instance (`RUN_MIGRATIONS`), with a manual apply fallback.
 - 006-mcp-http-transport: Add HTTP transport mode to MCP server (`POST /mcp` + `GET /health` + `GET /mcp/health` on port 3002) alongside the existing stdio transport, with stateless Streamable HTTP, 30s per-request timeout, and 10s graceful shutdown. Test-only tools (`slow_ping`, `throw_test`) are gated on `NODE_ENV !== "production"` so a stray `MCP_TEST_TOOLS=1` cannot leak them into a prod deploy.
@@ -248,5 +249,5 @@ Only create commits when explicitly requested.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/008-semantic-product-search/plan.md`
+`specs/009-chat-product-links/plan.md`
 <!-- SPECKIT END -->
