@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentPropsWithoutRef } from "react";
+import { type ComponentPropsWithoutRef, useMemo } from "react";
 
 import { Streamdown } from "streamdown";
 
@@ -112,33 +112,43 @@ function safeUrlTransform(url: string): string | null {
 export function MarkdownContent({ text, className, knownProductIds }: MarkdownContentProps) {
   const { openProduct } = useChatProduct();
 
-  function Anchor({ href, children, node: _node, ...rest }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
-    const productId = parseProductHref(href);
+  // Memoized so the `components` prop keeps a stable identity across streaming
+  // text deltas. A fresh `Anchor` (and `components` object) on every render
+  // defeats Streamdown's per-block memoization and remounts every link on each
+  // tick. `openProduct` (provider-memoized) and `knownProductIds` (the message's
+  // memoized surface) are both stable while a reply streams.
+  const components = useMemo(
+    () => ({
+      a: function Anchor({ href, children, node: _node, ...rest }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
+        const productId = parseProductHref(href);
 
-    if (productId !== null) {
-      // Fail-safe: only act on products this reply retrieved; otherwise plain text.
-      if (knownProductIds?.has(productId)) {
+        if (productId !== null) {
+          // Fail-safe: only act on products this reply retrieved; otherwise plain text.
+          if (knownProductIds?.has(productId)) {
+            return (
+              <button
+                type="button"
+                onClick={() => openProduct(productId)}
+                className="cursor-pointer bg-transparent p-0 text-primary underline underline-offset-2 hover:no-underline"
+              >
+                {children}
+              </button>
+            );
+          }
+          return <>{children}</>;
+        }
+
+        // Non-product links: href is already sanitized + hardened by Streamdown's
+        // rehype pipeline before it reaches us. Open external links in a new tab.
         return (
-          <button
-            type="button"
-            onClick={() => openProduct(productId)}
-            className="cursor-pointer bg-transparent p-0 text-primary underline underline-offset-2 hover:no-underline"
-          >
+          <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
             {children}
-          </button>
+          </a>
         );
-      }
-      return <>{children}</>;
-    }
-
-    // Non-product links: href is already sanitized + hardened by Streamdown's
-    // rehype pipeline before it reaches us. Open external links in a new tab.
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
-        {children}
-      </a>
-    );
-  }
+      },
+    }),
+    [openProduct, knownProductIds],
+  );
 
   return (
     <div
@@ -156,7 +166,7 @@ export function MarkdownContent({ text, className, knownProductIds }: MarkdownCo
         allowedElements={ALLOWED_ELEMENTS}
         disallowedElements={DISALLOWED_ELEMENTS}
         urlTransform={safeUrlTransform}
-        components={{ a: Anchor }}
+        components={components}
         skipHtml
       >
         {text}
