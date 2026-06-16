@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
+import { ChatProductProvider } from "@/app/(main)/dashboard/chat/_components/chat-product-context";
 import { MarkdownContent } from "@/app/(main)/dashboard/chat/_components/markdown-content";
 
 describe("MarkdownContent — sanitization & rendering", () => {
@@ -70,5 +71,42 @@ describe("MarkdownContent — sanitization & rendering", () => {
   it("passes plain text through unchanged", () => {
     render(<MarkdownContent text={"just plain prose with no formatting"} />);
     expect(screen.getByText("just plain prose with no formatting")).toBeInTheDocument();
+  });
+});
+
+describe("MarkdownContent — inline product links", () => {
+  it("renders a known #product-<id> link as a button that opens the product", () => {
+    const openProduct = vi.fn();
+    render(
+      <ChatProductProvider value={{ openProduct }}>
+        <MarkdownContent
+          text={"The cheapest is [Sony XM5](#product-abc-1)."}
+          knownProductIds={new Map([["abc-1", {}]])}
+        />
+      </ChatProductProvider>,
+    );
+
+    const button = screen.getByRole("button", { name: "Sony XM5" });
+    fireEvent.click(button);
+    expect(openProduct).toHaveBeenCalledWith("abc-1");
+  });
+
+  it("renders an unknown #product-<id> link as plain text (fail-safe)", () => {
+    const openProduct = vi.fn();
+    const { container } = render(
+      <ChatProductProvider value={{ openProduct }}>
+        <MarkdownContent text={"See [Ghost](#product-does-not-exist)."} knownProductIds={new Map()} />
+      </ChatProductProvider>,
+    );
+
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.textContent).toContain("Ghost");
+    expect(openProduct).not.toHaveBeenCalled();
+  });
+
+  it("does not turn product links into buttons when no known ids are provided", () => {
+    const { container } = render(<MarkdownContent text={"[X](#product-abc-1)"} />);
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.textContent).toContain("X");
   });
 });

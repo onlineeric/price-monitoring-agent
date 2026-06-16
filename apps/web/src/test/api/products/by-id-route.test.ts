@@ -13,6 +13,13 @@ const dbMock = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 
+// GET delegates to the shared stats helper (009); mock it at that boundary so
+// this route test stays decoupled from the helper's internal query shape (the
+// helper has its own dedicated test).
+const statsMock = vi.hoisted(() => ({ getProductWithStats: vi.fn() }));
+
+vi.mock("@/lib/products/product-stats", () => statsMock);
+
 vi.mock("@price-monitor/db", () => ({
   db: dbMock,
   products: { id: "products.id" },
@@ -38,6 +45,7 @@ beforeEach(() => {
   dbMock.select.mockReset();
   dbMock.update.mockReset();
   dbMock.delete.mockReset();
+  statsMock.getProductWithStats.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -46,24 +54,35 @@ afterEach(() => {
 });
 
 describe("GET /api/products/[id]", () => {
-  it("returns the row when found", async () => {
-    const limit = vi.fn().mockResolvedValue([{ id: "p1", url: "https://shop/x" }]);
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    dbMock.select.mockReturnValueOnce({ from });
+  it("returns the enriched ProductWithStats when found (incl. backwards-compatible fields)", async () => {
+    const enriched = {
+      id: "p1",
+      url: "https://shop/x",
+      name: "Widget",
+      active: true,
+      updatedAt: new Date("2026-06-16T00:00:00Z"),
+      currentPrice: 58500,
+      currency: "NZD",
+      lastChecked: new Date("2026-06-16T00:00:00Z"),
+      priceHistory: [{ date: new Date("2026-06-01T00:00:00Z"), price: 60000 }],
+    };
+    statsMock.getProductWithStats.mockResolvedValueOnce(enriched);
 
     const response = await GET({} as never, { params: params("p1") });
     const json = await response.json();
 
+    expect(statsMock.getProductWithStats).toHaveBeenCalledWith("p1");
     expect(response.status).toBe(200);
-    expect(json.product).toEqual({ id: "p1", url: "https://shop/x" });
+    // Stats surfaced for the detail dialog...
+    expect(json.product.currentPrice).toBe(58500);
+    expect(json.product.priceHistory).toHaveLength(1);
+    // ...and the fields existing consumers (global product search) rely on are
+    // still present.
+    expect(json.product).toMatchObject({ id: "p1", name: "Widget", url: "https://shop/x", active: true });
   });
 
-  it("returns 404 when the row is missing", async () => {
-    const limit = vi.fn().mockResolvedValue([]);
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    dbMock.select.mockReturnValueOnce({ from });
+  it("returns 404 when the product is missing", async () => {
+    statsMock.getProductWithStats.mockResolvedValueOnce(null);
 
     const response = await GET({} as never, { params: params("p-missing") });
     expect(response.status).toBe(404);
