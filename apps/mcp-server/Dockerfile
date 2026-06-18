@@ -3,15 +3,22 @@
 # Build command: docker build -f apps/mcp-server/Dockerfile -t price-monitor-mcp-server .
 # Run command: docker run -p 3002:3002 -e DATABASE_URL="..." -e REDIS_URL="..." price-monitor-mcp-server
 #
-# The MCP server only talks to Postgres + Redis (no Playwright), so a slim
-# node:20-alpine base is enough.
+# The MCP server only talks to Postgres + Redis (no Playwright), but it bakes in
+# the local MiniLM embedding model, which pulls onnxruntime-node. That native
+# binary is glibc-linked, so a musl-based Alpine image cannot load it
+# (`ld-linux-x86-64.so.2: No such file or directory`). Use the Debian-based
+# node:20-slim, which ships glibc.
 
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
-# Install curl for the Coolify / Docker HEALTHCHECK probe (alpine ships without it)
-RUN apk add --no-cache curl
+# Install runtime deps:
+# - curl: the Coolify / Docker HEALTHCHECK probe (slim ships without it)
+# - libgomp1: OpenMP runtime (libgomp.so.1) that onnxruntime-node links against
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm (specific version for consistency with the rest of the monorepo)
 RUN npm install -g pnpm@10.26.2
