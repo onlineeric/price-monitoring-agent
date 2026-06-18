@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * add_product is the only mutating tool the agent exposes. It must be
  * idempotent: re-adding the same URL returns the existing row instead of
- * spamming a check-price job. We mock both the db chain and the BullMQ queue
- * to verify the two branches.
+ * spamming an update-product-info job. We mock both the db chain and the
+ * BullMQ queue to verify the two branches.
  */
 
 const state = vi.hoisted(() => ({
@@ -79,7 +79,7 @@ afterEach(() => {
 });
 
 describe("add_product tool", () => {
-  it("inserts the product, enqueues a check-price job, and reports status='queued' for new URLs", async () => {
+  it("inserts the product, enqueues an update-product-info job, and reports status='queued' for new URLs", async () => {
     state.insertReturning = [{ id: "new-1" }];
     queueMock.add.mockResolvedValueOnce({ id: "job-1" });
 
@@ -89,8 +89,11 @@ describe("add_product tool", () => {
     expect(parsed.status).toBe("queued");
     expect(parsed.productId).toBe("new-1");
     expect(parsed.jobId).toBe("job-1");
+    // Must match the UI add flow: enqueue a full metadata+price refresh, not a
+    // price-only check-price — otherwise chat-added products start with no
+    // metadata and are invisible to semantic_search_products.
     expect(queueMock.add).toHaveBeenCalledWith(
-      "check-price",
+      "update-product-info",
       expect.objectContaining({ url: "https://shop/new" }),
     );
   });
