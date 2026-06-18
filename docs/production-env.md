@@ -65,6 +65,43 @@ must ship the extension and the extension must be created once in the
 - The managed Postgres service must use a pgvector-capable image. Switch the
   Coolify Postgres app's image to `pgvector/pgvector:pg18` (same major version as
   prod — 18) so the data files stay compatible.
+
+> **⚠️ PG18 data-directory layout gotcha (hit during the prod swap — read before
+> restarting).** PostgreSQL 18's Docker images changed where data lives: the
+> default is now a **version-specific subdirectory** (`PGDATA=/var/lib/postgresql/18/docker`)
+> and the declared mount point moved to `/var/lib/postgresql` (was
+> `/var/lib/postgresql/data`). See [docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259).
+>
+> If the Coolify Postgres volume is still mounted at the **legacy**
+> `/var/lib/postgresql/data`, swapping to `pgvector/pgvector:pg18` makes the
+> image's default `PGDATA` (`/var/lib/postgresql/18/docker`) point **outside**
+> your data volume (into an empty auto-created anonymous volume). The container
+> then fails on startup with either:
+> - `there appears to be PostgreSQL data in: /var/lib/postgresql/data (unused mount/volume)`, or
+> - `initdb: error: directory "/var/lib/postgresql/data" exists but is not empty`.
+>
+> **Your data is safe** when this happens — the entrypoint *refuses to start*
+> rather than touch the existing cluster. **Do NOT follow initdb's hint to "remove
+> or empty the directory"** — that would delete the database.
+>
+> **Fix (the one applied in prod):** in Coolify → Postgres → **Persistent Storage**,
+> set the volume's **Destination Path** to **`/var/lib/postgresql`** (not
+> `/var/lib/postgresql/data`), and ensure **no custom `PGDATA` env var** is set
+> (let the image default apply). The existing cluster already sits in the
+> `18/docker` subdirectory of the volume, so it lines up exactly with the default
+> `PGDATA=/var/lib/postgresql/18/docker`. Restart → Postgres detects the existing
+> cluster, skips `initdb`, and starts on your data. **No data is moved** — only the
+> mount point is realigned.
+>
+> _Diagnose where the cluster actually lives (read-only) before changing anything:_
+> ```bash
+> docker volume ls | grep -i postgres                 # find the named data volume
+> docker run --rm -v <VOLUME_NAME>:/data alpine \
+>   sh -c 'find /data -maxdepth 3 -name PG_VERSION'    # path to the real cluster
+> ```
+> The directory containing `PG_VERSION` (e.g. `/data/18/docker`) is the cluster
+> root; mount + `PGDATA` must resolve to it.
+
 - After the DB is up, create the extension once:
   ```bash
   psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;"
@@ -259,6 +296,45 @@ true
 - If you scale to multiple workers, only one should have this enabled
 - Having multiple schedulers will cause duplicate emails
 - Current setup: Single worker with scheduler enabled
+
+#### RUN_MIGRATIONS (feature 007)
+
+**Description:** Gates the worker's startup migration step. When `true`, the worker
+applies all pending committed Drizzle migrations (`packages/db/drizzle/`) **before**
+it begins consuming jobs (`apps/worker/src/index.ts`), then starts. When unset /
+not `true`, the worker skips migrations and starts immediately.
+
+**CRITICAL:** Exactly **ONE** instance may have this set to `true` — the same
+singleton that owns `ENABLE_SCHEDULER=true`. Two workers racing migrations on
+startup can conflict. If you scale workers, only the scheduler/migrator instance
+gets `RUN_MIGRATIONS=true`.
+
+**Values:**
+- `true` — apply pending migrations on startup, then consume jobs (production
+  scheduler/migrator instance)
+- unset / `false` — skip migrations (additional workers, or when applying via the
+  manual fallback `pnpm --filter @price-monitor/db migrate`)
+
+**Production Value:**
+```
+true
+```
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables (the single scheduler instance)
+- **NOT** in Web App or MCP Server
+
+**Important Notes:**
+- Migrations are **idempotent and additive**: the `0000` baseline uses
+  `CREATE TABLE IF NOT EXISTS` + a `duplicate_object`-guarded FK, and `0001` uses
+  `ADD COLUMN IF NOT EXISTS`, so they apply cleanly over a schema originally
+  created by `drizzle-kit push` (prod has no migration history until the first
+  `migrate` run records it). `0002` creates the new `product_embeddings` table and
+  runs `CREATE EXTENSION IF NOT EXISTS vector` — which requires the
+  pgvector-capable DB image (see pgvector section above) and a superuser DB role
+  (`postgres`). A migration failure is **fatal**: the worker logs and exits, so
+  fix the cause (e.g. wrong DB image) and redeploy.
+- Manual apply fallback (does not need this var): `pnpm --filter @price-monitor/db migrate`.
 
 #### MCP_REINDEX_URL (feature 008)
 
@@ -462,6 +538,7 @@ Use this checklist when configuring production environment:
 - [ ] EMAIL_FROM (sender identity)
 - [ ] ALERT_EMAIL (default legacy digest recipient)
 - [ ] ENABLE_SCHEDULER (`true`)
+- [ ] RUN_MIGRATIONS (`true` — single scheduler/migrator instance only; applies pending migrations on startup)
 - [ ] SCHEDULER_TIMEZONE (scheduler + quota day-boundary timezone)
 - [ ] NODE_ENV (`production`)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
