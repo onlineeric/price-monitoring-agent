@@ -22,7 +22,7 @@ The whole system at a glance: an AI chat agent and dashboard (Next.js), a custom
 
 This is a portfolio project: the price-monitoring product is real and end-to-end, but it exists to showcase two things, in priority order.
 
-### 1. AI agent & AI integration — *primary focus*
+### 1. AI agent & AI integration
 
 - **Conversational AI agent** — multi-step tool calling over a custom Model Context Protocol (MCP) server, streaming UI, multi-turn history, and clickable product cards wired back into the app.
 - **RAG semantic search** — find products by *meaning* (not keyword overlap) over a pgvector vector store, with a single **locally-hosted `all-MiniLM-L6-v2`** model owning both query-time and write-time embeddings, paid for once in RAM.
@@ -31,7 +31,7 @@ This is a portfolio project: the price-monitoring product is real and end-to-end
 - **Provider abstraction** — OpenAI, Anthropic, and Google switchable via one env var, for both extraction and chat.
 - **Production guardrails** — per-turn step budget, turn timeout, structured error taxonomy, and a domain-restricted system prompt.
 
-### 2. Full-stack product engineering — *secondary focus*
+### 2. Full-stack product engineering
 
 - **Event-driven architecture** — BullMQ on Redis decouples the web app from a background worker; jobs cover price checks, metadata enrichment, vector reindex, digests, and scheduler-managed repeatable work.
 - **Modern full-stack** — Next.js 16 App Router, React 19, TypeScript, TanStack Query/Table, Shadcn UI.
