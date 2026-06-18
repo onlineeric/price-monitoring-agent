@@ -20,7 +20,8 @@ vi.mock("@ai-sdk/openai", () => ({ openai: aiMocks.openai }));
 vi.mock("@ai-sdk/anthropic", () => ({ anthropic: aiMocks.anthropic }));
 vi.mock("@ai-sdk/google", () => ({ google: aiMocks.google }));
 
-import { aiExtract } from "./aiExtractor";
+import { z } from "zod";
+import { aiExtract, aiExtractProductInfo, ProductInfoSchema } from "./aiExtractor";
 
 const ENV_KEYS = ["AI_PROVIDER", "OPENAI_MODEL", "ANTHROPIC_MODEL", "GOOGLE_MODEL", "DEBUG_LOG"] as const;
 const originalEnv: Record<string, string | undefined> = {};
@@ -213,5 +214,197 @@ describe("aiExtract — HTML preparation", () => {
 
     const prompt = aiMocks.generateObject.mock.calls[0][0].prompt as string;
     expect(prompt).toContain("[truncated]");
+  });
+});
+
+describe("aiExtractProductInfo — rich metadata path", () => {
+  it("returns the extended metadata fields and converts price to integer cents", async () => {
+    aiMocks.generateObject.mockResolvedValueOnce({
+      object: {
+        title: "Chef Knife",
+        price: 49.5,
+        currency: "USD",
+        imageUrl: "https://cdn/k.jpg",
+        description: "An 8-inch chef knife.",
+        category: "Kitchen",
+        brand: "Acme",
+        countryOfOrigin: "Japan",
+        attributes: [
+          { key: "Material", value: "Stainless steel" },
+          { key: "Length", value: "8 inch" },
+        ],
+      },
+    });
+
+    const result = await aiExtractProductInfo("https://shop/k", "<html><body><h1>Chef Knife</h1></body></html>");
+
+    expect(result).toEqual({
+      success: true,
+      method: "ai",
+      data: {
+        title: "Chef Knife",
+        price: 4950,
+        currency: "USD",
+        imageUrl: "https://cdn/k.jpg",
+        description: "An 8-inch chef knife.",
+        category: "Kitchen",
+        brand: "Acme",
+        countryOfOrigin: "Japan",
+        attributes: [
+          { key: "Material", value: "Stainless steel" },
+          { key: "Length", value: "8 inch" },
+        ],
+      },
+    });
+  });
+
+  it("caps attributes at 100 even if the model returns more", async () => {
+    const tooMany = Array.from({ length: 130 }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
+    aiMocks.generateObject.mockResolvedValueOnce({
+      object: {
+        title: "x",
+        price: 1,
+        currency: "USD",
+        imageUrl: "https://cdn/x.jpg",
+        description: null,
+        category: null,
+        brand: null,
+        countryOfOrigin: null,
+        attributes: tooMany,
+      },
+    });
+
+    const result = await aiExtractProductInfo("https://shop/x", "<html><body><h1>x</h1></body></html>");
+
+    expect(result.success).toBe(true);
+    if (!result.success || !result.data) throw new Error("expected success with data");
+    expect(result.data.attributes).toHaveLength(100);
+  });
+
+  it("drops empty/blank attribute pairs and normalizes missing metadata to null/[]", async () => {
+    aiMocks.generateObject.mockResolvedValueOnce({
+      object: {
+        title: "x",
+        price: 10,
+        currency: "USD",
+        imageUrl: null,
+        description: null,
+        category: null,
+        brand: null,
+        countryOfOrigin: null,
+        attributes: [
+          { key: "Color", value: "Red" },
+          { key: "", value: "ignored" },
+          { key: "Size", value: "" },
+        ],
+      },
+    });
+
+    const result = await aiExtractProductInfo("https://shop/x", "<html><body><h1>x</h1></body></html>");
+
+    if (!result.success || !result.data) throw new Error("expected success with data");
+    expect(result.data.attributes).toEqual([{ key: "Color", value: "Red" }]);
+    expect(result.data.description).toBeNull();
+  });
+
+  it("fails (no title or price) without throwing", async () => {
+    aiMocks.generateObject.mockResolvedValueOnce({
+      object: {
+        title: null,
+        price: null,
+        currency: null,
+        imageUrl: null,
+        description: "orphan description",
+        category: null,
+        brand: null,
+        countryOfOrigin: null,
+        attributes: null,
+      },
+    });
+
+    const result = await aiExtractProductInfo("https://shop/x", "<html><body></body></html>");
+
+    expect(result).toEqual({
+      success: false,
+      method: "ai",
+      error: expect.stringMatching(/no title or price/i),
+    });
+  });
+
+  it("requests the metadata fields + attribute cap in the prompt", async () => {
+    aiMocks.generateObject.mockResolvedValueOnce({
+      object: {
+        title: "x",
+        price: 1,
+        currency: "USD",
+        imageUrl: null,
+        description: null,
+        category: null,
+        brand: null,
+        countryOfOrigin: null,
+        attributes: null,
+      },
+    });
+
+    await aiExtractProductInfo("https://shop/x", "<html><body><h1>x</h1></body></html>");
+
+    const prompt = aiMocks.generateObject.mock.calls[0][0].prompt as string;
+    expect(prompt).toMatch(/description/i);
+    expect(prompt).toMatch(/brand/i);
+    expect(prompt).toMatch(/country of origin/i);
+    expect(prompt).toContain("100");
+  });
+});
+
+/**
+ * OpenAI strict structured outputs require `additionalProperties: false` on
+ * EVERY object node. The AI SDK adds that automatically, but its post-processor
+ * (`addAdditionalPropertiesToJsonSchema`) only walks object→properties and
+ * array→items — it never descends into `anyOf`/`oneOf`/`allOf` branches. So any
+ * object nested under a combinator (which is what `.nullable()` on an
+ * array-of-objects produces) ships non-strict and OpenAI rejects the request
+ * with `invalid_json_schema`. These tests mock the SDK, so they can't catch
+ * that — this one converts the schema the same way the SDK does and guards the
+ * invariant directly.
+ */
+describe("ProductInfoSchema OpenAI strict-mode compatibility", () => {
+  /** Collect dotted paths of every `type: "object"` node reachable only through a combinator. */
+  function objectsUnreachableByStrictPatch(
+    node: unknown,
+    path: string[] = [],
+    underCombinator = false,
+    found: string[] = [],
+  ): string[] {
+    if (node == null || typeof node !== "object") return found;
+    const schema = node as Record<string, unknown>;
+
+    if (underCombinator && schema.type === "object") found.push(path.join("."));
+
+    for (const key of ["anyOf", "oneOf", "allOf"] as const) {
+      const branches = schema[key];
+      if (Array.isArray(branches)) {
+        branches.forEach((b, i) => {
+          objectsUnreachableByStrictPatch(b, [...path, key, String(i)], true, found);
+        });
+      }
+    }
+    if (schema.properties && typeof schema.properties === "object") {
+      for (const [name, child] of Object.entries(schema.properties)) {
+        objectsUnreachableByStrictPatch(child, [...path, "properties", name], underCombinator, found);
+      }
+    }
+    if (schema.items != null) {
+      const items = Array.isArray(schema.items) ? schema.items : [schema.items];
+      items.forEach((it, i) => {
+        objectsUnreachableByStrictPatch(it, [...path, "items", String(i)], underCombinator, found);
+      });
+    }
+    return found;
+  }
+
+  it("emits no object nested under a combinator (so the SDK can mark all objects strict)", () => {
+    // Same conversion the AI SDK performs for Zod 4 schemas before the strict patch.
+    const jsonSchema = z.toJSONSchema(ProductInfoSchema, { target: "draft-7", io: "input" });
+    expect(objectsUnreachableByStrictPatch(jsonSchema)).toEqual([]);
   });
 });

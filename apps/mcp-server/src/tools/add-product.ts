@@ -8,7 +8,13 @@ const inputSchema = z.object({
   url: z.string().url().describe("Product page URL to start monitoring (http/https)"),
 });
 
-const JOB_NAME = "check-price";
+// Match the UI's add flow (apps/web POST /api/products): enqueue a full
+// metadata+price refresh, NOT a price-only check. update-product-info extracts
+// rich metadata (description/category/brand/specs), writes the first price, and
+// best-effort enqueues a semantic-search reindex — so chat-added products start
+// as enriched and searchable as UI-added ones. A plain check-price would leave
+// metadata blank until the user clicked "Update product details".
+const JOB_NAME = "update-product-info";
 
 export function registerAddProduct(server: McpServer) {
   server.registerTool(
@@ -16,7 +22,7 @@ export function registerAddProduct(server: McpServer) {
     {
       title: "Add Product",
       description:
-        "Start monitoring a product by URL. Creates an active product row (if new) and enqueues a price check job; the worker fills in the title and first price. Idempotent: if the URL is already being monitored, returns the existing product without re-enqueueing.",
+        "Start monitoring a product by URL. Creates an active product row (if new) and enqueues a product-info job; the worker fills in the title, image, first price AND rich metadata (description, category, brand, specs). Idempotent: if the URL is already being monitored, returns the existing product without re-enqueueing.",
       inputSchema,
     },
     withErrorHandling("add_product", async ({ url }) => {
@@ -60,7 +66,7 @@ export function registerAddProduct(server: McpServer) {
         productId: inserted.id,
         jobId: job.id,
         url,
-        hint: "Call search_products with part of the product name in a few seconds to confirm the title and first price were scraped.",
+        hint: "Metadata extraction runs on the AI tier and takes a few seconds. Call search_products with part of the product name shortly to confirm the title, price, and details were scraped.",
       };
 
       return {

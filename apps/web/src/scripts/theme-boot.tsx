@@ -78,7 +78,7 @@ export function ThemeBootScript() {
         var rawSidebarVariant = readPreference("sidebar_variant", DEFAULTS.sidebar_variant);
         var rawSidebarCollapsible = readPreference("sidebar_collapsible", DEFAULTS.sidebar_collapsible);
 
-        var mode = (rawMode === "dark" || rawMode === "light") ? rawMode : "light";
+        var mode = (rawMode === "dark" || rawMode === "light") ? rawMode : DEFAULTS.theme_mode;
         var preset = rawPreset || DEFAULTS.theme_preset;
         var font = rawFont || DEFAULTS.font;
         var contentLayout = rawContentLayout || DEFAULTS.content_layout;

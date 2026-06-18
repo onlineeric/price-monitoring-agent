@@ -1,5 +1,17 @@
-import { db, eq, type Product, priceRecords, products, runLogs, sql } from "@price-monitor/db";
+import {
+  db,
+  eq,
+  type Product,
+  type ProductAttribute,
+  priceRecords,
+  products,
+  runLogs,
+  sanitizeProductAttributes,
+  sql,
+} from "@price-monitor/db";
 import { validate as isValidUuid } from "uuid";
+
+import { formatErrorMessage } from "../utils/errors.js";
 
 /**
  * Parameters for saving a price record
@@ -44,6 +56,42 @@ export async function updateProductTimestamp(productId: string): Promise<void> {
 }
 
 /**
+ * Rich product metadata written by the `update-product-info` operation.
+ * Every field is what the extractor found this run (or null if not found).
+ */
+interface SaveProductInfoParams {
+  description: string | null;
+  category: string | null;
+  brand: string | null;
+  countryOfOrigin: string | null;
+  attributes: ProductAttribute[] | null;
+}
+
+/**
+ * Overwrite a product's rich metadata and stamp info_updated_at.
+ *
+ * Overwrite (not merge) semantics: fields not found this run are blanked so a
+ * stale value can never linger. `attributes` is sanitized + capped at 100 via
+ * the shared schema before persisting. Does NOT touch lastSuccessAt or write a
+ * price — the caller (the job) appends the price record and stamps success
+ * separately, keeping price and metadata lifecycles distinct.
+ */
+export async function saveProductInfo(productId: string, metadata: SaveProductInfoParams): Promise<void> {
+  await db
+    .update(products)
+    .set({
+      description: metadata.description ?? null,
+      category: metadata.category ?? null,
+      brand: metadata.brand ?? null,
+      countryOfOrigin: metadata.countryOfOrigin ?? null,
+      attributes: sanitizeProductAttributes(metadata.attributes),
+      infoUpdatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(products.id, productId));
+}
+
+/**
  * Update the product's lastFailedAt timestamp
  */
 export async function updateProductFailure(productId: string): Promise<void> {
@@ -54,13 +102,6 @@ export async function updateProductFailure(productId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
-}
-
-/**
- * Format error message for logging
- */
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
 }
 
 /**
@@ -97,6 +138,20 @@ export async function getProductById(productId: string): Promise<Product | null>
     return result[0] ?? null;
   } catch (error) {
     console.error(`[DB] Error fetching product:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get a product by its URL (the unique product identity).
+ * Returns null if not found or on error.
+ */
+export async function getProductByUrl(url: string): Promise<Product | null> {
+  try {
+    const result = await db.select().from(products).where(eq(products.url, url)).limit(1);
+    return result[0] ?? null;
+  } catch (error) {
+    console.error(`[DB] Error fetching product by URL:`, error);
     return null;
   }
 }

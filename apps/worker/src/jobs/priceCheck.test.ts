@@ -21,8 +21,15 @@ const scraperMocks = vi.hoisted(() => ({
   scrapeProduct: vi.fn(),
 }));
 
+// Feature 008 FR-011 guard: the price-only path must NEVER trigger a reindex.
+// priceCheck does not import the producer, so this mock simply lets us assert
+// the reindex job is never enqueued from a price check (and would catch a future
+// accidental import).
+const producerMocks = vi.hoisted(() => ({ enqueueReindex: vi.fn() }));
+
 vi.mock("../services/database.js", () => dbMocks);
 vi.mock("../services/scraper.js", () => scraperMocks);
+vi.mock("../queue/producer.js", () => producerMocks);
 
 import priceCheckJob from "./priceCheck";
 
@@ -64,6 +71,8 @@ describe("priceCheckJob — happy path", () => {
     expect(dbMocks.logRun).toHaveBeenCalledWith({ productId: "prod-1", status: "SUCCESS" });
     // Result type is a discriminated union of ScraperResult | { status: "skipped" }
     expect("success" in result && result.success).toBe(true);
+    // FR-011: a price-only check NEVER reindexes embeddings.
+    expect(producerMocks.enqueueReindex).not.toHaveBeenCalled();
   });
 });
 

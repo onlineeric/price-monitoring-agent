@@ -1,6 +1,6 @@
 {
   "name": "@price-monitor/worker",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "type": "module",
   "description": "",
   "main": "index.js",
@@ -10,6 +10,8 @@
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
     "cleanup:digest-schedules": "node --import tsx ./scripts/cleanupDigestSchedules.ts",
+    "backfill:product-info": "node --import tsx ./scripts/backfill-product-info.ts",
+    "backfill:embeddings": "node --import tsx ./scripts/backfill-embeddings.ts",
     "test": "vitest run"
   },
   "keywords": [],

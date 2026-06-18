@@ -28,8 +28,8 @@ We are integrating an end-to-end AI Agent into our Price Monitor app. The goal i
 
 ### 3.2 Semantic Search (RAG)
 - **Database:** Utilize the `pgvector` extension in our PostgreSQL DB.
-- **Embeddings:** Store product metadata (names, specs, categories) as vector embeddings.
-- **User Flow:** Users can search using natural language (e.g., "Find me a cheap gaming monitor"). The chatbot uses Retrieval-Augmented Generation (RAG) to fetch relevant products from pgvector and formulate an answer.
+- **Embeddings:** Embed each product's **rich metadata** (the feature 007 fields — name, brand, category, country of origin, description, and the key/value spec attributes). Because the local embedding model has a small input window, each product's text is **split into chunks and embedded as multiple vectors**, stored as multiple rows in a dedicated `productEmbeddings` table keyed by `productId` (see the Phase 4 locked decisions).
+- **User Flow:** Users can search using natural language (e.g., "Find me a cheap gaming monitor"). The chatbot uses Retrieval-Augmented Generation (RAG) to fetch relevant products from pgvector and formulate an answer. (The semantic part is "gaming monitor"; "cheap" is a price predicate handled by the existing price tools, not by vector similarity — see 4.7.)
 
 ### 3.3 Smart Deal Analyzer
 - **Integration:** Enhances our existing scheduled Email Price Monitor Report.
@@ -49,7 +49,7 @@ We are integrating an end-to-end AI Agent into our Price Monitor app. The goal i
 
 ## 5. Implementation Roadmap (Task List)
 
-This list is the resumable guideline. Each sub-task is sized to be independently testable and small enough to learn in one sitting. After each coding sub-task is implemented, the assistant will stop and explain the change in detail before moving on.
+This list is the resumable guideline. Each sub-task is sized to be independently testable.
 
 ### Legend
 
@@ -122,14 +122,42 @@ Three issues surfaced during the PR #47 code review of the 3.9–3.16 work. Reso
 ### Phase 4 — Semantic Search with pgvector (RAG)
 Goal: Users query in natural language; the chatbot retrieves relevant products via vector similarity.
 
-- [ ] 4.1 **[Manual]** Enable `pgvector` extension in the local Docker Postgres image (update `docker-compose.yml` image or init script) and document for prod
-- [ ] 4.2 **[Code+Speckit]** Design the embedding pipeline end-to-end — table shape (`productEmbeddings` with vector column, dimension choice, index type HNSW vs IVFFlat), what text to embed, which provider model, re-embed triggers — produces the spec that Drizzle schema + later tasks follow
-- [ ] 4.3 **[Code]** Drizzle schema + migration for the embedding table (follows 4.2's spec)
-- [ ] 4.4 **[Code]** Embedding service in `packages/db` or `apps/web/src/lib/embeddings/` using Vercel AI SDK `embed` / `embedMany`
-- [ ] 4.5 **[Code]** Backfill script (`scripts/backfill-embeddings.ts`) that embeds every existing product once
-- [ ] 4.6 **[Code]** Auto-embed hook: regenerate embedding on product create / name update (extension point in the existing product save path)
-- [ ] 4.7 **[Code]** Add `semantic_search_products` MCP tool — vector similarity query via Drizzle `sql` template using `<=>` cosine distance operator
-- [ ] 4.8 **[Manual]** End-to-end test: ask the chatbot a natural-language query ("cheap gaming monitor") and verify relevant products are returned
+**Workflow note:** 4.2 is the **design task** (speckit `specify → plan → tasks`) — it produces the `specs/<feature>/` folder for the whole Phase 4 embedding pipeline. 4.3–4.7 are the **implement phase** of that same spec. 4.2–4.7 are executed together as **one full speckit workflow** (`specify → plan → tasks → implement`). (4.1 and 4.8 are `[Manual]`.)
+
+**Decisions locked before 4.2 (rationale recorded here so the spec and later tasks stay consistent). These are intentionally detailed so the speckit 4.2 workflow does not need to re-clarify them.**
+
+- **Embedding model — LOCAL via Transformers.js.** Use `@huggingface/transformers` running `all-MiniLM-L6-v2` (**384-dim**, quantized int8), lazy-loaded on first use. Chosen over a paid API because: (a) zero cost, (b) zero external dependency / fully private, (c) strongest portfolio/interview story, (d) it **fits the production droplet** — 14-day RAM history shows a stable 67–69% / 72% peak on the $24/mo 2 vCPU · 4 GB DigitalOcean droplet (peak already includes daily Playwright runs), and MiniLM adds ~300 MB resident → ~76% baseline / ~79–82% peak, leaving ~750–850 MB free. No upgrade needed. **The model is loaded in exactly one process** (see "Where embedding runs" below) so the ~300 MB is paid once, not per process.
+
+- **Chunking + multi-vector per product (the key feature-007 consequence).** MiniLM's input window is **~256 tokens** and it **silently truncates** anything longer (it never auto-splits — chunking is always our own pipeline step). After feature 007 a product carries far more text than that: a full-length `description` (007 stores it with no length cap) plus up to 100 key/value spec attributes — easily 1,000–2,000 tokens. Rather than truncate (lose the tail) or switch to a bigger-window model, we **split each product's text into chunks (~200 tokens each, small overlap) and embed every chunk into its own vector → multiple vectors per product.** This keeps the small, RAM-cheap MiniLM (so the droplet RAM analysis above stays valid) *and* loses no content, and it makes chunk → multi-vector → best-chunk-per-product retrieval a deliberate, motivated technique (strong interview story) rather than a workaround. Use a purpose-built splitter (e.g. LangChain `RecursiveCharacterTextSplitter`); split on **token-accurate** boundaries using MiniLM's tokenizer (character/word splits are only approximate and can still overflow). Consider prepending product identity (name/brand) to each chunk so a "specs-only" chunk is still self-describing.
+
+- **Separate table, one row per chunk (NOT a vector-array column).** Embeddings live in a dedicated `productEmbeddings` table, **one row per (product, chunk)**: `productId` FK (cascade delete) + `chunkIndex` + the chunk `content` + `embedding vector(384)`. pgvector's HNSW/IVFFlat index works on a **single `vector` column**, so an "array of vectors in one row" (`vector(384)[]`) cannot be indexed — multiple rows is the correct shape. The design degrades gracefully: a product that fits in one chunk simply has one row, so a later switch to a bigger-window model (one vector per product) needs no schema change.
+
+- **What text to embed.** A composite document assembled from the 007 metadata in priority order: **name → brand → category → country of origin → description → key/value specs.** The whole document is chunked (above); no field is truncated away.
+
+- **Re-embed trigger = `update-product-info` completion (overwrite, delete-and-replace).** Embeddings are (re)generated when a product's metadata is (re)extracted — i.e. on the 007 `update-product-info` operation (on add, on demand, or in the info+price digest batch), **not** on a bare product create or a plain name edit. Regeneration **deletes the product's existing chunk rows and inserts the new set**, mirroring 007's "overwrite the full metadata set" semantics. A price-only `check-price` never touches embeddings. (This supersedes the old roadmap wording "regenerate on product create / name update.") At our dataset size we always re-embed on an info refresh — no content-hash skip optimization is needed now (it can be added later under Phase 6 cost work if ever warranted).
+
+- **Where embedding runs — the `mcp-server` owns the model.** There are two embedding moments: **query-time** (embed the user's search string inside `semantic_search_products`) and **write-time** (embed a product's chunks after its metadata changes). To keep MiniLM loaded in **one** process (the RAM budget assumes ~300 MB once, not ~600 MB), the `mcp-server` is the single embedding authority: it loads the model and owns chunking + embedding + the `productEmbeddings` table for both reads and writes. Query-time embedding is therefore local and fast. Write-time is triggered by the **worker** (after `update-product-info` writes metadata) and by the **backfill script**, both calling an internal `mcp-server` "reindex product" endpoint — an occasional call, so the extra hop is cheap. (Recommended resolution given the RAM constraint; flagged for confirmation, revisit in 4.2 if a different split is preferred.)
+
+- **Query = search all chunks, dedup to the nearest chunk per product.** `semantic_search_products` runs one vector query over all chunk rows using the `<=>` cosine distance operator, then **collapses to the best (nearest) chunk per `productId`**, returning the top-N **distinct** products with their rich metadata so the agent can explain the match. Price-style predicates ("cheap") are handled by the existing price tools, not by vector similarity — semantic search stays **pure vector** for now (no hybrid vector+price filter built into the tool).
+
+- **Index type — HNSW.** Use an HNSW index on the `embedding` column (better recall/latency than IVFFlat and no training/`lists` tuning step), which suits our small, frequently-rebuilt dataset.
+
+- **NOT the Vercel AI SDK `embed()` for the default path.** Transformers.js is called **directly** (it is not a Vercel AI SDK provider). The AI SDK `embed`/`embedMany` is only relevant if/when the API fallback is used.
+
+- **Provider abstraction — `EMBEDDING_PROVIDER` env** (mirrors the existing `AI_PROVIDER` pattern): `local` (default — MiniLM, 384-dim, chunked) · `openai` (`text-embedding-3-small`, 1536-dim, ~8k window) · `google` (`text-embedding-004`, 768-dim, ~2k window). Switching providers is supported but **NOT a free runtime toggle**: vectors from different models live in different spaces and have different dimensions, so a switch requires (1) change env, (2) Drizzle migration resizing the `vector(N)` column, (3) re-run the backfill to re-embed all products, (4) rebuild the HNSW index. With a bigger-window API model the chunking step becomes optional (a product may fit in a single chunk/row), but the multi-row table supports both cases unchanged. Cheap on our small dataset (~10–15 min scripted), but a deliberate operation.
+
+- **Vector dimension is fixed by the chosen model** — `vector(384)` for the `local` default.
+
+- [x] 4.1 **[Manual]** Enable `pgvector` extension in the local Docker Postgres image (update `docker-compose.yml` image or init script) and document for prod
+- [x] 4.2 **[Code+Speckit — design only]** Run speckit `specify → plan → tasks` for the whole Phase 4 embedding pipeline: the `productEmbeddings` table shape (one row per (product, chunk): `productId` FK cascade, `chunkIndex`, `content`, `embedding vector(384)`; HNSW index), the composite document + chunking strategy (splitter, ~200-token token-accurate chunks with overlap, per-chunk identity prefix), the re-embed flow (delete-and-replace a product's chunk rows on `update-product-info`), the worker→mcp-server reindex path, and the query/dedup-to-best-chunk-per-product strategy. Output is the `specs/<feature>/` folder that 4.3–4.7 implement. (Model, chunking, multi-vector table, index type, and embed-host all decided above.)
+_4.3–4.7 are the **implement phase** of the 4.2 spec (executed in the same speckit workflow)._
+
+- [x] 4.3 **[Code]** Drizzle schema + migration for the `productEmbeddings` table (per-chunk rows, `vector(384)`, HNSW index on the embedding column, `productId` FK cascade) — follows 4.2's spec
+- [x] 4.4 **[Code]** Embedding service in `mcp-server` (default: local Transformers.js `all-MiniLM-L6-v2` called directly): build the composite document, chunk it, embed each chunk, and delete-and-replace a product's rows; plus a query-embed path for search. Behind the `EMBEDDING_PROVIDER` abstraction with optional Vercel AI SDK `embed`/`embedMany` API providers as fallback
+- [x] 4.5 **[Code]** Backfill script (`scripts/backfill-embeddings.ts`) that (re)indexes every existing product once via the mcp-server embedding path. **Run order:** the 007 `backfill:product-info` must run first so products have metadata to embed. Idempotent (delete-and-replace per product, safe to re-run)
+- [x] 4.6 **[Code]** Auto-embed hook: after `update-product-info` writes metadata (worker), trigger the mcp-server reindex (delete + re-embed the product's chunks). Covers on-add (007 already runs update-product-info on create), on-demand, and the info+price digest batch. A plain `check-price` does NOT trigger re-embedding
+- [x] 4.7 **[Code]** Add `semantic_search_products` MCP tool — vector similarity query via Drizzle `sql` template using the `<=>` cosine distance operator across chunk rows, deduped to the nearest chunk per product, returning top-N distinct products with their rich metadata
+- [ ] 4.8 **[Manual]** End-to-end test: ask the chatbot a natural-language query ("gaming monitor for video editing") and verify relevant products are returned (semantic match on metadata; price predicates like "cheap" handled by the existing price tools)
 
 ### Phase 5 — Smart Deal Analyzer in Email Digest
 Goal: Enhance the existing scheduled digest with an AI-generated insight per product.
@@ -151,9 +179,7 @@ Scope and ordering to be revisited once the core features are live.
 
 ---
 
-## 6. Working Agreement (Collaboration Mode)
+## 6. Working Agreement
 
-- The assistant implements **[Code]** tasks; the user performs **[Manual]** tasks; **[Code+Speckit]** tasks go through the speckit workflow before implementation.
-- After each **[Code]** or **[Code+Speckit]** sub-task is implemented, the assistant **stops and explains** what was built, how it works, and how it connects to the broader architecture — before moving to the next sub-task.
-- Tasks may be re-broken into even smaller pieces during implementation if a piece turns out to be too large to learn at once.
+- The assistant implements **[Code]** tasks; the user performs **[Manual]** tasks; **[Code+Speckit]** tasks go through the speckit workflow.
 - Progress is tracked by updating the checkboxes in section 5 as each sub-task is completed.

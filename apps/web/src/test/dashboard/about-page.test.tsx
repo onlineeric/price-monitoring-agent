@@ -17,8 +17,8 @@ describe("AboutPage", () => {
     render(<AboutPage />);
 
     const diagram = screen.getByRole("img", { name: /system architecture/i });
-    expect(diagram).toHaveAttribute("src", "/architecture.svg");
-    expect(diagram.closest("a")).toHaveAttribute("href", "/architecture.svg");
+    expect(diagram).toHaveAttribute("src", "/architecture-phase4.svg");
+    expect(diagram.closest("a")).toHaveAttribute("href", "/architecture-phase4.svg");
   });
 
   it("links to the GitHub repository", () => {

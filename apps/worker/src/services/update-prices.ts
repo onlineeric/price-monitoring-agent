@@ -15,8 +15,21 @@ function getFlowProducer(): FlowProducer {
   return flowProducer;
 }
 
-export async function enqueueRefreshFlowForActiveProducts(triggerType: "manual" | "scheduled") {
-  const activeProducts = await db.select().from(products).where(eq(products.active, true));
+/**
+ * Refresh mode for the digest flow:
+ * - "price" (default): cheap price-only check per product (`check-price`)
+ * - "info": full metadata + price per product (`update-product-info`, AI tier)
+ */
+export type RefreshMode = "price" | "info";
+
+export async function enqueueRefreshFlowForActiveProducts(
+  triggerType: "manual" | "scheduled",
+  mode: RefreshMode = "price",
+) {
+  // Only the URL is used to build the per-product child jobs; project just that
+  // column so a digest never drags every product's full 007 metadata (description
+  // text + attributes JSONB) over the wire.
+  const activeProducts = await db.select({ url: products.url }).from(products).where(eq(products.active, true));
 
   if (activeProducts.length === 0) {
     return {
@@ -25,8 +38,11 @@ export async function enqueueRefreshFlowForActiveProducts(triggerType: "manual" 
     };
   }
 
+  // mode selects which per-product job each child runs.
+  const childJobName = mode === "info" ? "update-product-info" : "check-price";
+
   const childJobs = activeProducts.map((product) => ({
-    name: "check-price",
+    name: childJobName,
     data: { url: product.url },
     queueName: "price-monitor-queue",
     // Without this, a single failed scrape leaves the parent stuck in

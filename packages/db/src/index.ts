@@ -28,6 +28,17 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 // Re-export schema
 export * from "./schema";
 
+// Re-export the shared product-attribute type + Zod validation
+export * from "./attributes";
+
+// Re-export the well-known settings keys (shared writer/reader contract)
+export * from "./settingsKeys";
+
+// NOTE: runMigrations is intentionally NOT re-exported here. It lives behind the
+// dedicated "@price-monitor/db/migrate" subpath so the migrator (postgres-js +
+// drizzle migrator + a ../drizzle URL) never gets pulled into web's bundle.
+// Only the worker imports it.
+
 // Re-export drizzle-orm utilities for use in other packages
 export { eq, and, gt, lt, gte, lte, ne, isNull, isNotNull, desc, asc, sql, inArray };
 
@@ -46,3 +57,6 @@ export type NewSetting = typeof schema.settings.$inferInsert;
 
 export type ManualReportSend = typeof schema.manualReportSends.$inferSelect;
 export type NewManualReportSend = typeof schema.manualReportSends.$inferInsert;
+
+export type ProductEmbedding = typeof schema.productEmbeddings.$inferSelect;
+export type NewProductEmbedding = typeof schema.productEmbeddings.$inferInsert;
