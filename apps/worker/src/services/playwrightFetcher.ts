@@ -222,16 +222,20 @@ function hasValidData(title: string | null, price: number | null, imageUrl: stri
 }
 
 /**
- * Fetch and extract product data using Playwright headless browser
+ * Open a page on the singleton browser, block heavy resources, navigate to the
+ * URL and wait for the DOM to stabilize. Returns the still-open page — the
+ * caller owns it and MUST close it. On any failure the page is closed before
+ * the error propagates so it can't leak.
+ *
+ * Shared by playwrightFetch (price path) and renderPageHtml (metadata path) so
+ * the navigation/stealth/stability logic lives in exactly one place.
  */
-export async function playwrightFetch(url: string, config?: ScraperConfig): Promise<ScraperResult> {
+async function openAndRenderPage(url: string, config?: ScraperConfig): Promise<Page> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  let page: Page | null = null;
+  const browser = await getBrowser();
+  const page = await browser.newPage();
 
   try {
-    const browser = await getBrowser();
-    page = await browser.newPage();
-
     // Block unnecessary resources to reduce bandwidth (proxy cost optimization)
     await page.route("**/*", (route) => {
       const resourceType = route.request().resourceType();
@@ -272,6 +276,41 @@ export async function playwrightFetch(url: string, config?: ScraperConfig): Prom
 
     // Wait for DOM to stabilize
     await waitForDOMStability(page);
+
+    return page;
+  } catch (error) {
+    await page.close().catch(() => undefined);
+    throw error;
+  }
+}
+
+/**
+ * Render a page and return its fully-rendered HTML, then close the page.
+ *
+ * This is the rendered-HTML entry point reused by the metadata path
+ * (`scrapeProductInfo`) so it gets the same stealth singleton browser + DOM
+ * stability behaviour as the price path, without re-implementing navigation.
+ */
+export async function renderPageHtml(url: string, config?: ScraperConfig): Promise<string> {
+  const page = await openAndRenderPage(url, config);
+  try {
+    const renderedHtml = await page.content();
+    console.log(`[Playwright] Rendered HTML for info extraction: ${renderedHtml.length} chars`);
+    return renderedHtml;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Fetch and extract product data using Playwright headless browser
+ */
+export async function playwrightFetch(url: string, config?: ScraperConfig): Promise<ScraperResult> {
+  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  let page: Page | null = null;
+
+  try {
+    page = await openAndRenderPage(url, mergedConfig);
 
     // Get fully-rendered HTML
     const renderedHtml = await page.content();

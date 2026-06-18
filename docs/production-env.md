@@ -37,6 +37,78 @@ postgresql://postgres:STRONG_PASSWORD_HERE@price-monitor-postgres-prod:5432/pric
 - Coolify → Web App → Environment Variables
 - Coolify → Worker App → Environment Variables
 
+#### pgvector Extension (Semantic Search / RAG)
+
+Semantic product search (Phase 4) stores vector embeddings in Postgres using the
+[`pgvector`](https://github.com/pgvector/pgvector) extension. The database image
+must ship the extension and the extension must be created once in the
+`priceMonitor` database.
+
+**Local development** (`docker-compose.yml`):
+- Image is `pgvector/pgvector:pg18` (Postgres 18 with pgvector preinstalled).
+- `scripts/db-init/01-enable-pgvector.sql` runs `CREATE EXTENSION IF NOT EXISTS vector;`
+  automatically on a **fresh** data volume. On an existing volume, run it manually:
+  ```bash
+  docker compose exec postgres psql -U postgres -d priceMonitor -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  ```
+
+> **Note on the alpine → pgvector image swap (existing volumes only):** the old
+> `postgres:18-alpine` image is musl-based; `pgvector/pgvector:pg18` is glibc-based.
+> The data files are compatible (same PG major version), but if the database has a
+> **recorded** collation version (`SELECT datcollversion FROM pg_database WHERE
+> datname='priceMonitor'` returns non-empty), rebuild indexes once:
+> `REINDEX DATABASE "priceMonitor";`. If `datcollversion` is **empty** (the typical
+> case for a DB created under the alpine image), Postgres records no version, emits
+> no mismatch warning, and no reindex is needed.
+
+**Production (Coolify):**
+- The managed Postgres service must use a pgvector-capable image. Switch the
+  Coolify Postgres app's image to `pgvector/pgvector:pg18` (same major version as
+  prod — 18) so the data files stay compatible.
+
+> **⚠️ PG18 data-directory layout gotcha (hit during the prod swap — read before
+> restarting).** PostgreSQL 18's Docker images changed where data lives: the
+> default is now a **version-specific subdirectory** (`PGDATA=/var/lib/postgresql/18/docker`)
+> and the declared mount point moved to `/var/lib/postgresql` (was
+> `/var/lib/postgresql/data`). See [docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259).
+>
+> If the Coolify Postgres volume is still mounted at the **legacy**
+> `/var/lib/postgresql/data`, swapping to `pgvector/pgvector:pg18` makes the
+> image's default `PGDATA` (`/var/lib/postgresql/18/docker`) point **outside**
+> your data volume (into an empty auto-created anonymous volume). The container
+> then fails on startup with either:
+> - `there appears to be PostgreSQL data in: /var/lib/postgresql/data (unused mount/volume)`, or
+> - `initdb: error: directory "/var/lib/postgresql/data" exists but is not empty`.
+>
+> **Your data is safe** when this happens — the entrypoint *refuses to start*
+> rather than touch the existing cluster. **Do NOT follow initdb's hint to "remove
+> or empty the directory"** — that would delete the database.
+>
+> **Fix (the one applied in prod):** in Coolify → Postgres → **Persistent Storage**,
+> set the volume's **Destination Path** to **`/var/lib/postgresql`** (not
+> `/var/lib/postgresql/data`), and ensure **no custom `PGDATA` env var** is set
+> (let the image default apply). The existing cluster already sits in the
+> `18/docker` subdirectory of the volume, so it lines up exactly with the default
+> `PGDATA=/var/lib/postgresql/18/docker`. Restart → Postgres detects the existing
+> cluster, skips `initdb`, and starts on your data. **No data is moved** — only the
+> mount point is realigned.
+>
+> _Diagnose where the cluster actually lives (read-only) before changing anything:_
+> ```bash
+> docker volume ls | grep -i postgres                 # find the named data volume
+> docker run --rm -v <VOLUME_NAME>:/data alpine \
+>   sh -c 'find /data -maxdepth 3 -name PG_VERSION'    # path to the real cluster
+> ```
+> The directory containing `PG_VERSION` (e.g. `/data/18/docker`) is the cluster
+> root; mount + `PGDATA` must resolve to it.
+
+- After the DB is up, create the extension once:
+  ```bash
+  psql "$DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  ```
+- `CREATE EXTENSION` is idempotent (`IF NOT EXISTS`), so it is safe to re-run and
+  safe to include in a future Drizzle migration.
+
 ---
 
 ### Redis Configuration
@@ -225,6 +297,70 @@ true
 - Having multiple schedulers will cause duplicate emails
 - Current setup: Single worker with scheduler enabled
 
+#### RUN_MIGRATIONS (feature 007)
+
+**Description:** Gates the worker's startup migration step. When `true`, the worker
+applies all pending committed Drizzle migrations (`packages/db/drizzle/`) **before**
+it begins consuming jobs (`apps/worker/src/index.ts`), then starts. When unset /
+not `true`, the worker skips migrations and starts immediately.
+
+**CRITICAL:** Exactly **ONE** instance may have this set to `true` — the same
+singleton that owns `ENABLE_SCHEDULER=true`. Two workers racing migrations on
+startup can conflict. If you scale workers, only the scheduler/migrator instance
+gets `RUN_MIGRATIONS=true`.
+
+**Values:**
+- `true` — apply pending migrations on startup, then consume jobs (production
+  scheduler/migrator instance)
+- unset / `false` — skip migrations (additional workers, or when applying via the
+  manual fallback `pnpm --filter @price-monitor/db migrate`)
+
+**Production Value:**
+```
+true
+```
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables (the single scheduler instance)
+- **NOT** in Web App or MCP Server
+
+**Important Notes:**
+- Migrations are **idempotent and additive**: the `0000` baseline uses
+  `CREATE TABLE IF NOT EXISTS` + a `duplicate_object`-guarded FK, and `0001` uses
+  `ADD COLUMN IF NOT EXISTS`, so they apply cleanly over a schema originally
+  created by `drizzle-kit push` (prod has no migration history until the first
+  `migrate` run records it). `0002` creates the new `product_embeddings` table and
+  runs `CREATE EXTENSION IF NOT EXISTS vector` — which requires the
+  pgvector-capable DB image (see pgvector section above) and a superuser DB role
+  (`postgres`). A migration failure is **fatal**: the worker logs and exits, so
+  fix the cause (e.g. wrong DB image) and redeploy.
+- Manual apply fallback (does not need this var): `pnpm --filter @price-monitor/db migrate`.
+
+#### MCP_REINDEX_URL (feature 008)
+
+**Description:** Full URL of the MCP server's internal reindex endpoint. After a
+successful `update-product-info`, the worker enqueues a `reindex-product-embeddings`
+job whose handler POSTs `{ productId }` here so the MCP server (the single
+embedding authority) rebuilds the product's vectors. The embeddings backfill
+enqueues the same job per product.
+
+**Format:** `http://<mcp-host>:<port>/internal/reindex` (a dedicated full URL —
+NOT the web app's `MCP_HTTP_URL`, which points at the `/mcp` JSON-RPC endpoint).
+
+**Production Value (Coolify Internal DNS):**
+```
+http://price-monitor-mcp-prod:3002/internal/reindex
+```
+
+**Notes:**
+- Default `http://localhost:3002/internal/reindex` (dev). In Docker compose the
+  worker uses the service name: `http://mcp-server:3002/internal/reindex`.
+- A non-2xx / network error makes the job retry with backoff, so a briefly-down
+  MCP server self-heals without failing the metadata/price write.
+
+**Where to Set:**
+- Coolify → Worker App → Environment Variables
+
 ---
 
 ### MCP Server Configuration
@@ -286,6 +422,40 @@ http://price-monitor-mcp-prod:3002/mcp
 Use the same values as the worker (Coolify internal DNS for Postgres + Redis, same business timezone, `NODE_ENV=production`). The MCP tools query the DB via Drizzle and `add_product` enqueues a BullMQ job.
 
 `AI_PROVIDER` and the matching API key are **optional** today — no current MCP tool calls an LLM. Add them only when one does.
+
+#### MCP Server — Semantic Search / Embeddings (feature 008)
+
+The MCP server is the **single embedding authority**: it loads the local
+`all-MiniLM-L6-v2` model (~300 MB resident, paid once) and serves both
+query-time semantic search and write-time reindex. The worker and backfill
+never load a model — they enqueue a reindex job that POSTs to the MCP server.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `EMBEDDING_PROVIDER` | `local` | `local` \| `openai` \| `google`. Only `local` is wired; switching is a deliberate migration (see runbook below). |
+| `EMBEDDING_MODEL` | `Xenova/all-MiniLM-L6-v2` | Local model id (384-dim, int8). |
+| `EMBEDDING_CACHE_DIR` | `/app/.cache/transformers` | Baked into the image at build time. Leave at the image default in prod. |
+| `SEMANTIC_SEARCH_TOP_N` | `5` | Default number of distinct products returned. |
+| `SEMANTIC_SEARCH_MAX_DISTANCE` | `0.78` | Cosine-distance cutoff for a **confident** match (lower = stricter). Tuned for the chat agent's conversational queries: distilled product-shaped queries land on-topic ~0.55–0.77, off-topic ≥0.90. Past the cutoff the search falls back to the single nearest product as a low-confidence match (not a hard empty result); only truly off-topic queries return nothing. Re-tune if the catalog mix changes. |
+
+**Offline at runtime:** the Docker image bakes the model weights into
+`EMBEDDING_CACHE_DIR` and sets `TRANSFORMERS_OFFLINE=1` / `HF_HUB_OFFLINE=1`;
+under `NODE_ENV=production` the code also sets `allowRemoteModels=false`. A
+running container never contacts the Hugging Face Hub, so a Hub outage cannot
+break search and the first chat search after a deploy is not gated on a download.
+
+**Deliberate provider-switch runbook (`local` → `openai`/`google`):** changing
+provider changes the vector dimension (OpenAI 1536, Google 768), so it is a
+migration, not a runtime toggle:
+1. Install `ai` + the adapter (`@ai-sdk/openai` or `@ai-sdk/google`) in
+   `apps/mcp-server` and implement the `embedMany` branch in
+   `embeddings/provider.ts`.
+2. Migrate the `product_embeddings.embedding` column to `vector(N)` for the new
+   dimension.
+3. Rebuild the HNSW index for the new column.
+4. Re-run the embeddings backfill (`pnpm --filter @price-monitor/worker
+   backfill:embeddings`) to repopulate vectors.
+5. Set `EMBEDDING_PROVIDER` + the provider API key and redeploy.
 
 ---
 
@@ -368,9 +538,11 @@ Use this checklist when configuring production environment:
 - [ ] EMAIL_FROM (sender identity)
 - [ ] ALERT_EMAIL (default legacy digest recipient)
 - [ ] ENABLE_SCHEDULER (`true`)
+- [ ] RUN_MIGRATIONS (`true` — single scheduler/migrator instance only; applies pending migrations on startup)
 - [ ] SCHEDULER_TIMEZONE (scheduler + quota day-boundary timezone)
 - [ ] NODE_ENV (`production`)
 - [ ] FORCE_AI_EXTRACTION (`false` or omit)
+- [ ] MCP_REINDEX_URL (`http://price-monitor-mcp-prod:3002/internal/reindex` — semantic-search reindex)
 
 ### MCP Server Application
 
@@ -383,6 +555,8 @@ Use this checklist when configuring production environment:
 - [ ] Network alias (e.g. `price-monitor-mcp-prod`) so the web app can resolve the hostname
 - [ ] Health check path: `/health` on port `3002`
 - [ ] Internal-only — no public domain, no HTTPS termination
+- [ ] EMBEDDING_PROVIDER (`local`) + EMBEDDING_MODEL / SEMANTIC_SEARCH_TOP_N / SEMANTIC_SEARCH_MAX_DISTANCE (or rely on defaults)
+- [ ] EMBEDDING_CACHE_DIR (`/app/.cache/transformers` — image default; weights baked in)
 
 ---
 

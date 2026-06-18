@@ -1,21 +1,39 @@
 "use client";
 
+import { type ComponentPropsWithoutRef, useMemo } from "react";
+
 import { Streamdown } from "streamdown";
 
+import { PRODUCT_LINK_PREFIX } from "@/lib/chat/product-cards";
 import { cn } from "@/lib/utils";
+
+import { useChatProduct } from "./chat-product-context";
 
 interface MarkdownContentProps {
   text: string;
   className?: string;
+  /**
+   * Products this reply actually retrieved. An inline product link only becomes
+   * clickable when its id is in here — otherwise it renders as plain text
+   * (fail-safe, FR-005). Defaults to empty (no clickable product links).
+   */
+  knownProductIds?: ReadonlyMap<string, unknown>;
+}
+
+/** Return the product id from a `#product-<id>` href, or `null` for other hrefs. */
+function parseProductHref(href: string | undefined): string | null {
+  if (!href || !href.startsWith(PRODUCT_LINK_PREFIX)) return null;
+  const id = href.slice(PRODUCT_LINK_PREFIX.length).trim();
+  return id.length > 0 ? id : null;
 }
 
 /**
  * Block-level elements we permit in assistant Markdown output.
  *
- * Streamdown ships with safe defaults (no `<script>`, `<iframe>`, `<style>`,
- * no inline event-handler attributes); we still pass an explicit list so the
- * safety contract is reviewable in our code rather than inferred from the
- * library's defaults. Per `plan.md` Technical Constraints.
+ * This strict allow-list IS the safety contract: anything not listed (e.g.
+ * `<script>`, `<iframe>`, `<style>`) is dropped, so no separate disallow-list is
+ * needed. We pass it explicitly so the contract is reviewable in our code rather
+ * than inferred from Streamdown's defaults. Per `plan.md` Technical Constraints.
  */
 const ALLOWED_ELEMENTS: readonly string[] = [
   "p",
@@ -48,24 +66,11 @@ const ALLOWED_ELEMENTS: readonly string[] = [
   "img",
 ];
 
-const DISALLOWED_ELEMENTS: readonly string[] = [
-  "script",
-  "iframe",
-  "style",
-  "object",
-  "embed",
-  "form",
-  "input",
-  "button",
-  "textarea",
-  "select",
-  "option",
-];
-
 /**
- * Reject `javascript:` and executable `data:` schemes; pass any other
- * absolute URL through. Relative links and fragment links are returned
- * unchanged. The fallback ("#") makes the link visible but inert.
+ * Reject `javascript:` and executable `data:` schemes; pass any other absolute
+ * URL through. Relative links and fragment links (incl. our `#product-<id>`
+ * markers) are returned unchanged. The fallback ("#") makes the link visible
+ * but inert.
  */
 function safeUrlTransform(url: string): string | null {
   const trimmed = url.trim();
@@ -81,8 +86,52 @@ function safeUrlTransform(url: string): string | null {
 /**
  * Sanitized Markdown renderer for assistant text. Used only on `assistant`
  * bubbles — user input is rendered as plain text (per plan.md).
+ *
+ * Inline `product:<id>` links are rendered as buttons that open the product
+ * detail dialog — but only when the id was actually retrieved this reply
+ * (`knownProductIds`); unresolvable product links degrade to plain text.
  */
-export function MarkdownContent({ text, className }: MarkdownContentProps) {
+export function MarkdownContent({ text, className, knownProductIds }: MarkdownContentProps) {
+  const { openProduct } = useChatProduct();
+
+  // Memoized so the `components` prop keeps a stable identity across streaming
+  // text deltas. A fresh `Anchor` (and `components` object) on every render
+  // defeats Streamdown's per-block memoization and remounts every link on each
+  // tick. `openProduct` (provider-memoized) and `knownProductIds` (the message's
+  // memoized surface) are both stable while a reply streams.
+  const components = useMemo(
+    () => ({
+      a: function Anchor({ href, children, node: _node, ...rest }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
+        const productId = parseProductHref(href);
+
+        if (productId !== null) {
+          // Fail-safe: only act on products this reply retrieved; otherwise plain text.
+          if (knownProductIds?.has(productId)) {
+            return (
+              <button
+                type="button"
+                onClick={() => openProduct(productId)}
+                className="cursor-pointer bg-transparent p-0 text-primary underline underline-offset-2 hover:no-underline"
+              >
+                {children}
+              </button>
+            );
+          }
+          return <>{children}</>;
+        }
+
+        // Non-product links: href is already sanitized + hardened by Streamdown's
+        // rehype pipeline before it reaches us. Open external links in a new tab.
+        return (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+            {children}
+          </a>
+        );
+      },
+    }),
+    [openProduct, knownProductIds],
+  );
+
   return (
     <div
       className={cn(
@@ -97,8 +146,8 @@ export function MarkdownContent({ text, className }: MarkdownContentProps) {
     >
       <Streamdown
         allowedElements={ALLOWED_ELEMENTS}
-        disallowedElements={DISALLOWED_ELEMENTS}
         urlTransform={safeUrlTransform}
+        components={components}
         skipHtml
       >
         {text}

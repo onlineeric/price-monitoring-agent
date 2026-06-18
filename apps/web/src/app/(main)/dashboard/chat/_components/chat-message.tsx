@@ -1,13 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { Square } from "lucide-react";
 
 import { isRetryable } from "@/lib/chat/chat-error-parsing";
+import { buildMessageProductSurface } from "@/lib/chat/product-cards";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/stores/chat/chat-store";
 import type { AssistantMessage, DisplayedMessage } from "@/stores/chat/types";
 
 import { ChatErrorBlock } from "./chat-error-block";
+import { ChatProductCards } from "./chat-product-cards";
 import { MarkdownContent } from "./markdown-content";
 import { ToolCallIndicator } from "./tool-call-indicator";
 
@@ -52,6 +56,10 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   const isStreamingEmpty = message.state === "streaming" && message.text.length === 0;
   const retry = useChatStore((s) => s.retry);
 
+  // Products the assistant retrieved this reply — powers the clickable card list
+  // and (via byId) the inline `product:<id>` link resolution.
+  const surface = useMemo(() => buildMessageProductSurface(message.toolEvents), [message.toolEvents]);
+
   return (
     <div className="flex w-full justify-start" data-testid="chat-message-assistant" data-message-state={message.state}>
       <div
@@ -63,7 +71,13 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
           <ToolCallIndicator key={event.id} event={event} />
         ))}
 
-        {isStreamingEmpty ? <ThinkingDots /> : message.text.length > 0 ? <MarkdownContent text={message.text} /> : null}
+        {isStreamingEmpty ? (
+          <ThinkingDots />
+        ) : message.text.length > 0 ? (
+          <MarkdownContent text={message.text} knownProductIds={surface.byId} />
+        ) : null}
+
+        <ChatProductCards surface={surface} />
 
         {message.state === "stopped" ? (
           <div className="flex items-center gap-1 self-start rounded-md bg-background/60 px-2 py-0.5 text-muted-foreground text-xs">

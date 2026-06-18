@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { selectError, selectMessages, selectStatus, useChatStore } from "@/stores/chat/chat-store";
 
 import { ChatInput, type ChatInputHandle } from "./chat-input";
+import { ChatProductDialogProvider } from "./chat-product-dialog-provider";
 import { ChatThread } from "./chat-thread";
 
 /**
@@ -74,13 +75,15 @@ export function ChatPageClient() {
         </Button>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border bg-card">
-        <ChatThread messages={messages} status={status} error={error} onSelectStarter={handleSelectStarter} />
+      <ChatProductDialogProvider>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border bg-card">
+          <ChatThread messages={messages} status={status} error={error} onSelectStarter={handleSelectStarter} />
 
-        <div className="border-t bg-background/40 p-3">
-          <ChatInput ref={inputRef} status={status} onSend={send} onStop={stop} />
+          <div className="border-t bg-background/40 p-3">
+            <ChatInput ref={inputRef} status={status} onSend={send} onStop={stop} />
+          </div>
         </div>
-      </div>
+      </ChatProductDialogProvider>
     </div>
   );
 }

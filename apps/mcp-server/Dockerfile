@@ -32,11 +32,24 @@ COPY apps/mcp-server ./apps/mcp-server
 # Build db package if needed (Drizzle schema compilation)
 RUN pnpm --filter @price-monitor/db build || true
 
+# Bake the MiniLM int8 embedding weights into the image (feature 008,
+# research D3). The warm step runs the pipeline once so the model is downloaded
+# into the baked cache dir; NODE_ENV is forced to development for this single
+# command so remote model fetching is allowed at build time. At runtime the
+# weights are already present and the Hub is never contacted.
+ENV EMBEDDING_CACHE_DIR=/app/.cache/transformers
+RUN cd /app/apps/mcp-server \
+    && NODE_ENV=development ../../node_modules/.bin/tsx scripts/warm-embedding-model.ts
+
 # Default to HTTP transport on port 3002 in production. Override
 # MCP_TRANSPORT=stdio to use the IDE-style stdio transport.
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http
 ENV MCP_HTTP_PORT=3002
+# Offline at runtime: weights are baked in (above), so never reach the HF Hub.
+# Belt-and-suspenders with the code's allowRemoteModels=false under production.
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
 
 EXPOSE 3002
 

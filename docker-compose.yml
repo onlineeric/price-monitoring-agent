@@ -2,7 +2,9 @@
 services:
   # PostgreSQL database (local alternative to Neon)
   postgres:   # service name, use in DATABASE_URL as hostname, e.g., postgresql://user:pass@postgres:5432/dbname
-    image: postgres:18-alpine
+    # pgvector/pgvector:pg18 = Postgres 18 with the pgvector extension preinstalled
+    # (plain postgres:18-alpine does NOT ship the extension files needed for `CREATE EXTENSION vector`)
+    image: pgvector/pgvector:pg18
     # container_name: price-monitor-postgres  # Don't set container_name to allow multiple instances
     environment:
       POSTGRES_USER: postgres
@@ -12,6 +14,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # Init scripts run once, only when the data volume is first created (fresh DB).
+      # On an existing volume, run `CREATE EXTENSION IF NOT EXISTS vector;` manually instead.
+      - ./scripts/db-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -58,6 +63,11 @@ services:
       FORCE_AI_EXTRACTION: ${FORCE_AI_EXTRACTION:-false}
       # Scheduler - enabled for background worker
       ENABLE_SCHEDULER: "true"
+      # Auto-apply pending DB migrations on startup (same single gated instance)
+      RUN_MIGRATIONS: "true"
+      # Semantic search (feature 008): the reindex job POSTs here. Use the
+      # mcp-server Docker service name, not localhost.
+      MCP_REINDEX_URL: http://mcp-server:3002/internal/reindex
       # Timezone used by BullMQ repeatable cron jobs
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
       # Email
@@ -88,6 +98,13 @@ services:
       # Port 3002 (not 3001) so we don't collide with the worker's health server on host
       MCP_TRANSPORT: http
       MCP_HTTP_PORT: "3002"
+      # Semantic search (feature 008): the mcp-server is the single embedding
+      # authority. Weights are baked into the image at EMBEDDING_CACHE_DIR.
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-Xenova/all-MiniLM-L6-v2}
+      EMBEDDING_CACHE_DIR: /app/.cache/transformers
+      SEMANTIC_SEARCH_TOP_N: ${SEMANTIC_SEARCH_TOP_N:-5}
+      SEMANTIC_SEARCH_MAX_DISTANCE: ${SEMANTIC_SEARCH_MAX_DISTANCE:-0.70}
       # Timezone used by any date-based tools
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Pacific/Auckland}
     depends_on:

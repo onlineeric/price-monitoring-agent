@@ -1,3 +1,4 @@
+import { runMigrations } from "@price-monitor/db/migrate";
 import { Queue } from "bullmq";
 import { connection, QUEUE_NAME } from "./config.js";
 import { closeFlowProducer } from "./jobs/sendDigest.js";
@@ -15,6 +16,33 @@ console.log(`[WORKER] Environment: ${process.env.NODE_ENV || "development"}`);
 
 // Validate environment variables before proceeding
 validateAndExit();
+
+// ===================================
+// Database Migrations (gated single instance)
+// ===================================
+// Only ONE instance should own RUN_MIGRATIONS=true — the same singleton that
+// owns ENABLE_SCHEDULER=true. Pending migrations are applied BEFORE the worker
+// consumes any job (the BullMQ Worker uses autorun:false). A failure here is
+// fatal: we exit non-zero rather than serve against a stale schema.
+const RUN_MIGRATIONS = process.env.RUN_MIGRATIONS === "true";
+if (RUN_MIGRATIONS) {
+  console.log("[MIGRATE] RUN_MIGRATIONS=true — applying pending migrations before consuming jobs...");
+  try {
+    await runMigrations();
+    console.log("[MIGRATE] Migrations applied; continuing startup.");
+  } catch (error) {
+    console.error("[MIGRATE] Migration failed; worker will NOT start:", error);
+    process.exit(1);
+  }
+} else {
+  console.log("[MIGRATE] RUN_MIGRATIONS not 'true' — skipping migrations on this instance.");
+}
+
+// Now safe to begin consuming jobs.
+worker.run().catch((error) => {
+  console.error("[WORKER] Worker.run() failed:", error);
+  process.exit(1);
+});
 
 console.log("[WORKER] Connected to Redis");
 console.log("[WORKER] Listening for jobs on queue:", QUEUE_NAME);
