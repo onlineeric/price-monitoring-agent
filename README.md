@@ -9,7 +9,7 @@ https://price-monitor.onlineeric.net/
 
 ## What this project demonstrates
 
-![Price Monitoring Agent system architecture — web app, data layer, background services, and external integrations, with synchronous request/response and asynchronous BullMQ job flows](docs/architecture.svg)
+![Price Monitoring Agent system architecture — web app, data layer, background services, and external integrations, with synchronous request/response and asynchronous BullMQ job flows](docs/architecture-phase4.svg)
 
 - Full-stack application design with Next.js 16, React 19, TypeScript, PostgreSQL, Redis, and BullMQ
 - Practical AI integration using the Vercel AI SDK with typed structured output, not just free-form prompting

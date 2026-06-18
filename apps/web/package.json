@@ -1,6 +1,6 @@
 {
   "name": "@price-monitor/web",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "concurrently -n next,tsc -c cyan,yellow \"next dev\" \"tsc --watch --noEmit --preserveWatchOutput\"",

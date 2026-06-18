@@ -73,10 +73,10 @@ export default function AboutPage() {
           share PostgreSQL and Redis. Solid lines are synchronous request/response calls; dashed lines are asynchronous
           BullMQ jobs. Click the diagram to open it full size.
         </p>
-        <a href="/architecture.svg" target="_blank" rel="noopener noreferrer">
+        <a href="/architecture-phase4.svg" target="_blank" rel="noopener noreferrer">
           {/* biome-ignore lint/performance/noImgElement: local static SVG; next/image would route it through the optimizer, which blocks SVG by default */}
           <img
-            src="/architecture.svg"
+            src="/architecture-phase4.svg"
             alt="Price Monitoring Agent system architecture — web app, data layer, background services, and external integrations, with synchronous request/response and asynchronous BullMQ job flows"
             className="w-full rounded-lg border"
             width={1860}
