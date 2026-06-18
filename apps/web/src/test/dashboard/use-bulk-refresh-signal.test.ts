@@ -102,6 +102,37 @@ describe("useBulkRefreshSignal", () => {
     expect(toastMock.success).not.toHaveBeenCalled();
   });
 
+  it("does not signal prematurely when the baseline read fails (establishes baseline late)", async () => {
+    // Baseline fetch errors (HTTP 500) → indeterminate. A stale marker already
+    // exists from a prior run ("T0"); the batch has NOT finished yet. We must
+    // NOT fire on first seeing "T0" — it becomes the late baseline instead.
+    const errorResponse = { ok: false, status: 500, json: async () => ({}) };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(errorResponse) // baseline read fails
+      .mockResolvedValueOnce(markerResponse("T0")) // tick 1 — establishes baseline, no signal
+      .mockResolvedValueOnce(markerResponse("T0")) // tick 2 — unchanged
+      .mockResolvedValue(markerResponse("T1")); // tick 3 — genuinely advanced
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useBulkRefreshSignal());
+    await act(async () => {
+      await result.current.watchForCompletion();
+    });
+
+    // Ticks 1 & 2: baseline (re)established at "T0", no premature signal.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
+    });
+    expect(toastMock.success).not.toHaveBeenCalled();
+
+    // Tick 3: marker advances past the late baseline → signal fires once.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    });
+    expect(toastMock.success).toHaveBeenCalledTimes(1);
+  });
+
   it("does not signal while the marker stays at the baseline", async () => {
     const fetchMock = vi.fn().mockResolvedValue(markerResponse("T0"));
     vi.stubGlobal("fetch", fetchMock);

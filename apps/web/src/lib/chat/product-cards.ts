@@ -77,32 +77,20 @@ function textPartsOf(result: unknown): string[] {
 }
 
 /**
- * Parse a product array out of one tool-result text. Handles the plain-JSON case
- * and the semantic tool's low-confidence form (a prose preamble followed by the
- * JSON array) by retrying from the first `[`. Any failure yields `[]`.
+ * Parse a product array out of a single tool-result text part. Product tools emit
+ * their machine JSON as its own text part (the semantic tool's low-confidence
+ * prose nudge is a SEPARATE part), so a part is either a clean product-array JSON
+ * or it is not — anything that doesn't parse to a valid product array yields `[]`.
  */
 function parseProducts(text: string): RetrievedProduct[] {
-  const tryParse = (candidate: string): RetrievedProduct[] | null => {
-    let json: unknown;
-    try {
-      json = JSON.parse(candidate);
-    } catch {
-      return null;
-    }
-    const parsed = productArraySchema.safeParse(json);
-    return parsed.success ? parsed.data : null;
-  };
-
-  const direct = tryParse(text);
-  if (direct) return direct;
-
-  // Low-confidence semantic result: "<prose>:\n[ ...json... ]" → parse the array.
-  const start = text.indexOf("[");
-  if (start > 0) {
-    const fromArray = tryParse(text.slice(start));
-    if (fromArray) return fromArray;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return [];
   }
-  return [];
+  const parsed = productArraySchema.safeParse(json);
+  return parsed.success ? parsed.data : [];
 }
 
 function productsFromEvent(event: ToolCallEvent): RetrievedProduct[] {

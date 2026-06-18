@@ -108,17 +108,17 @@ describe("semantic_search_products tool", () => {
     });
   });
 
-  it("flags a best-effort fallback row as low-confidence in the note", async () => {
+  it("flags a best-effort fallback row as low-confidence in a separate note part", async () => {
     searchMock.semanticSearch.mockResolvedValueOnce([{ ...ROW, distance: 0.81, lowConfidence: true }]);
     const handler = captureHandler();
     const result = await handler({ query: "host a big dinner party" });
 
     expect(result.isError).toBeFalsy();
-    const text = result.content[0]?.text ?? "";
-    expect(text).toMatch(/low.confidence/i);
-    // The row payload is still present after the note.
-    const json = text.slice(text.indexOf("["));
-    const parsed = JSON.parse(json) as Array<Record<string, unknown>>;
+    // Two parts: a human low-confidence note, then the machine JSON payload —
+    // kept separate so the card extractor parses the JSON without scanning prose.
+    expect(result.content).toHaveLength(2);
+    expect(result.content[0]?.text).toMatch(/low.confidence/i);
+    const parsed = JSON.parse(result.content[1]?.text ?? "[]") as Array<Record<string, unknown>>;
     expect(parsed[0]).toMatchObject({ id: "p1", lowConfidence: true });
   });
 

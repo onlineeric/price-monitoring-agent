@@ -57,17 +57,24 @@ export function registerSemanticSearchProducts(server: McpServer) {
 
       const json = JSON.stringify(results, null, 2);
       // Fallback rows (no chunk cleared the confident cutoff): the agent should
-      // present the closest item tentatively rather than as a strong match.
+      // present the closest item tentatively rather than as a strong match. Emit
+      // the human nudge as its OWN content part, kept separate from the machine
+      // JSON, so the card extractor parses the JSON part cleanly instead of
+      // string-scanning prose for the array boundary. The model still reads both.
       const lowConfidence = matches.every((m) => m.lowConfidence);
-      const text = lowConfidence
-        ? `No product is a STRONG semantic match for "${query}". Showing the single closest item as a ` +
-          "LOW-CONFIDENCE suggestion — tell the user it may not be a great fit and don't overstate it:\n" +
-          json
-        : json;
+      const content = lowConfidence
+        ? [
+            {
+              type: "text" as const,
+              text:
+                `No product is a STRONG semantic match for "${query}". Showing the single closest item as a ` +
+                "LOW-CONFIDENCE suggestion — tell the user it may not be a great fit and don't overstate it.",
+            },
+            { type: "text" as const, text: json },
+          ]
+        : [{ type: "text" as const, text: json }];
 
-      return {
-        content: [{ type: "text" as const, text }],
-      };
+      return { content };
     }),
   );
 }

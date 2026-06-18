@@ -36,10 +36,16 @@ export async function chunk(document: string, identityPrefix: string, productNam
   const prefixTokens = prefix.length > 0 ? countTokens(prefix) : 0;
   // Leave room for the prefix (+ a newline) within the target window.
   const chunkSize = Math.max(MIN_CHUNK_TOKENS, TARGET_TOKENS - prefixTokens);
+  // Keep overlap well below chunkSize so the splitter always makes forward
+  // progress. A very long identity prefix can shrink chunkSize toward
+  // MIN_CHUNK_TOKENS (32); a fixed 30-token overlap would then re-include almost
+  // the whole previous chunk — exploding into near-duplicate fragments (and
+  // LangChain throws outright once overlap ≥ chunkSize).
+  const chunkOverlap = Math.min(OVERLAP_TOKENS, Math.floor(chunkSize / 4));
 
   const splitter = new RecursiveCharacterTextSplitter({
     chunkSize,
-    chunkOverlap: OVERLAP_TOKENS,
+    chunkOverlap,
     lengthFunction: countTokens,
   });
 

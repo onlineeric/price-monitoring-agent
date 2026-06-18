@@ -35,6 +35,16 @@ function jsonEvent(toolName: string, products: unknown[], status?: ToolCallEvent
   return toolEvent(toolName, JSON.stringify(products), status, id);
 }
 
+/** A completed product-tool event whose result carries several text content parts. */
+function multiPartEvent(toolName: string, texts: string[], id = `${toolName}-call`): ToolCallEvent {
+  return {
+    id,
+    toolName,
+    status: "completed",
+    result: { content: texts.map((text) => ({ type: "text", text })) },
+  };
+}
+
 describe("buildMessageProductSurface", () => {
   it("returns cards mirroring a single search result", () => {
     const surface = buildMessageProductSurface([jsonEvent("search_products", [product("a"), product("b")])]);
@@ -76,11 +86,16 @@ describe("buildMessageProductSurface", () => {
     expect(surface.overflowCount).toBe(0);
   });
 
-  it("parses the low-confidence semantic result (prose preamble + JSON array)", () => {
-    const text = `No product is a STRONG semantic match for "x". Showing the single closest item:\n${JSON.stringify([
-      product("z"),
-    ])}`;
-    const surface = buildMessageProductSurface([toolEvent("semantic_search_products", text)]);
+  it("parses a low-confidence semantic result emitted as separate prose + JSON parts", () => {
+    // The prose nudge (which can itself contain "[", e.g. an echoed "[gaming]"
+    // query) is its own content part, so it simply fails to parse and the JSON
+    // part still yields the card — no bracket-scanning of prose required.
+    const surface = buildMessageProductSurface([
+      multiPartEvent("semantic_search_products", [
+        'No product is a STRONG semantic match for "[gaming] monitor". Showing the closest item:',
+        JSON.stringify([product("z")]),
+      ]),
+    ]);
 
     expect(surface.cards.map((c) => c.id)).toEqual(["z"]);
   });

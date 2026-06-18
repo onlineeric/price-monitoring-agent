@@ -11,15 +11,22 @@ const POLL_INTERVAL_MS = 4_000;
 /** Give up watching after this long so polling can never run unbounded. */
 const MAX_WATCH_MS = 10 * 60 * 1_000;
 
-/** Read the worker's "last bulk refresh completed" marker; null on any error. */
-async function fetchCompletionMarker(): Promise<string | null> {
+/**
+ * Read the worker's "last bulk refresh completed" marker.
+ *   - `string` → the recorded completion timestamp
+ *   - `null`   → no completion recorded yet (genuinely absent — a valid baseline
+ *               that should later fire when it advances to a timestamp)
+ *   - `undefined` → the read itself failed (network/HTTP error) — INDETERMINATE,
+ *                  must not be treated as a marker value or we'd fire spuriously.
+ */
+async function fetchCompletionMarker(): Promise<string | null | undefined> {
   try {
     const response = await fetch("/api/digest/status");
-    if (!response.ok) return null;
+    if (!response.ok) return undefined;
     const data = await response.json();
     return typeof data.lastCompletedAt === "string" ? data.lastCompletedAt : null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -57,7 +64,9 @@ export function useBulkRefreshSignal() {
   const watchForCompletion = useCallback(async () => {
     stop(); // cancel any prior watch (e.g. a rapid re-trigger)
 
-    const baseline = await fetchCompletionMarker();
+    // `undefined` means the baseline read failed; we then (re)establish the
+    // baseline on the first successful poll rather than comparing against it.
+    let baseline = await fetchCompletionMarker();
     const startedAt = Date.now();
 
     timerRef.current = setInterval(async () => {
@@ -67,7 +76,15 @@ export function useBulkRefreshSignal() {
       }
 
       const current = await fetchCompletionMarker();
-      if (current !== null && current !== baseline) {
+      // Indeterminate read (error) — keep polling without drawing a conclusion.
+      if (current === undefined) return;
+      // Baseline never established (initial read failed) — set it now and wait
+      // for a *subsequent* change rather than treating this first value as new.
+      if (baseline === undefined) {
+        baseline = current;
+        return;
+      }
+      if (current !== baseline) {
         stop();
         toast.success("Refresh complete", {
           description: "Products have been updated — refresh to see the latest.",
