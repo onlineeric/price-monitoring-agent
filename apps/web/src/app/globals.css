@@ -213,3 +213,53 @@ html {
 .disable-transitions * {
   transition: none !important;
 }
+
+/* Sidebar highlight for the feature to demo first (sidebar-items `highlight: true`):
+   a primary-tinted item with a light streak sweeping across about every 2.7s. */
+.nav-highlight {
+  --nav-highlight-shine: rgb(255 255 255 / 75%);
+  position: relative;
+  background-color: color-mix(in oklch, var(--sidebar-primary) 10%, transparent);
+}
+
+.dark .nav-highlight {
+  --nav-highlight-shine: rgb(255 255 255 / 30%);
+  background-color: color-mix(in oklch, var(--sidebar-primary) 22%, transparent);
+}
+
+.nav-highlight:hover,
+.nav-highlight[data-active="true"] {
+  background-color: color-mix(in oklch, var(--sidebar-primary) 18%, transparent);
+}
+
+.dark .nav-highlight:hover,
+.dark .nav-highlight[data-active="true"] {
+  background-color: color-mix(in oklch, var(--sidebar-primary) 32%, transparent);
+}
+
+.nav-highlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, var(--nav-highlight-shine) 50%, transparent 65%);
+  background-size: 250% 100%;
+  animation: nav-highlight-sweep 2.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes nav-highlight-sweep {
+  0% {
+    background-position: 160% 0;
+  }
+  71%,
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-highlight::after {
+    animation: none;
+    background: none;
+  }
+}

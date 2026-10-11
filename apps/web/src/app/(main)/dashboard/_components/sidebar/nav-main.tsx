@@ -38,6 +38,15 @@ const IsComingSoon = () => (
   <span className="ml-auto rounded-md bg-gray-200 px-2 py-1 text-xs dark:text-gray-800">Soon</span>
 );
 
+const HighlightBadge = () => (
+  <span className="ml-auto shrink-0 rounded-full bg-linear-to-r from-violet-500 to-blue-500 px-1.5 py-px font-semibold text-[10px] text-white uppercase tracking-wide">
+    Try it
+  </span>
+);
+
+// Shine-sweep effect defined in globals.css.
+const highlightClassName = (item: NavMainItem) => (item.highlight ? "nav-highlight" : undefined);
+
 const NavItemExpanded = ({
   item,
   isActive,
@@ -68,11 +77,13 @@ const NavItemExpanded = ({
               aria-disabled={item.comingSoon}
               isActive={isActive(item.url)}
               tooltip={item.title}
+              className={highlightClassName(item)}
             >
               <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
                 {item.comingSoon && <IsComingSoon />}
+                {item.highlight && <HighlightBadge />}
               </Link>
             </SidebarMenuButton>
           )}
@@ -210,6 +221,7 @@ export function NavMain({ items }: NavMainProps) {
                           aria-disabled={item.comingSoon}
                           tooltip={item.title}
                           isActive={isItemActive(item.url)}
+                          className={highlightClassName(item)}
                         >
                           <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
                             {item.icon && <item.icon />}
