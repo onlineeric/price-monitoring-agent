@@ -33,7 +33,7 @@ export default function AboutPage() {
       <div>
         <h1 className="font-bold text-3xl">About This App</h1>
         <p className="text-muted-foreground">
-          An Eric Cheng&apos;s portfolio project showcasing AI agent &amp; AI integration engineering, built on a
+          Eric Cheng&apos;s portfolio project showcasing AI agent &amp; AI integration engineering, built on a
           production full-stack platform
         </p>
       </div>

@@ -10,7 +10,8 @@ afterEach(() => {
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
+  // Implementation passed to vi.fn() (not mockImplementation) so `vi.restoreAllMocks()` keeps it between tests.
+  value: vi.fn((query: string) => ({
     matches: false,
     media: query,
     onchange: null,

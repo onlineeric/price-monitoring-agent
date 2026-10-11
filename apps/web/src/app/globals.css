@@ -218,42 +218,47 @@ html {
    a primary-tinted item with a light streak sweeping across about every 2.7s. */
 .nav-highlight {
   --nav-highlight-shine: rgb(255 255 255 / 75%);
+  --nav-highlight-tint: 10%;
   position: relative;
-  background-color: color-mix(in oklch, var(--sidebar-primary) 10%, transparent);
+  background-color: color-mix(in oklch, var(--sidebar-primary) var(--nav-highlight-tint), transparent);
 }
 
 .dark .nav-highlight {
   --nav-highlight-shine: rgb(255 255 255 / 30%);
-  background-color: color-mix(in oklch, var(--sidebar-primary) 22%, transparent);
+  --nav-highlight-tint: 22%;
 }
 
 .nav-highlight:hover,
 .nav-highlight[data-active="true"] {
-  background-color: color-mix(in oklch, var(--sidebar-primary) 18%, transparent);
+  --nav-highlight-tint: 18%;
 }
 
 .dark .nav-highlight:hover,
 .dark .nav-highlight[data-active="true"] {
-  background-color: color-mix(in oklch, var(--sidebar-primary) 32%, transparent);
+  --nav-highlight-tint: 32%;
 }
 
+/* The streak is a 2.5x-wide overlay moved with `transform` (compositor-only) rather than
+   animating `background-position`, which would repaint the item every frame. */
 .nav-highlight::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 250%;
   background: linear-gradient(105deg, transparent 35%, var(--nav-highlight-shine) 50%, transparent 65%);
-  background-size: 250% 100%;
   animation: nav-highlight-sweep 2.7s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes nav-highlight-sweep {
   0% {
-    background-position: 160% 0;
+    transform: translateX(-96%);
   }
   71%,
   100% {
-    background-position: -60% 0;
+    transform: translateX(36%);
   }
 }
 

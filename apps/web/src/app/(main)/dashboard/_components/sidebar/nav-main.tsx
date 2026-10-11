@@ -7,6 +7,7 @@ import { ChevronRight, PlusCircleIcon, SearchIcon } from "lucide-react";
 
 import { useProductCreateDialog } from "@/app/(main)/dashboard/_components/product-create/product-create-dialog-provider";
 import { useGlobalProductSearchDialog } from "@/app/(main)/dashboard/_components/product-search/global-product-search-dialog-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -39,10 +40,13 @@ const IsComingSoon = () => (
 );
 
 const HighlightBadge = () => (
-  <span className="ml-auto shrink-0 rounded-full bg-linear-to-r from-violet-500 to-blue-500 px-1.5 py-px font-semibold text-[10px] text-white uppercase tracking-wide">
+  <Badge className="ml-auto bg-linear-to-r from-violet-500 to-blue-500 px-1.5 py-px font-semibold text-[10px] text-white uppercase tracking-wide">
     Try it
-  </span>
+  </Badge>
 );
+
+// Explicit truncate: a trailing badge would otherwise take the button's `[&>span:last-child]:truncate`.
+const NavItemTitle = ({ title }: { title: string }) => <span className="truncate">{title}</span>;
 
 // Shine-sweep effect defined in globals.css.
 const highlightClassName = (item: NavMainItem) => (item.highlight ? "nav-highlight" : undefined);
@@ -67,7 +71,7 @@ const NavItemExpanded = ({
               tooltip={item.title}
             >
               {item.icon && <item.icon />}
-              <span>{item.title}</span>
+              <NavItemTitle title={item.title} />
               {item.comingSoon && <IsComingSoon />}
               <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarMenuButton>
@@ -81,7 +85,7 @@ const NavItemExpanded = ({
             >
               <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
                 {item.icon && <item.icon />}
-                <span>{item.title}</span>
+                <NavItemTitle title={item.title} />
                 {item.comingSoon && <IsComingSoon />}
                 {item.highlight && <HighlightBadge />}
               </Link>
@@ -96,7 +100,7 @@ const NavItemExpanded = ({
                   <SidebarMenuSubButton aria-disabled={subItem.comingSoon} isActive={isActive(subItem.url)} asChild>
                     <Link prefetch={false} href={subItem.url} target={subItem.newTab ? "_blank" : undefined}>
                       {subItem.icon && <subItem.icon />}
-                      <span>{subItem.title}</span>
+                      <NavItemTitle title={subItem.title} />
                       {subItem.comingSoon && <IsComingSoon />}
                     </Link>
                   </SidebarMenuSubButton>
@@ -143,7 +147,7 @@ const NavItemCollapsed = ({
               >
                 <Link prefetch={false} href={subItem.url} target={subItem.newTab ? "_blank" : undefined}>
                   {subItem.icon && <subItem.icon className="[&>svg]:text-sidebar-foreground" />}
-                  <span>{subItem.title}</span>
+                  <NavItemTitle title={subItem.title} />
                   {subItem.comingSoon && <IsComingSoon />}
                 </Link>
               </SidebarMenuSubButton>
