@@ -5,11 +5,6 @@ import { NavMain } from "@/app/(main)/dashboard/_components/sidebar/nav-main";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { NavGroup } from "@/navigation/sidebar/sidebar-items";
 
-// Keep the sidebar in desktop mode; the global matchMedia mock does not survive past the first test.
-vi.mock("@/hooks/use-mobile", () => ({
-  useIsMobile: () => false,
-}));
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
