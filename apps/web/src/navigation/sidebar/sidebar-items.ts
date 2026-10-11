@@ -1,4 +1,4 @@
-import { Info, LayoutDashboard, type LucideIcon, Mail, MessageSquare, Package, Settings } from "lucide-react";
+import { Info, LayoutDashboard, type LucideIcon, Mail, Package, Settings, Sparkles } from "lucide-react";
 
 export interface NavSubItem {
   title: string;
@@ -6,7 +6,6 @@ export interface NavSubItem {
   icon?: LucideIcon;
   comingSoon?: boolean;
   newTab?: boolean;
-  isNew?: boolean;
 }
 
 export interface NavMainItem {
@@ -16,7 +15,8 @@ export interface NavMainItem {
   subItems?: NavSubItem[];
   comingSoon?: boolean;
   newTab?: boolean;
-  isNew?: boolean;
+  /** Draws attention to the item with an animated shine — reserved for the feature to demo first. */
+  highlight?: boolean;
 }
 
 export interface NavGroup {
@@ -43,8 +43,8 @@ export const sidebarItems: NavGroup[] = [
       {
         title: "AI Chat",
         url: "/dashboard/chat",
-        icon: MessageSquare,
-        isNew: true,
+        icon: Sparkles,
+        highlight: true,
       },
       {
         title: "Send Report to Emails",
